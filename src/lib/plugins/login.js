@@ -1,10 +1,8 @@
-/* global BigInt */
+//@ts-check
 const Vec3 = require('vec3').Vec3
+const allPlugins = require('./index')
 
-const path = require('path')
 const crypto = require('crypto')
-const requireIndex = require('../requireindex')
-const plugins = requireIndex(path.join(__dirname, '..', 'plugins'))
 const playerDat = require('../playerDat')
 const convertInventorySlotId = require('../convertInventorySlotId')
 
@@ -13,31 +11,31 @@ module.exports.server = function (serv, options) {
     client.on('error', error => serv.emit('clientError', client, error)))
 
   serv._server.on('login', async (client) => {
-    if (client.socket.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
+    if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
     try {
       const player = serv.initEntity('player', null, serv.overworld, new Vec3(0, 0, 0))
       player._client = client
+      player._client.socket ??= { remoteAddress: '' }
 
       player.profileProperties = player._client.profile ? player._client.profile.properties : []
 
-      Object.keys(plugins)
-        .filter(pluginName => plugins[pluginName].player !== undefined)
-        .forEach(pluginName => plugins[pluginName].player(player, serv, options))
+      for (const plugin of allPlugins) plugin.player?.(player, serv, options)
 
       serv.emit('newPlayer', player)
       player.emit('asap')
       await player.login()
     } catch (err) {
-      setTimeout(() => { throw err }, 0)
+      throw err
     }
   })
 
   serv.hashedSeed = [0, 0]
   serv.on('seed', (seed) => {
-    const seedBuf = Buffer.allocUnsafe(8)
-    seedBuf.writeBigInt64LE(BigInt(seed))
-    const seedHash = crypto.createHash('sha256').update(seedBuf).digest().subarray(0, 8).readBigInt64LE()
-    serv.hashedSeed = [Number(BigInt.asIntN(64, seedHash) < 0 ? -(BigInt.asUintN(32, (-seedHash) >> 32n) + 1n) : seedHash >> 32n), Number(BigInt.asIntN(32, seedHash & (2n ** 32n - 1n)))] // convert BigInt to mcpc long
+    // const seedBuf = Buffer.allocUnsafe(8)
+    // seedBuf.writeBigInt64LE(BigInt(seed))
+    // todo
+    // const seedHash = crypto.createHash('sha256').update(seedBuf).digest().subarray(0, 8).readBigInt64LE()
+    // serv.hashedSeed = [Number(BigInt.asIntN(64, seedHash) < 0 ? -(BigInt.asUintN(32, (-seedHash) >> 32n) + 1n) : seedHash >> 32n), Number(BigInt.asIntN(32, seedHash & (2n ** 32n - 1n)))] // convert BigInt to mcpc long
   })
 }
 
@@ -214,10 +212,10 @@ module.exports.player = async function (player, serv, settings) {
       player.kick(serv.bannedPlayers[player.uuid].reason)
       return
     }
-    if (serv.bannedIPs[player._client.socket.remoteAddress]) {
-      player.kick(serv.bannedIPs[player._client.socket.remoteAddress].reason)
-      return
-    }
+    // if (serv.bannedIPs[player._client.socket.remoteAddress]) {
+    //   player.kick(serv.bannedIPs[player._client.socket.remoteAddress].reason)
+    //   return
+    // }
 
     await addPlayer()
     sendLogin()

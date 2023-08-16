@@ -12,11 +12,13 @@ const nbtParse = promisify(nbt.parse)
 
 module.exports = { read, save }
 
-const defaultPlayer = {
+const playerDefaults = {
   health: 20,
   food: 20,
   heldItemSlot: 0
 }
+
+module.exports.playerDefaults = playerDefaults
 
 async function read (uuid, spawnPoint, worldFolder) {
   try {
@@ -41,7 +43,7 @@ async function read (uuid, spawnPoint, worldFolder) {
     }
   } catch (e) {
     return {
-      player: { ...defaultPlayer, ...{ position: spawnPoint.clone() } },
+      player: { ...playerDefaults, ...{ position: spawnPoint.clone() } },
       inventory: []
     }
   }

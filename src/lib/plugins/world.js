@@ -36,7 +36,7 @@ module.exports.server = async function (serv, { version, worldFolder, generation
   generation.options.seed = seed
   generation.options.version = version
   serv.emit('seed', generation.options.seed)
-  const generationModule = generations[generation.name] ? generations[generation.name] : require(generation.name)
+  const generationModule = generations[generation.name] ? generations[generation.name] : global['require'](generation.name)
   serv.overworld = new World(generationModule(generation.options), regionFolder === undefined ? null : new Anvil(regionFolder))
   serv.netherworld = new World(generations.nether(generation.options))
   // serv.endworld = new World(generations["end"]({}));
@@ -231,7 +231,7 @@ module.exports.player = function (player, serv, settings) {
           .then((column) => player.sendChunk(chunkX, chunkZ, column))
         return group ? p.then(() => sleep(5)) : p
       }
-      , Promise.resolve())
+        , Promise.resolve())
   }
 
   function sleep (ms = 0) {

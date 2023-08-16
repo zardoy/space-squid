@@ -1,18 +1,27 @@
+//@ts-check
 const fs = require('fs')
-const timeStarted = Math.floor(new Date() / 1000).toString()
+const timeStarted = Math.floor(Date.now() / 1000).toString()
 const path = require('path')
 const mkdirp = require('mkdirp')
 const moment = require('moment')
 const colors = require('colors')
 
-const readline = require('readline')
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-})
+const isNode = typeof process !== 'undefined' && !process.browser && process.platform !== 'browser'
 
-rl.setPrompt('> ')
-rl.prompt(true)
+/** @type {typeof import("readline") | undefined} */
+let readline
+/** @type {import("readline").Interface | undefined} */
+let rl
+if (isNode) {
+  readline = require('readline')
+  rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+
+  rl.setPrompt('> ')
+  rl.prompt(true)
+}
 
 module.exports.server = function (serv, settings) {
   serv.on('error', error => serv.err('Server: ' + error.stack))
@@ -25,7 +34,7 @@ module.exports.server = function (serv, settings) {
   const logFile = path.join('logs', timeStarted + '.log')
 
   serv.log = message => {
-    readline.cursorTo(process.stdout, 0)
+    readline?.cursorTo(process.stdout, 0)
     message = moment().format('MMMM Do YYYY, HH:mm:ss') + ' ' + message
     if (!settings.noConsoleOutput) console.log(message)
     if (!settings.logging) return
@@ -46,24 +55,29 @@ module.exports.server = function (serv, settings) {
     serv.log('[' + colors.yellow('WARN') + ']: ' + message)
   }
 
-  console.log = (function () {
-    const orig = console.log
-    return function () {
-      readline.cursorTo(process.stdout, 0)
-      let tmp
-      try {
-        tmp = process.stdout
-        process.stdout = process.stderr
-        orig.apply(console, arguments)
-      } finally {
-        process.stdout = tmp
+  if (isNode) {
+    console.log = (function () {
+      const orig = console.log
+      return function () {
+        readline.cursorTo(process.stdout, 0)
+        let tmp
+        try {
+          tmp = process.stdout
+          //@ts-ignore
+          process.stdout = process.stderr
+          orig.apply(console, arguments)
+        } finally {
+          process.stdout = tmp
+        }
+        rl.prompt(true)
       }
-      rl.prompt(true)
-    }
-  })()
+    })()
+  }
 
   serv.createLog = () => {
     if (!settings.logging) return
+    // todo remove mkdirp
+    //@ts-ignore
     mkdirp('logs', (err) => {
       if (err) {
         console.log(err)
@@ -77,7 +91,7 @@ module.exports.server = function (serv, settings) {
     })
   }
 
-  rl.on('line', (data) => {
+  rl?.on('line', (data) => {
     serv.handleCommand(data)
     rl.prompt(true)
   })
