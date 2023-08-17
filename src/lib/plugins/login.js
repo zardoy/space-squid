@@ -224,7 +224,6 @@ module.exports.player = async function (player, serv, settings) {
     player.sendSelfPosition()
     player.sendAbilities()
     await player.sendMap()
-    player.updateHealth(player.health)
     player.setXp(player.xp)
     updateInventory()
 
@@ -233,6 +232,8 @@ module.exports.player = async function (player, serv, settings) {
     player.updateAndSpawn()
 
     announceJoin()
+    // mineflayer emits spawn event on health update so it needs to be done as last step
+    player.updateHealth(player.health)
     player.emit('spawned')
 
     await player.waitPlayerLogin()
