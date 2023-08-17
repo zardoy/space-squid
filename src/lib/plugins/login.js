@@ -1,10 +1,10 @@
 //@ts-check
 const Vec3 = require('vec3').Vec3
-const allPlugins = require('./index')
 
 const crypto = require('crypto')
 const playerDat = require('../playerDat')
 const convertInventorySlotId = require('../convertInventorySlotId')
+const plugins = require('./index')
 
 module.exports.server = function (serv, options) {
   serv._server.on('connection', client =>
@@ -19,7 +19,7 @@ module.exports.server = function (serv, options) {
 
       player.profileProperties = player._client.profile ? player._client.profile.properties : []
 
-      for (const plugin of allPlugins) plugin.player?.(player, serv, options)
+      for (const plugin of plugins.builtinPlugins) plugin.player?.(player, serv, options)
 
       serv.emit('newPlayer', player)
       player.emit('asap')

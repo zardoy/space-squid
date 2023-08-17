@@ -3,7 +3,7 @@ const UserError = require('flying-squid').UserError
 const UUID = require('uuid-1345')
 const Vec3 = require('vec3').Vec3
 
-const allPlugins = require('./index')
+const plugins = require('./index')
 
 module.exports.server = function (serv, options) {
   const version = options.version
@@ -18,7 +18,7 @@ module.exports.server = function (serv, options) {
     serv.entityMaxId++
     const entity = new Entity(serv.entityMaxId)
 
-    for (const plugin of allPlugins) plugin.entity?.(entity, serv, options)
+    for (const plugin of plugins.builtinPlugins) plugin.entity?.(entity, serv, options)
 
     entity.initEntity(type, entityType, world, position)
 

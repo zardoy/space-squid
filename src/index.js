@@ -10,7 +10,7 @@ if (typeof process !== 'undefined' && !process.browser && process.platform !== '
 const EventEmitter = require('events').EventEmitter
 const supportedVersions = require('./lib/version').supportedVersions
 const Command = require('./lib/command')
-const allPlugins = require('./lib/plugins')
+const plugins = require('./lib/plugins')
 require('emit-then').register()
 if (process.env.NODE_ENV === 'dev') {
   require('longjohn')
@@ -39,6 +39,7 @@ function createMCServer (options) {
 
 class MCServer extends EventEmitter {
   constructor () {
+    plugins.initPlugins()
     super()
     this._server = null
   }
@@ -53,7 +54,7 @@ class MCServer extends EventEmitter {
     this.commands = new Command({})
     this._server = createServer(options)
 
-    for (const plugin of allPlugins) plugin.server?.(this, options)
+    for (const plugin of plugins.builtinPlugins) plugin.server?.(this, options)
 
     // @ts-ignore
     if (options.logging === true) this.createLog()
