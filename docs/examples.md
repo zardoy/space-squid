@@ -3,7 +3,7 @@
 ## Basic Server
 
 ```js
-const mcServer = require('flying-squid')
+const mcServer = require('space-squid')
 
 mcServer.createMCServer({
   'motd': 'A Minecraft Server \nRunning flying-squid',
@@ -92,7 +92,7 @@ module.exports.player = function(player, serv) {
     if (cancelled) return;
     const chunk = new Chunk(); // Duplicate chunk so we don't edit the actual world
     chunk.load(new Buffer(data.chunk.dump()));
-    
+
     // Go through every block in the chunk
     for (let x = 0; x < 16; x++) {
       for (let z = 0; z < 16; z++) {

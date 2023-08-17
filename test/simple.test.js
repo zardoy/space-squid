@@ -1,7 +1,7 @@
 /* eslint-env mocha */
 
 const net = require('net')
-const squid = require('flying-squid')
+const squid = require('space-squid')
 
 const settings = require('../config/default-settings')
 

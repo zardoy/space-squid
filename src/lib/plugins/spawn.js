@@ -1,5 +1,4 @@
-const path = require('path')
-const UserError = require('flying-squid').UserError
+const UserError = require('space-squid').UserError
 const UUID = require('uuid-1345')
 const Vec3 = require('vec3').Vec3
 

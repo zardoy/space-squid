@@ -1,4 +1,4 @@
-const UserError = require('flying-squid').UserError
+const UserError = require('space-squid').UserError
 
 module.exports.server = function (serv, { version }) {
   const mcData = require('minecraft-data')(version)

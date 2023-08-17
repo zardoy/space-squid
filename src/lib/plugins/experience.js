@@ -1,6 +1,6 @@
-const UserError = require('flying-squid').UserError
+const UserError = require('space-squid').UserError
 
-const { distanceToXpLevel, getXpLevel, getBaseXpFromLevel } = require('flying-squid').experience
+const { distanceToXpLevel, getXpLevel, getBaseXpFromLevel } = require('space-squid').experience
 
 module.exports.player = function (player, serv) {
   player.xp = 0

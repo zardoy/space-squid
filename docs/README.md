@@ -95,7 +95,7 @@ To install a world generation, all you have to do is npm install it and then cha
 
 * [flying-squid-irc](https://github.com/rom1504/flying-squid-irc) a bridge between a irc chan and the minecraft server.
 Currently used between our test server (rom1504.fr) and our gitter room (through the official gitter irc bridge)
-* [flying-squid-schematic](https://github.com/rom1504/flying-squid-schematic) Flying-squid plugin providing /listSchemas and /loadSchema commands. 
+* [flying-squid-schematic](https://github.com/rom1504/flying-squid-schematic) Flying-squid plugin providing /listSchemas and /loadSchema commands.
 You can add schema through a simple http api and then add them in your world by just calling /loadSchema in game.
 * [flying-squid-essentials](https://github.com/DeudlyYT/Flying-Squid-Essentials) Plugin that in a future will be like Essentials of bukkit/spigot.
 All the basic commands that a server should have
@@ -110,7 +110,7 @@ For development see the [API documentation](API.md), [CONTRIBUTE.md](CONTRIBUTE.
 flying-squid is also a server lib. Here is a basic example of usage:
 
 ```js
-const mcServer = require('flying-squid')
+const mcServer = require('space-squid')
 
 mcServer.createMCServer({
   'motd': 'A Minecraft Server \nRunning flying-squid',
@@ -152,7 +152,7 @@ For further examples, see the [examples page](https://PrismarineJS.github.io/fly
  - [@mhsjlw](https://github.com/mhsjlw) creator of flying-squid
  - [@roblabla](https://github.com/roblabla) for helping out with the protocols
  - [@rom1504](https://github.com/rom1504) for massive contributions to the code
- - [@demipixel](https://github.com/demipixel) 
+ - [@demipixel](https://github.com/demipixel)
  - The PrismarineJS team for creating prismarine-chunk and node-minecraft-protocol
  - [wiki.vg](http://wiki.vg/Protocol) for documenting minecraft protocols
  - All of our other awesome contributors!

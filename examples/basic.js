@@ -1,4 +1,4 @@
-const mcServer = require('flying-squid')
+const mcServer = require('space-squid')
 
 mcServer.createMCServer({
   motd: 'A Minecraft Server \nRunning flying-squid',

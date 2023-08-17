@@ -1,6 +1,6 @@
 /* eslint-env mocha */
 
-const squid = require('flying-squid')
+const squid = require('space-squid')
 const settings = require('../config/default-settings.json')
 const mineflayer = require('mineflayer')
 const { Vec3 } = require('vec3')

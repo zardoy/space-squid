@@ -36,6 +36,7 @@ module.exports.server = function (serv, settings) {
   serv.log = message => {
     readline?.cursorTo(process.stdout, 0)
     message = moment().format('MMMM Do YYYY, HH:mm:ss') + ' ' + message
+    if (!isNode) message = '[server] ' + message
     if (!settings.noConsoleOutput) console.log(message)
     if (!settings.logging) return
     fs.appendFile(logFile, message + '\n', (err) => {

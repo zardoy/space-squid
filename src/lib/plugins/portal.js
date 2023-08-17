@@ -1,5 +1,5 @@
 const Vec3 = require('vec3').Vec3
-const UserError = require('flying-squid').UserError
+const UserError = require('space-squid').UserError
 
 module.exports.player = function (player, serv, { version }) {
   const mcData = require('minecraft-data')(version)
@@ -31,7 +31,7 @@ module.exports.player = function (player, serv, { version }) {
 }
 
 module.exports.server = function (serv, { version }) {
-  const { generatePortal, addPortalToWorld, detectFrame } = require('flying-squid').portal_detector(version)
+  const { generatePortal, addPortalToWorld, detectFrame } = require('space-squid').portal_detector(version)
   const mcData = require('minecraft-data')(version)
 
   const obsidianType = mcData.blocksByName.obsidian.id
