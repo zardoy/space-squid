@@ -101,7 +101,7 @@ module.exports.server = function (serv, { version }) {
     base: 'give',
     info: 'Gives an item to a player.',
     usage: '/give <player> <item> [count]',
-    tab: ['player', 'number', 'number'],
+    tab: ['player', 'number or string', 'number'],
     op: true,
     parse (args, ctx) {
       args = args.split(' ')
@@ -116,8 +116,10 @@ module.exports.server = function (serv, { version }) {
       }
     },
     action ({ players, item, count }) {
-      const newItem = new Item(isNaN(+item) ? mcData.itemsByName[item.replace(/minecraft:/, '')].id : +item, count)
-      if (!newItem.type) throw new UserError('Item not found')
+      const itemData = isNaN(+item) ? mcData.itemsByName[item.replace(/minecraft:/, '')] : mcData.items[+item]
+
+      if (!itemData) throw new UserError(`Unknown item '${item}'`)
+      const newItem = new Item(itemData.id, count)
 
       players.forEach(player => {
         player.inventory.slots.forEach((e, i) => {
