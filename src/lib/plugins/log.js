@@ -1,8 +1,6 @@
-//@ts-check
 const fs = require('fs')
 const timeStarted = Math.floor(Date.now() / 1000).toString()
 const path = require('path')
-const mkdirp = require('mkdirp')
 const moment = require('moment')
 const colors = require('colors')
 
@@ -77,9 +75,9 @@ module.exports.server = function (serv, settings) {
 
   serv.createLog = () => {
     if (!settings.logging) return
-    // todo remove mkdirp
-    //@ts-ignore
-    mkdirp('logs', (err) => {
+    fs.mkdir('logs', {
+      recursive: true
+    }, (err) => {
       if (err) {
         console.log(err)
         return
