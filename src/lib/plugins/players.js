@@ -116,7 +116,8 @@ module.exports.server = function (serv, { version }) {
       }
     },
     action ({ players, item, count }) {
-      const newItem = new Item(item, count)
+      const newItem = new Item(isNaN(+item) ? mcData.itemsByName[item.replace(/minecraft:/, '')].id : +item, count)
+      if (!newItem.type) throw new UserError('Item not found')
 
       players.forEach(player => {
         player.inventory.slots.forEach((e, i) => {
