@@ -65,13 +65,8 @@ module.exports.player = async function (player, serv, settings) {
 
   function updateInventory () {
     playerData.inventory.forEach((item) => {
-      let theItem
-      const itemName = item.id.value.slice(10)
-      if (mcData.itemsByName[itemName]) {
-        theItem = mcData.itemsByName[itemName]
-      } else {
-        theItem = mcData.blocksByName[itemName]
-      }
+      const itemName = item.id.value.slice(10) // skip game brand prefix
+      const theItem = mcData.itemsByName[itemName] || mcData.blocksByName[itemName]
 
       let newItem
       if (mcData.version['<']('1.13')) newItem = new Item(theItem.id, item.Count.value, item.Damage.value)
@@ -239,6 +234,8 @@ module.exports.player = async function (player, serv, settings) {
     await player.waitPlayerLogin()
     player.sendRestMap()
     sendChunkWhenMove()
+
+    player.save()
   }
 
   const dimensionCodec = { // Dumped from a vanilla 1.16.1 server, as these are hardcoded constants

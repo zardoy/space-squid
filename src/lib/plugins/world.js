@@ -6,6 +6,8 @@ const { promisify } = require('util')
 const fs = require('fs')
 const { level } = require('prismarine-provider-anvil')
 
+const playerDat = require('../playerDat')
+
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
@@ -147,6 +149,10 @@ module.exports.server = async function (serv, { version, worldFolder, generation
 }
 
 module.exports.player = function (player, serv, settings) {
+  player.save = () => {
+    playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
+  }
+
   player._unloadChunk = (chunkX, chunkZ) => {
     serv._unloadPlayerChunk(chunkX, chunkZ, player)
 
