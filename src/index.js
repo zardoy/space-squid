@@ -45,6 +45,7 @@ class MCServer extends EventEmitter {
   }
 
   connect (options) {
+    this.options = options
     const version = require('minecraft-data')(options.version).version
     //@ts-ignore
     if (!supportedVersions.some(v => v.includes(version.majorVersion))) {
