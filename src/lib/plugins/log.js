@@ -6,11 +6,21 @@ const colors = require('colors')
 
 const isNode = typeof process !== 'undefined' && !process.browser && process.platform !== 'browser'
 
+let _servers = []
+
 /** @type {typeof import("readline") | undefined} */
 let readline
 /** @type {import("readline").Interface | undefined} */
 let rl
 if (isNode) {
+  import(/* webpackIgnore: true */ 'exit-hook').then((hook) => {
+    hook.default(() => {
+      for (const serv of _servers) {
+        serv.log('Server shutting down...')
+        serv.quit()
+      }
+    })
+  })
   readline = require('readline')
   rl = readline.createInterface({
     input: process.stdin,
@@ -22,6 +32,8 @@ if (isNode) {
 }
 
 module.exports.server = function (serv, settings) {
+  _servers.push(serv)
+
   serv.on('error', error => serv.err('Server: ' + error.stack))
   serv.on('clientError', (client, error) => serv.err('Client ' + client.socket.remoteAddress + ':' + client.socket.remotePort + ' : ' + error.stack))
   serv.on('listening', port => serv.info('Server listening on port ' + port))
