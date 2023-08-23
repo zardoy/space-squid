@@ -253,6 +253,12 @@ module.exports.player = function (player, serv, settings) {
       .catch((err) => setTimeout(() => { throw err }), 0)
   }
 
+  // todo expose main player instead so it doesn't get overridden when new joins
+  globalThis.onPlayerChangeRenderDistance = (newDistance = player.view, forced = false) => {
+    player.view = newDistance
+    player.sendRestMap()
+    if (forced) player._unloadAllChunks()
+  }
   player.sendRestMap = () => {
     player.sendingChunks = true
     player.sendNearbyChunks(Math.min(player.view, settings['view-distance']), true)
