@@ -105,7 +105,7 @@ async function save (player, worldFolder, snakeCase, theFlattening) {
     newUncompressedData.value.Inventory.value.value = playerInventoryToNBT(player.inventory)
 
     const newDataCompressed = await gzip(nbt.writeUncompressed(newUncompressedData))
-    fs.writeFileSync(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
+    await fs.promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
   } catch (e) {
     // Get UUIDMost & UUIDLeast. mc-uuid-converter Copyright (c) 2020 Sol Toder https://github.com/AjaxGb/mc-uuid-converter under MIT License.
     const uuidBytes = new Uint8Array(16)
@@ -451,7 +451,11 @@ async function save (player, worldFolder, snakeCase, theFlattening) {
     }
 
     const newDataCompressed = await gzip(nbt.writeUncompressed(newUncompressedData))
-    await fs.promises.mkdir(`${worldFolder}/playerdata/`, { recursive: true })
-    fs.writeFileSync(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
+    try {
+      await fs.promises.mkdir(`${worldFolder}/playerdata/`, { recursive: true })
+    } catch (err) {
+      // todo fix browserfs behavior instead
+    }
+    await fs.promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
   }
 }
