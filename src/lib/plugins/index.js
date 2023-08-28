@@ -7,10 +7,17 @@ const filterKeys = (keys) => {
 }
 
 module.exports.initPlugins = () => {
-    try {
-        const pluginsMap = require.context('./', false, /^(?!.*(?:external.js$)).*\.js$/)
-        module.exports.builtinPlugins = filterKeys(pluginsMap.keys()).map(k => pluginsMap(k))
-    } catch (err) {
+    if (process.platform === 'browser') {
+        const isWebpack = !!require.context
+        if (isWebpack) {
+            const pluginsMap = require.context('./', false, /^(?!.*(?:external.js$)).*\.js$/)
+            module.exports.builtinPlugins = filterKeys(pluginsMap.keys()).map(k => pluginsMap(k))
+        } else {
+            // esbuild custom plugin
+            const files = require(/* webpackIgnore: true */ 'esbuild-import-glob(path:.,skipFiles:index.js,external.js)')
+            module.exports.builtinPlugins = Object.values(files)
+        }
+    } else {
         // todo use browser field or bundle like valtio does: https://github.com/webpack/webpack/issues/8826#issuecomment-671402668
         const requireIndex = eval('require')('../requireindex')
         const path = eval('require')('path')
