@@ -55,7 +55,16 @@ class MCServer extends EventEmitter {
     this.commands = new Command({})
     this._server = createServer(options)
 
-    for (const plugin of plugins.builtinPlugins) plugin.server?.(this, options)
+    const coreModules = ['world', 'login', 'player']
+    for (const [name, plugin] of plugins.builtinPlugins) {
+      try {
+        plugin.server?.(this, options)
+      } catch (err) {
+        if (coreModules.includes(name)) throw err
+        alert(`Failed to activate ${name} plugin!`)
+        setTimeout(() => { throw new ServerPluginFailure(name, 'server', err) }, 0)
+      }
+    }
 
     // @ts-ignore
     if (options.logging === true) this.createLog()

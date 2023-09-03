@@ -3,6 +3,7 @@ const UUID = require('uuid-1345')
 const Vec3 = require('vec3').Vec3
 
 const plugins = require('./index')
+const ServerPluginFailure = require('../serverPluginFailure')
 
 module.exports.server = function (serv, options) {
   const version = options.version
@@ -17,7 +18,15 @@ module.exports.server = function (serv, options) {
     serv.entityMaxId++
     const entity = new Entity(serv.entityMaxId)
 
-    for (const plugin of plugins.builtinPlugins) plugin.entity?.(entity, serv, options)
+    for (const [name, plugin] of plugins.builtinPlugins) {
+      try {
+        plugin.entity?.(entity, serv, options)
+      } catch (err) {
+        // todo if failed once do not try again at all
+        alert(`[entities] Failed to activate ${name} plugin!`)
+        setTimeout(() => { throw new ServerPluginFailure(name, 'entity', err) }, 0)
+      }
+    }
 
     entity.initEntity(type, entityType, world, position)
 
