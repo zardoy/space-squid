@@ -35,7 +35,7 @@ module.exports.server = function (serv, settings) {
   _servers.push(serv)
 
   serv.on('error', error => serv.err('Server: ' + error.stack))
-  serv.on('clientError', (client, error) => serv.err('Client ' + client.socket.remoteAddress + ':' + client.socket.remotePort + ' : ' + error.stack))
+  serv.on('clientError', (client, error) => serv.err('Client ' + client.socket?.remoteAddress + ':' + client.socket.remotePort + ' : ' + error.stack))
   serv.on('listening', port => serv.info('Server listening on port ' + port))
   serv.on('banned', (banner, bannedUsername, reason) =>
     serv.info(banner.username + ' banned ' + bannedUsername + (reason ? ' (' + reason + ')' : '')))
@@ -46,7 +46,8 @@ module.exports.server = function (serv, settings) {
   serv.log = message => {
     readline?.cursorTo(process.stdout, 0)
     message = moment().format('MMMM Do YYYY, HH:mm:ss') + ' ' + message
-    if (!isInNode) message = '[server] ' + message
+    message = serv.formatMessage?.(message) ?? message
+    if (!message) return
     if (!settings.noConsoleOutput) console.log(message)
     if (!settings.logging) return
     fs.appendFile(logFile, message + '\n', (err) => {
@@ -109,7 +110,7 @@ module.exports.server = function (serv, settings) {
 }
 
 module.exports.player = function (player, serv) {
-  player.on('connected', () => serv.info(player.username + ' (' + player._client.socket.remoteAddress + ') connected'))
+  player.on('connected', () => serv.info(player.username + ' (' + player._client.socket?.remoteAddress + ') connected'))
   player.on('spawned', () => serv.info('Position written, spawning player...'))
   player.on('disconnected', () => serv.info(player.username + ' disconnected'))
   player.on('chat', ({ message }) => serv.info('<' + player.username + '>' + ' ' + message))

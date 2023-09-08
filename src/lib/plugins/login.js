@@ -14,12 +14,11 @@ module.exports.server = function (serv, options) {
     if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
     if (!serv.pluginsReady) {
       client.end('Server is still starting! Please wait before reconnecting.')
+      return
     }
     try {
       const player = serv.initEntity('player', null, serv.overworld, new Vec3(0, 0, 0))
       player._client = client
-      // make sure plugin's don't crash if there is no socket connection (for example if we use custom communication)
-      player._client.socket ??= { }
 
       player.profileProperties = player._client.profile ? player._client.profile.properties : []
 
@@ -210,8 +209,8 @@ module.exports.player = async function (player, serv, settings) {
       player.kick(serv.bannedPlayers[player.uuid].reason)
       return
     }
-    if (serv.bannedIPs[player._client.socket.remoteAddress]) {
-      player.kick(serv.bannedIPs[player._client.socket.remoteAddress].reason)
+    if (serv.bannedIPs[player._client.socket?.remoteAddress]) {
+      player.kick(serv.bannedIPs[player._client.socket?.remoteAddress].reason)
       return
     }
 

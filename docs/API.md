@@ -41,12 +41,13 @@
       - ["tick" (count)](#tick-count)
       - ["pluginsReady"](#pluginsready)
     - [Methods](#methods)
+      - [serv.formatMessage(message)](#servformatmessagemessage)
       - [serv.createLog()](#servcreatelog)
       - [serv.log(message)](#servlogmessage)
       - [serv.info(message)](#servinfomessage)
       - [serv.warn(message)](#servwarnmessage)
       - [serv.err(message)](#serverrmessage)
-      - [serv.broadcast(message\[,color\])](#servbroadcastmessagecolor)
+      - [serv.broadcast(message[,color])](#servbroadcastmessagecolor)
       - [serv.getPlayer(username)](#servgetplayerusername)
       - [serv.getNearby(loc)](#servgetnearbyloc)
       - [serv.onItemPlace(name, handler)](#servonitemplacename-handler)
@@ -70,11 +71,11 @@
       - [server.emitParticle(particle, world, position, opt)](#serveremitparticleparticle-world-position-opt)
       - [serv.selectorString(str, pos, world, allowUser = true, ctxEntityId)](#servselectorstringstr-pos-world-allowuser--true-ctxentityid)
     - [Low level methods](#low-level-methods)
-      - [server.\_writeAll(packetName, packetFields)](#server_writeallpacketname-packetfields)
-      - [server.\_writeArray(packetName, packetFields, playerArray)](#server_writearraypacketname-packetfields-playerarray)
-      - [server.\_writeNearby(packetName, packetFields, loc)](#server_writenearbypacketname-packetfields-loc)
-      - [serv.\_loadPlayerChunk(chunkX, chunkZ, player)](#serv_loadplayerchunkchunkx-chunkz-player)
-      - [serv.\_unloadPlayerChunk(chunkX, chunkZ, player)](#serv_unloadplayerchunkchunkx-chunkz-player)
+      - [server._writeAll(packetName, packetFields)](#server_writeallpacketname-packetfields)
+      - [server._writeArray(packetName, packetFields, playerArray)](#server_writearraypacketname-packetfields-playerarray)
+      - [server._writeNearby(packetName, packetFields, loc)](#server_writenearbypacketname-packetfields-loc)
+      - [serv._loadPlayerChunk(chunkX, chunkZ, player)](#serv_loadplayerchunkchunkx-chunkz-player)
+      - [serv._unloadPlayerChunk(chunkX, chunkZ, player)](#serv_unloadplayerchunkchunkx-chunkz-player)
   - [Entity](#entity-1)
     - [Properties](#properties-1)
       - [entity.id](#entityid)
@@ -112,9 +113,9 @@
       - [entity.getNearbyPlayers()](#entitygetnearbyplayers)
       - [entity.nearbyPlayers()](#entitynearbyplayers)
       - [entity.takeDamage({sound='game.player.hurt', damage=1, velocity=new Vec3(0,0,0), maxVelocity=new Vec3(4, 4, 4), animation=true})](#entitytakedamagesoundgameplayerhurt-damage1-velocitynew-vec3000-maxvelocitynew-vec34-4-4-animationtrue)
-    - [Low level Methods](#low-level-methods-1)
-      - [entity.\_writeOthers(packetName, packetFields)](#entity_writeotherspacketname-packetfields)
-      - [entity.\_writeOthersNearby(packetName, packetFields)](#entity_writeothersnearbypacketname-packetfields)
+    - [Low level Methods](#low-level-methods)
+      - [entity._writeOthers(packetName, packetFields)](#entity_writeotherspacketname-packetfields)
+      - [entity._writeOthersNearby(packetName, packetFields)](#entity_writeothersnearbypacketname-packetfields)
   - [Player](#player)
     - [Properties](#properties-2)
       - [player.username](#playerusername)
@@ -128,7 +129,7 @@
       - ["disconnected"](#disconnected)
       - ["chat" (message)](#chat-message)
       - ["kicked" (kicker,reason)](#kicked-kickerreason)
-      - ["change\_world"](#change_world)
+      - ["change_world"](#change_world)
       - ["playerChangeRenderDistance" (newDistance=player.view, unloadFirst=false)](#playerchangerenderdistance-newdistanceplayerview-unloadfirstfalse)
       - ["positionChanged"](#positionchanged)
     - [Behaviors](#behaviors-1)
@@ -149,6 +150,7 @@
       - ["attack"](#attack)
       - ["requestRespawn"](#requestrespawn)
     - [Methods](#methods-2)
+      - [player.save()](#playersave)
       - [player.login()](#playerlogin)
       - [player.ban(reason)](#playerbanreason)
       - [player.kick(reason)](#playerkickreason)
@@ -175,10 +177,10 @@
       - [player.setXpLevel(level)](#playersetxplevellevel)
       - [player.setDisplayXp(num)](#playersetdisplayxpnum)
     - [Low level properties](#low-level-properties)
-      - [player.\_client](#player_client)
-    - [Low level methods](#low-level-methods-2)
-      - [player.\_unloadChunk(chunkX, chunkZ)](#player_unloadchunkchunkx-chunkz)
-      - [player.\_unloadAllChunks()](#player_unloadallchunks)
+      - [player._client](#player_client)
+    - [Low level methods](#low-level-methods-1)
+      - [player._unloadChunk(chunkX, chunkZ)](#player_unloadchunkchunkx-chunkz)
+      - [player._unloadAllChunks()](#player_unloadallchunks)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -383,6 +385,10 @@ Fires when one tick has passed (default is 50ms). count is the total world ticks
 Emitted when `serv.pluginsReady` is set to `true`.
 
 ### Methods
+
+#### serv.formatMessage(message)
+
+You can override this function so you can process the message before sending it to the console.
 
 #### serv.createLog()
 
@@ -1025,6 +1031,17 @@ Default: Let them respawn
 Cancelled: Nothing. You monster.
 
 ### Methods
+
+#### player.save()
+
+If `worldFolder` option is set, save player's data into `<worldFolder>/playerdata/<UUID>.dat`. Returns promise.
+Example: save all players data to disk:
+
+```js
+for (const player of serv.players) {
+  player.save()
+}
+```
 
 #### player.login()
 

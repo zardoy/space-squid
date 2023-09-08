@@ -150,8 +150,8 @@ module.exports.server = async function (serv, options = {}) {
 }
 
 module.exports.player = function (player, serv, settings) {
-  player.save = () => {
-    playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
+  player.save = async () => {
+    await playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
   }
 
   player._unloadChunk = (chunkX, chunkZ) => {
