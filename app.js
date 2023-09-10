@@ -1,6 +1,49 @@
 #!/usr/bin/env node
 
-const argv = require('yargs/yargs')(process.argv.slice(2))
+const crypto = require('crypto')
+const promisify = require('util').promisify
+
+crypto.createPublicKey = () => {}
+
+const fs = require('fs');
+fs.promises.open = async (...args) => {
+  const fd = await promisify(fs.open)(...args)
+  return {
+    ...Object.fromEntries(['read', 'write', 'close'].map(x => [x, async (...args) => {
+      return await new Promise(resolve => {
+        if (x === 'write') {
+          return resolve({ buffer: Buffer.from([]), bytesRead: 0 })
+        }
+
+        fs[x](fd, ...args, (err, bytesRead, buffer) => {
+          if (err) throw err
+          // todo if readonly probably there is no need to open at all (return some mocked version - check reload)?
+          if (x === 'write') {
+            // flush data, though alternatively we can rely on close in unload
+            fs.fsync(fd, () => { })
+          }
+          resolve({ buffer, bytesRead })
+        })
+      })
+    }])),
+    // for debugging
+    fd,
+    filename: args[0],
+    close: () => {
+      return new Promise(resolve => {
+        fs.close(fd, (err) => {
+          if (err) {
+            throw err
+          } else {
+            resolve()
+          }
+        })
+      })
+    }
+  }
+}
+
+const argv = require('yargs')(process.argv.slice(2))
   .usage('Usage: $0 <command> [options]')
   .help('h')
   .option('config', {

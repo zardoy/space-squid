@@ -51,7 +51,7 @@ class MCServer extends EventEmitter {
     }
     this.supportFeature = feature => supportFeature(feature, version.majorVersion)
     this.commands = new Command({})
-    this._server = createServer(options)
+    this._server = globalThis._server = globalThis._server ?? createServer(options)
 
     const promises = []
     for (const plugin of plugins.builtinPlugins) {

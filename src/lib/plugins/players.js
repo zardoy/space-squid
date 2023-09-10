@@ -4,7 +4,7 @@ module.exports.server = function (serv, { version }) {
   const mcData = require('minecraft-data')(version)
   const Item = require('prismarine-item')(version)
   serv.entityMaxId = 0
-  serv.players = []
+  serv.players = globalThis.players = globalThis.players ?? []
   serv.uuidToPlayer = {}
   serv.entities = {}
 

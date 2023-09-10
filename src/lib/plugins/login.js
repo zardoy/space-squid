@@ -10,6 +10,23 @@ module.exports.server = function (serv, options) {
   serv._server.on('connection', client =>
     client.on('error', error => serv.emit('clientError', client, error)))
 
+    setTimeout(() => {
+    if (globalThis._hot) {
+      for (const player of serv.players) {
+        // remove all listeners
+        console.log('reload', player.username)
+        player._client.removeAllListeners()
+        for (const plugin of plugins.builtinPlugins) {
+          plugin.entity?.(player, serv, options)
+        }
+        for (const plugin of plugins.builtinPlugins) {
+          plugin.player?.(player, serv, options)
+        }
+      }
+    }
+    globalThis._hot = true
+  })
+
   serv._server.on('login', async (client) => {
     if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
     if (!serv.pluginsReady) {
