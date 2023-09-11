@@ -109,6 +109,7 @@ module.exports.server = function (serv, options) {
     info: 'Summon an entity',
     usage: '/summon <entity_name>',
     onlyPlayer: true,
+    tab: ['entity'],
     op: true,
     action (name, ctx) {
       if (Object.keys(serv.entities).length > options['max-entities']) { throw new UserError('Too many mobs !') }
@@ -132,6 +133,7 @@ module.exports.server = function (serv, options) {
     base: 'summonMany',
     info: 'Summon many entities',
     usage: '/summonMany <number> <entity_name>',
+    tab: ['number', 'entity'],
     onlyPlayer: true,
     op: true,
     parse (str) {
