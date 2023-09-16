@@ -173,8 +173,8 @@ module.exports.player = function (player, serv, settings) {
     }
   }
 
-  player.sendChunk = (chunkX, chunkZ, column) => {
-    return player.behavior('sendChunk', {
+  player.sendChunk = async (chunkX, chunkZ, column) => {
+    await player.behavior('sendChunk', {
       x: chunkX,
       z: chunkZ,
       chunk: column
@@ -206,6 +206,27 @@ module.exports.player = function (player, serv, settings) {
           emptySkyLightMask: 0,
           emptyBlockLightMask: 0,
           data: chunk.dumpLight()
+        })
+      }
+      Object.assign(serv.overworld.blockEntityData, column.blockEntities)
+      for (const key in column.blockEntities) {
+        const blockEntity = column.blockEntities[key]
+        const actionPerId = {
+          MobSpawner: 1,
+          Control: 2
+        }
+        const action = actionPerId[blockEntity.value.id?.value]
+        if (action === undefined) continue
+        const [x, y, z] = key.split(',').map(a => parseInt(a))
+        blockEntity.name = ''
+        player._client.write('tile_entity_data', {
+          location: {
+            x,
+            y,
+            z,
+          },
+          action,
+          nbtData: blockEntity
         })
       }
       return Promise.resolve()
