@@ -168,4 +168,4 @@ module.exports.player = function (player, serv, { version }) {
 
 const directionToVector = [new Vec3(0, -1, 0), new Vec3(0, 1, 0), new Vec3(0, 0, -1), new Vec3(0, 0, 1), new Vec3(-1, 0, 0), new Vec3(1, 0, 0)]
 const directionToAxis = ['y', 'y', 'z', 'z', 'x', 'x']
-const directionToFacing = ['north', 'east', 'south', 'west']
+const directionToFacing = ['south', 'west', 'north', 'east',]
