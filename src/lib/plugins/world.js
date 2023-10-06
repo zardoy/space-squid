@@ -6,7 +6,7 @@ const fs = require('fs')
 const { level } = require('prismarine-provider-anvil')
 
 const playerDat = require('../playerDat')
-const { spiral } = require('../../utils')
+const { generateSpiralMatrix } = require('../../utils')
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
@@ -243,7 +243,7 @@ module.exports.player = function (player, serv, settings) {
       .filter(([x, z]) => Math.abs(x - playerChunkX) > viewDistance || Math.abs(z - playerChunkZ) > viewDistance)
       .forEach(([x, z]) => player._unloadChunk(x, z))
 
-    return spiral(viewDistance)
+    return generateSpiralMatrix(viewDistance)
       .map(t => ({
         chunkX: playerChunkX + t[0],
         chunkZ: playerChunkZ + t[1]

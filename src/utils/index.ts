@@ -1,13 +1,4 @@
-export function spiral(distance: number) {
-  // eg if distance is 1, we get 9 chunks
-  const arr: [number, number][] = []
-  for (let i = -distance; i <= distance; i++) {
-    for (let j = -distance; j <= distance; j++) {
-      arr.push([i, j])
-    }
-  }
-  return arr
-}
+export { generateSpiralMatrix } from './spiral'
 
 export class ViewRect {
   x0: number
