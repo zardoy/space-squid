@@ -1,4 +1,3 @@
-const spiralloop = require('spiralloop')
 const Vec3 = require('vec3').Vec3
 
 const generations = require('flying-squid').generations
@@ -7,6 +6,7 @@ const fs = require('fs')
 const { level } = require('prismarine-provider-anvil')
 
 const playerDat = require('../playerDat')
+const { spiral } = require('../../utils')
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
@@ -223,7 +223,7 @@ module.exports.player = function (player, serv, settings) {
           location: {
             x,
             y,
-            z,
+            z
           },
           action,
           nbtData: blockEntity
@@ -233,28 +233,20 @@ module.exports.player = function (player, serv, settings) {
     })
   }
 
-  function spiral (arr) {
-    const t = []
-    spiralloop(arr, (x, z) => {
-      t.push([x, z])
-    })
-    return t
-  }
-
-  player.sendNearbyChunks = (view, group) => {
+  player.sendNearbyChunks = (viewDistance, group) => {
     player.lastPositionChunkUpdated = player.position
     const playerChunkX = Math.floor(player.position.x / 16)
     const playerChunkZ = Math.floor(player.position.z / 16)
 
     Object.keys(player.loadedChunks)
       .map((key) => key.split(',').map(a => parseInt(a)))
-      .filter(([x, z]) => Math.abs(x - playerChunkX) > view || Math.abs(z - playerChunkZ) > view)
+      .filter(([x, z]) => Math.abs(x - playerChunkX) > viewDistance || Math.abs(z - playerChunkZ) > viewDistance)
       .forEach(([x, z]) => player._unloadChunk(x, z))
 
-    return spiral([view * 2, view * 2])
+    return spiral(viewDistance)
       .map(t => ({
-        chunkX: playerChunkX + t[0] - view,
-        chunkZ: playerChunkZ + t[1] - view
+        chunkX: playerChunkX + t[0],
+        chunkZ: playerChunkZ + t[1]
       }))
       .filter(({ chunkX, chunkZ }) => serv._loadPlayerChunk(chunkX, chunkZ, player))
       .reduce((acc, { chunkX, chunkZ }) => {
@@ -271,7 +263,7 @@ module.exports.player = function (player, serv, settings) {
   }
 
   player.sendMap = () => {
-    return player.sendNearbyChunks(Math.min(3, settings['view-distance']))
+    return player.sendNearbyChunks(settings['view-distance'])
       .catch((err) => setTimeout(() => { throw err }), 0)
   }
 
