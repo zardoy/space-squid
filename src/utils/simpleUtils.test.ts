@@ -1,19 +1,6 @@
 import { ViewRect } from './index'
-import spiralloop from 'spiralloop'
 import { test, expect } from 'vitest'
 import { generateSpiralMatrix } from './spiral'
-
-function spiralWrong(distance: number) {
-  const arr = [distance * 2 + 1, distance * 2 + 1]
-  const t: [number, number][] = [[0, 0]]
-  spiralloop(arr, 0, (_x, _z) => {
-    const x = _x - distance
-    const z = _z - distance
-    if (x === 0 && z === 0) return
-    t.push([x, z])
-  })
-  return t
-}
 
 test('spiral', () => {
   expect(generateSpiralMatrix(1)).toMatchInlineSnapshot(`
