@@ -215,8 +215,14 @@ module.exports.player = function (player, serv, settings) {
           MobSpawner: 1,
           Control: 2
         }
-        const action = actionPerId[blockEntity.value.id?.value]
-        if (action === undefined) continue
+        let action = actionPerId[blockEntity.value.id?.value]
+        if (action === undefined) {
+          if (serv.looseProtocolMode) { // eg mineflayer don't care of action passed here, so lets always send tile entity
+            action = 0
+          } else {
+            continue
+          }
+        }
         const [x, y, z] = key.split(',').map(a => parseInt(a))
         blockEntity.name = ''
         player._client.write('tile_entity_data', {
@@ -254,8 +260,7 @@ module.exports.player = function (player, serv, settings) {
           .then(() => player.world.getColumn(chunkX, chunkZ))
           .then((column) => player.sendChunk(chunkX, chunkZ, column))
         return group ? p.then(() => sleep(5)) : p
-      }
-      , Promise.resolve())
+      }, Promise.resolve())
   }
 
   function sleep (ms = 0) {
