@@ -280,7 +280,7 @@ module.exports.player = function (player, serv, settings) {
   })
   player.sendRestMap = () => {
     player.sendingChunks = true
-    player.sendNearbyChunks(Math.min(player.view, settings['view-distance']), true)
+    player.sendNearbyChunks(Math.min(player.view, settings['max-view-distance'] ?? player.view), true)
       .then(() => { player.sendingChunks = false })
       .catch((err) => setTimeout(() => { throw err }, 0))
   }

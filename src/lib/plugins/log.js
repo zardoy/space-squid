@@ -112,7 +112,7 @@ module.exports.server = function (serv, settings) {
 module.exports.player = function (player, serv) {
   player.on('connected', () => serv.info(player.username + ' (' + player._client.socket?.remoteAddress + ') connected'))
   player.on('spawned', () => serv.info('Position written, spawning player...'))
-  player.on('disconnected', () => serv.info(player.username + ' disconnected'))
+  player.on('disconnected', (reason) => serv.info(player.username + ' disconnected. Reason: ', reason))
   player.on('chat', ({ message }) => serv.info('<' + player.username + '>' + ' ' + message))
   player.on('kicked', (kicker, reason) => serv.info(kicker.username + ' kicked ' + player.username + (reason ? ' (' + reason + ')' : '')))
 }

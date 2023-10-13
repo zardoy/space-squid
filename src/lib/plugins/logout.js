@@ -16,7 +16,7 @@ module.exports.player = function (player, serv, { worldFolder }) {
     entityIds: entities.map(e => e.id)
   })
 
-  player._client.on('end', async () => {
+  player._client.on('end', async (endReason) => {
     if (player && player.username) {
       player._unloadAllChunks()
       serv.broadcast(serv.color.yellow + player.username + ' left the game.')
@@ -28,7 +28,7 @@ module.exports.player = function (player, serv, { worldFolder }) {
       })
       player.nearbyPlayers().forEach(otherPlayer => otherPlayer.despawnEntities([player]))
       delete serv.entities[player.id]
-      player.emit('disconnected')
+      player.emit('disconnected', endReason)
       const index = serv.players.indexOf(player)
       if (index > -1) {
         serv.players.splice(index, 1)

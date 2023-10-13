@@ -47,6 +47,10 @@ module.exports.player = async function (player, serv, settings) {
 
   let playerData
 
+  player.setLoadingStatus = (text) => {
+    player.emit('loadingStatus', text)
+  }
+
   async function addPlayer () {
     player.type = 'player'
     player.crouching = false // Needs added in prismarine-entity later
@@ -54,14 +58,17 @@ module.exports.player = async function (player, serv, settings) {
     player.username = player._client.username
     player.uuid = player._client.uuid
 
+    player.setLoadingStatus('Findig spawn point')
     await player.findSpawnPoint()
 
+    player.setLoadingStatus('Reading player data')
     playerData = await playerDat.read(player.uuid, player.spawnPoint, settings.worldFolder)
     Object.keys(playerData.player).forEach(k => { player[k] = playerData.player[k] })
 
     serv.players.push(player)
     serv.uuidToPlayer[player.uuid] = player
     player.loadedChunks = {}
+    player.setLoadingStatus(null)
   }
 
   function updateInventory () {
@@ -219,7 +226,10 @@ module.exports.player = async function (player, serv, settings) {
     player.sendSpawnPosition()
     player.sendSelfPosition()
     player.sendAbilities()
+    const distance = settings['view-distance']
+    player.setLoadingStatus(`Getting initial chunks (distance = ${distance})`)
     await player.sendMap()
+    player.setLoadingStatus(null)
     player.setXp(player.xp)
     updateInventory()
 
