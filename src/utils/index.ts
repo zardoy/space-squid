@@ -14,6 +14,6 @@ export class ViewRect {
   }
 
   contains(x, z) {
-    return this.x0 < x && x <= this.x1 && this.z0 < z && z <= this.z1
+    return this.x0 <= x && x <= this.x1 && this.z0 <= z && z <= this.z1
   }
 }
