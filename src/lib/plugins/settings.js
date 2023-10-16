@@ -4,7 +4,7 @@ function randomInt (low, high) {
   return Math.floor(Math.random() * (high - low) + low)
 }
 
-module.exports.server = function (serv, settings) {
+module.exports.server = function (/** @type {Server} */serv, settings) {
   serv.gameMode = settings.gameMode
   serv.difficulty = settings.difficulty
   const mcData = require('minecraft-data')(settings.version)
@@ -16,13 +16,13 @@ module.exports.server = function (serv, settings) {
 
   async function findSpawnZone (world, initialPoint) {
     let point = initialPoint
-    while ((await (world.getBlockType(point))) === 0) { point = point.offset(0, -1, 0) }
+    while ((await (world.getBlockStateId(point))) === 0) { point = point.offset(0, -1, 0) }
     while (true) {
-      const p = await world.getBlockType(point)
+      const p = await world.getBlockStateId(point)
       if (!waterBlocks.has(p)) { break }
       point = point.offset(1, 0, 0)
     }
-    while ((await world.getBlockType(point)) !== 0) { point = point.offset(0, 1, 0) }
+    while ((await world.getBlockStateId(point)) !== 0) { point = point.offset(0, 1, 0) }
 
     return point
   }
