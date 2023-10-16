@@ -73,10 +73,14 @@ module.exports.player = async function (player, serv, settings) {
 
   function updateInventory () {
     playerData.inventory.forEach((item) => {
-      const itemName = item.id.value.slice(10) // skip game brand prefix
+      /** @type {string | number} */
+      const itemValue = item.id.value
+      const itemName = typeof itemValue === 'string' ? skipMcPrefix(itemValue) : mcData.itemsArray.find(item => item.id === itemValue).name
+      // todo how it can be block?
       const theItem = mcData.itemsByName[itemName] || mcData.blocksByName[itemName]
 
       let newItem
+      // todo use supports
       if (mcData.version['<']('1.13')) newItem = new Item(theItem.id, item.Count.value, item.Damage.value)
       else if (item.tag) newItem = new Item(theItem.id, item.Count.value, item.tag)
       else newItem = new Item(theItem.id, item.Count.value)
