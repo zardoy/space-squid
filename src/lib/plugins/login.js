@@ -5,6 +5,7 @@ const crypto = require('crypto')
 const playerDat = require('../playerDat')
 const convertInventorySlotId = require('../convertInventorySlotId')
 const plugins = require('./index')
+const { skipMcPrefix } = require('../utils')
 
 module.exports.server = function (serv, options) {
   serv._server.on('connection', client =>
