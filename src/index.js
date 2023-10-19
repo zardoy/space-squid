@@ -16,8 +16,6 @@ if (process.env.NODE_ENV === 'dev') {
   require('longjohn')
 }
 
-const supportFeature = require('./lib/supportFeature')
-
 module.exports = {
   createMCServer,
   Behavior: require('./lib/behavior'),
@@ -45,11 +43,15 @@ class MCServer extends EventEmitter {
   }
 
   connect (options) {
-    const version = require('minecraft-data')(options.version).version
+    const mcData = require('minecraft-data')(options.version)
+    const version = mcData.version
     if (!supportedVersions.some(v => v.includes(version.majorVersion))) {
-      throw new Error(`Version ${version.minecraftVersion} is not supported.`)
+      console.warn(`Version ${version.minecraftVersion} is not supported.`)
     }
-    this.supportFeature = feature => supportFeature(feature, version.majorVersion)
+    this.supportFeature = feature => {
+      if (feature === 'theFlattening') feature = 'blockStateId'
+      return mcData.supportFeature(feature)
+    }
     this.commands = new Command({})
     this._server = createServer(options)
 
@@ -57,7 +59,10 @@ class MCServer extends EventEmitter {
     for (const plugin of plugins.builtinPlugins) {
       promises.push(plugin.server?.(this, options))
     }
-    Promise.all(promises).then(() => {
+    Promise.allSettled(promises).then((values) => {
+      for (const rejected of values.filter(value => value.status === 'rejected')) {
+        this._server.emit('error', rejected.reason)
+      }
       this.emit('pluginsReady')
       this.pluginsReady = true
     })

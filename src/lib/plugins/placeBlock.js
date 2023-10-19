@@ -28,6 +28,10 @@ module.exports.server = (serv, { version }) => {
   serv.onItemPlace = (name, handler, warn = true) => {
     let item = mcData.itemsByName[name]
     if (!item) item = mcData.blocksByName[name]
+    if (!item) {
+      serv.warn(`Unknown item or block ${name}`)
+      return
+    }
     if (itemPlaceHandlers.has(item.id) && warn) {
       serv.warn(`onItemPlace handler was registered twice for ${name}`)
     }

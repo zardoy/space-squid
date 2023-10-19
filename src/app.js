@@ -25,9 +25,9 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   })
   .argv
 
-const mcServer = require('./')
+const mcServer = require('./index')
 
-const defaultSettings = require('./config/default-settings.json')
+const defaultSettings = require('../config/default-settings.json')
 
 let settings
 
@@ -42,7 +42,11 @@ if (argv.offline) settings['online-mode'] = false
 if (argv.log) settings.logging = true
 if (argv.op) settings['everybody-op'] = true
 
-module.exports = mcServer.createMCServer(settings)
+if (!require('./lib/version').supportedVersions.includes(settings.version)) {
+  throw new Error(`Version ${settings.version} is not supported.`)
+}
+
+module.exports = globalThis.server = mcServer.createMCServer(settings)
 
 process.on('unhandledRejection', err => {
   console.log(err.stack)
