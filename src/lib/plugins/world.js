@@ -184,6 +184,10 @@ module.exports.player = function (player, serv, settings) {
         z,
         groundUp: true,
         bitMap: chunk.getMask(),
+        ...serv.supportFeature('blockStateId') ? {
+          groundUp: false,
+          bitMap: undefined // use full mask (e.g. 0xffff is default). workaround for https://github.com/PrismarineJS/prismarine-chunk/issues/205
+        } : {},
         biomes: chunk.dumpBiomes(),
         ignoreOldData: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
         heightmaps: {
