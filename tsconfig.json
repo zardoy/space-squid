@@ -3,6 +3,9 @@
         "allowJs": true,
         "strictNullChecks": true,
         "outDir": "dist",
+        "sourceMap": true,
+        "target": "ESNext",
+        "module": "CommonJS"
     },
     "include": [
         "src"
