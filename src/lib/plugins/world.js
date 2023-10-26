@@ -36,7 +36,9 @@ module.exports.server = async function (serv, options = {}) {
       await level.writeLevel(worldFolder + '/level.dat', {
         RandomSeed: [seed, 0],
         Version: { Name: options.version },
-        generatorName: generation.name === 'superflat' ? 'flat' : generation.name === 'diamond_square' ? 'default' : 'customized'
+        generatorName: generation.name === 'superflat' ? 'flat' : generation.name === 'diamond_square' ? 'default' : 'customized',
+        LevelName: options.levelName,
+        allowCommands: true
       })
     }
   } else { seed = newSeed }
