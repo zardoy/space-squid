@@ -64,20 +64,20 @@ module.exports.player = function (player) {
     if (notCancelled) player.sendSelfPosition()
   }
 
-  player.sendAbilities = () => { // FIXME
-    // const godmode = player.gameMode === 1 || player.gameMode === 3
-    // const canFly = player.gameMode === 1 || player.gameMode === 3
-    // const isFlying = !player.onGround && canFly
-    // const creativeMode = player.gameMode === 1
-    // const f = (+godmode * 8) + (+canFly * 4) + (+isFlying * 2) + (+creativeMode)
+  player.sendAbilities = () => {
+    const godmode = player.gameMode === 1 || player.gameMode === 3 // Invulnerable
+    const canFly = player.gameMode === 1 || player.gameMode === 3
+    const isFlying = player.flying && canFly
+    const creativeMode = player.gameMode === 1 // Instant Break
+    const f = (+godmode * 8) + (+canFly * 4) + (+isFlying * 2) + (+creativeMode)
     // const walkingSpeed = 0.2 * (1 + (player.effects[1] !== null ? (player.effects[1].amplifier + 1) : 0) * 0.2)
-    // const flyingSpeed = 0.1
-    // console.log(walkingSpeed, flyingSpeed);
-    // player._client.write('abilities', { // XXX
-    //   flags: f,
-    //   walkingSpeed: walkingSpeed,
-    //   flyingSpeed: flyingSpeed
-    // });
+    const flyingSpeed = 0.05000000074505806 // todo calculate instead
+    const walkingSpeed = 0.10000000149011612 // todo use actual abilities from level.dat
+    player._client.write('abilities', {
+      flags: f,
+      walkingSpeed,
+      flyingSpeed
+    })
   }
 }
 

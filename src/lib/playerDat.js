@@ -32,7 +32,8 @@ async function read (uuid, spawnPoint, worldFolder) {
         position: new Vec3(playerData.Pos.value.value[0], playerData.Pos.value.value[1], playerData.Pos.value.value[2]),
         yaw: playerData.Rotation.value.value[0],
         pitch: playerData.Rotation.value.value[1],
-        onGround: Boolean(playerData.OnGround.value)
+        onGround: Boolean(playerData.OnGround.value),
+        flying: Boolean(playerData.abilities.value.flying.value),
       },
       inventory: playerData.Inventory.value.value.map(nbtItem => {
         if (nbtItem?.tag && !nbtItem.tag.name) nbtItem.tag.name = ''
@@ -282,7 +283,7 @@ const getNewPlayerData = (player, snakeCase, theFlattening) => {
           },
           flying: {
             type: 'byte',
-            value: 0 // TODO player.flying
+            value: player.flying ?? 0
           },
           flySpeed: {
             type: 'float',

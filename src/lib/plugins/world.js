@@ -172,6 +172,12 @@ module.exports.server = async function (serv, options = {}) {
 }
 
 module.exports.player = function (player, serv, settings) {
+  player.flying = 0
+  player._client.on('abilities', ({ flags }) => {
+    // todo check can fly!!
+    player.flying = flags & 2
+  })
+
   player.save = async () => {
     return await playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
   }
