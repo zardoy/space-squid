@@ -1,5 +1,7 @@
 const Vec3 = require('vec3').Vec3
 
+const { gzip } = require('node-gzip')
+const nbt = require('prismarine-nbt')
 const generations = require('flying-squid').generations
 const { promisify } = require('util')
 const fs = require('fs')
@@ -155,11 +157,23 @@ module.exports.server = async function (serv, options = {}) {
       if (world === 'overworld') ctx.player.changeWorld(serv.overworld, { dimension: 0 })
     }
   })
+
+  serv.savePlayersSingleplayer = async () => {
+    const savedData = await serv.players[0].save()
+    // if we ever support level.dat saving this function needs to be changed i guess
+    const levelDatContent = await fs.promises.readFile(worldFolder + '/level.dat')
+    const { parsed } = await nbt.parse(levelDatContent)
+    parsed.value.Data.value.Player = savedData
+    const newDataCompressed = await gzip(nbt.writeUncompressed(parsed))
+    await fs.promises.writeFile(worldFolder + '/level.dat', newDataCompressed)
+
+    await Promise.all(serv.players.slice(1).map(async player => player.save()))
+  }
 }
 
 module.exports.player = function (player, serv, settings) {
   player.save = async () => {
-    await playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
+    return await playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
   }
 
   player._unloadChunk = (chunkX, chunkZ) => {
