@@ -30,6 +30,12 @@ module.exports.server = async function (serv, options = {}) {
 
     try {
       const levelData = await level.readLevel(worldFolder + '/level.dat')
+      serv.levelData = levelData
+      // destruct SpawnY, SpawnX, SpawnZ
+      const { SpawnY, SpawnX, SpawnZ } = levelData
+      if ([SpawnY, SpawnX, SpawnZ].every(x => x !== undefined)) {
+        serv.spawnPoint = new Vec3(SpawnX, SpawnY, SpawnZ)
+      }
       seed = levelData.RandomSeed[0]
     } catch (err) {
       seed = newSeed
