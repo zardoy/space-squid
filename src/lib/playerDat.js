@@ -95,6 +95,7 @@ async function save (player, worldFolder, snakeCase, theFlattening) {
     /** @type {any} */
     const newUncompressedData = await nbtParse(playerDataFile)
 
+    // todo remove this block of code
     newUncompressedData.value.Health.value = player.health
     newUncompressedData.value.foodLevel.value = player.food
     newUncompressedData.value.playerGameType.value = player.gameMode
@@ -104,6 +105,7 @@ async function save (player, worldFolder, snakeCase, theFlattening) {
     newUncompressedData.value.Rotation.value.value = [player.yaw, player.pitch]
     newUncompressedData.value.OnGround.value = Number(player.onGround)
     newUncompressedData.value.Inventory.value.value = playerInventoryToNBT(player.inventory, theFlattening)
+    newUncompressedData.value.abilities.value.flying.value = player.flying ?? 0
 
     const newDataCompressed = await gzip(nbt.writeUncompressed(newUncompressedData))
     await fs.promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
