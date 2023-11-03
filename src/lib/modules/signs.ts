@@ -1,4 +1,4 @@
-module.exports.server = (serv, { version }) => {
+export const server = (serv: Server, { version }: Options) => {
   const mcData = require('minecraft-data')(version)
 
   const oakSign = serv.supportFeature('theFlattening') ? mcData.blocksByName.sign : mcData.blocksByName.standing_sign
@@ -42,4 +42,6 @@ module.exports.server = (serv, { version }) => {
       })
     }
   })
+}
+declare global {
 }

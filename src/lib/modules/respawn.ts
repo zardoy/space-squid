@@ -1,4 +1,4 @@
-module.exports.player = function (player, serv) {
+export const player = function (player: Player, serv: Server) {
   player._client.on('client_command', (data) => {
     let actionId
 
@@ -29,4 +29,6 @@ module.exports.player = function (player, serv) {
       })
     }
   })
+}
+declare global {
 }

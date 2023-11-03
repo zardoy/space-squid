@@ -5,7 +5,9 @@
         "outDir": "dist",
         "sourceMap": true,
         "target": "ESNext",
-        "module": "CommonJS"
+        "module": "CommonJS",
+        "esModuleInterop": true,
+        "skipLibCheck": true
     },
     "include": [
         "src"

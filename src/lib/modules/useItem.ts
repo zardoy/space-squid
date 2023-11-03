@@ -1,5 +1,7 @@
-module.exports.server = (serv, { version }) => {
-  const mcData = require('minecraft-data')(version)
+import MinecraftData from 'minecraft-data'
+
+export const server = (serv: Server, { version }: Options) => {
+  const mcData = MinecraftData(version)
   const mobs = mcData.mobs
 
   function getEntID (entName) {
@@ -47,4 +49,6 @@ module.exports.server = (serv, { version }) => {
       }
     }
   })
+}
+declare global {
 }

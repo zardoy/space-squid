@@ -1,23 +1,27 @@
-const Vec3 = require('vec3').Vec3
+import { gzip } from 'node-gzip'
+import nbt from 'prismarine-nbt'
 
-const { gzip } = require('node-gzip')
-const nbt = require('prismarine-nbt')
-const generations = require('flying-squid').generations
-const { promisify } = require('util')
-const fs = require('fs')
-const { level } = require('prismarine-provider-anvil')
+import { promisify } from 'util'
+import fs from 'fs'
+import { level, Anvil as AnvilLoader } from 'prismarine-provider-anvil'
 
-const playerDat = require('../playerDat')
-const { generateSpiralMatrix } = require('../../utils')
+import playerDat from '../playerDat'
+import { generateSpiralMatrix } from '../../utils'
+import { Chunk, World } from 'prismarine-world/types/world'
+import WorldLoader from 'prismarine-world'
+import DataLoader from 'minecraft-data'
+import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
+import generations from '../generations'
+import { Vec3 } from 'vec3'
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
-module.exports.server = async function (serv, options = {}) {
+export const server = async function (serv: Server, options: Options = {}) {
   const { version, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
-  const World = require('prismarine-world')(version)
-  const mcData = require('minecraft-data')(version)
-  const Anvil = require('prismarine-provider-anvil').Anvil(version)
+  const World = WorldLoader(version)
+  const mcData = DataLoader(version)
+  const Anvil = AnvilLoader(version)
 
   const newSeed = generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31))
   let seed
@@ -46,7 +50,7 @@ module.exports.server = async function (serv, options = {}) {
         Version: { Name: options.version },
         generatorName: generation.name === 'superflat' ? 'flat' : generation.name === 'diamond_square' ? 'default' : 'customized',
         LevelName: options.levelName,
-        allowCommands: true
+        allowCommands: 1
       })
     }
   } else { seed = newSeed }
@@ -54,8 +58,8 @@ module.exports.server = async function (serv, options = {}) {
   generation.options.version = version
   serv.emit('seed', generation.options.seed)
   const generationModule = generations[generation.name] ? generations[generation.name] : require(generation.name)
-  serv.overworld = new World(generationModule(generation.options), regionFolder === undefined ? null : new Anvil(regionFolder), options.savingInterval)
-  serv.netherworld = new World(generations.nether(generation.options))
+  serv.overworld = new World(generationModule(generation.options, regionFolder === undefined ? null : new Anvil(regionFolder), options.savingInterval)) as CustomWorld
+  serv.netherworld = new World(generations.nether(generation.options)) as CustomWorld
   // serv.endworld = new World(generations["end"]({}));
 
   serv.dimensionNames = {
@@ -72,7 +76,7 @@ module.exports.server = async function (serv, options = {}) {
   /// ///////////
 
   serv.pregenWorld = (world, size = 3) => {
-    const promises = []
+    const promises: Promise<Chunk>[] = []
     for (let x = -size; x < size; x++) {
       for (let z = -size; z < size; z++) {
         promises.push(world.getColumn(x, z))
@@ -92,7 +96,7 @@ module.exports.server = async function (serv, options = {}) {
 
   if (serv.supportFeature('theFlattening')) {
     serv.setBlockType = async (world, position, id) => {
-      serv.setBlock(world, position, mcData.blocks[id].minStateId)
+      serv.setBlock(world, position, mcData.blocks[id].minStateId!)
     }
   } else {
     serv.setBlockType = async (world, position, id) => {
@@ -162,7 +166,7 @@ module.exports.server = async function (serv, options = {}) {
     const savedData = await serv.players[0].save()
     // if we ever support level.dat saving this function needs to be changed i guess
     const levelDatContent = await fs.promises.readFile(worldFolder + '/level.dat')
-    const { parsed } = await nbt.parse(levelDatContent)
+    const { parsed } = await nbt.parse(levelDatContent) as any
     parsed.value.Data.value.Player = savedData
     const newDataCompressed = await gzip(nbt.writeUncompressed(parsed))
     await fs.promises.writeFile(worldFolder + '/level.dat', newDataCompressed)
@@ -171,7 +175,7 @@ module.exports.server = async function (serv, options = {}) {
   }
 }
 
-module.exports.player = function (player, serv, settings) {
+export const player = function (player: Player, serv: Server, settings: Options) {
   player.flying = 0
   player._client.on('abilities', ({ flags }) => {
     // todo check can fly!!
@@ -271,7 +275,7 @@ module.exports.player = function (player, serv, settings) {
     })
   }
 
-  player.sendNearbyChunks = (viewDistance, group) => {
+  player.sendNearbyChunks = (viewDistance, group = false) => {
     player.lastPositionChunkUpdated = player.position
     const playerChunkX = Math.floor(player.position.x / 16)
     const playerChunkZ = Math.floor(player.position.z / 16)
@@ -301,7 +305,7 @@ module.exports.player = function (player, serv, settings) {
 
   player.sendMap = () => {
     return player.sendNearbyChunks(settings['view-distance'])
-      .catch((err) => setTimeout(() => { throw err }), 0)
+      .catch((err) => setTimeout(() => { throw err }))
   }
 
   // todo as I understand need to handle difficulty packet instead?
@@ -362,5 +366,46 @@ module.exports.player = function (player, serv, settings) {
 
     await player.waitPlayerLogin()
     player.sendRestMap()
+  }
+}
+
+export interface CustomWorld extends World {
+  blockEntityData: Record<string, any>
+  portals: any[]
+}
+
+declare global {
+  interface Server {
+    looseProtocolMode: any
+    lastPositionChunkUpdated: Vec3
+    spawnPoint: Vec3
+    levelData: LevelDatFull
+    "overworld": CustomWorld
+    "netherworld": CustomWorld
+    "dimensionNames": { '-1': string; 0: string }
+    "pregenWorld": (world: CustomWorld, size?: number) => Promise<Chunk[]>
+    "setBlock": (world: CustomWorld, position: Vec3, stateId: number) => Promise<void>
+    "setBlockType": (world: CustomWorld, position: Vec3, id: number) => Promise<void>
+    "setBlockAction": (world: CustomWorld, position: Vec3, actionId: number, actionParam: any) => Promise<void>
+    "reloadChunks": (world: CustomWorld, chunks: any) => void
+    "chunksUsed": {}
+    "_loadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
+    "_unloadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
+    "savePlayersSingleplayer": () => Promise<void>
+  }
+  interface Player {
+    lastPositionChunkUpdated: Vec3
+    sendingChunks: boolean
+    world: CustomWorld
+    "flying": number
+    "save": () => Promise<any>
+    "_unloadChunk": (chunkX: any, chunkZ: any) => void
+    "sendChunk": (chunkX: any, chunkZ: any, column: any) => Promise<void>
+    "sendNearbyChunks": (viewDistance: any, group?) => Promise<any>
+    "sendMap": () => any
+    "sendRestMap": () => void
+    "sendSpawnPosition": () => void
+    "_unloadAllChunks": () => void
+    "changeWorld": (world: any, opt: any) => Promise<void>
   }
 }
