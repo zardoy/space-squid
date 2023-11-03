@@ -1,8 +1,10 @@
 import { Vec3 } from 'vec3'
 import UserError from '../user_error'
+import MinecraftData from 'minecraft-data'
+import portalDetector from '../portal_detector'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
-  const mcData = require('minecraft-data')(version)
+  const mcData = MinecraftData(version)
 
   const obsidianType = mcData.blocksByName.obsidian.id
   const portalType = serv.supportFeature('theFlattening') ? mcData.blocksByName.nether_portal.id : mcData.blocksByName.portal.id
@@ -31,8 +33,8 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 }
 
 export const server = function (serv: Server, { version }: Options) {
-  const { generatePortal, addPortalToWorld, detectFrame } = require('flying-squid').portal_detector(version)
-  const mcData = require('minecraft-data')(version)
+  const { generatePortal, addPortalToWorld, detectFrame } = portalDetector(version)
+  const mcData = MinecraftData(version)
 
   const obsidianType = mcData.blocksByName.obsidian.id
   const fireType = mcData.blocksByName.fire.id
@@ -41,8 +43,8 @@ export const server = function (serv: Server, { version }: Options) {
   let portalZ: number
   if (serv.supportFeature('theFlattening')) {
     const portalBlock = mcData.blocksByName.nether_portal
-    portalX = portalBlock.minStateId
-    portalZ = portalBlock.minStateId + 1
+    portalX = portalBlock.minStateId!
+    portalZ = portalBlock.minStateId! + 1
   } else {
     const portalBlock = mcData.blocksByName.portal
     portalX = portalBlock.id << 4 + 1

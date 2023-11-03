@@ -1,4 +1,4 @@
-module.exports = class CircularBuffer {
+export default class CircularBuffer {
   constructor(size) {
     this.size = size
     this.buffer = new Array(size)

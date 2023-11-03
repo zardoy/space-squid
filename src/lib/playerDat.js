@@ -473,4 +473,4 @@ const getNewPlayerData = (player, snakeCase, theFlattening) => {
   return newUncompressedData
 }
 
-export default { read, save, playerDefaults, getNewPlayerData }
+export { read, save, playerDefaults, getNewPlayerData }
