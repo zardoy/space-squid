@@ -14,11 +14,11 @@ export const server = function (serv: Server, settings: Options) {
     waterBlocks.add(mcData.blocksByName.flowing_water.id)
   }
 
-  async function findSpawnZone (world, /** @type {Vec3} */initialPoint) {
+  async function findSpawnZone (world, initialPoint: Vec3) {
     let point = initialPoint
     while ((await (world.getBlockStateId(point))) === 0 && point.y > 0) { point = point.offset(0, -1, 0) }
     let i = 0
-    const LIMIT = 150
+    const LIMIT = 300
     while (true) {
       i++
       const p = await world.getBlockStateId(point)
