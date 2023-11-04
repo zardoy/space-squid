@@ -7,7 +7,7 @@
   "scripts": {
     "start": "tsc && node dist/app.js",
     "build": "tsc && node scripts/genTypes.mjs",
-    "prepublishOnly": "pnpm build",
+    "prepare": "pnpm build",
     "lint": "eslint src/**",
     "fix": "eslint src/** --fix",
     "mocha_test": "mocha --reporter spec --timeout 3000 --exit",
