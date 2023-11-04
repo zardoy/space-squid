@@ -79,7 +79,7 @@ export const server = function (serv: Server) {
           if (arr.length === 0) throw new UserError('Could not find player')
           arr.forEach(entity => {
             entity.kill()
-            serv.info(`Killed ${colors.bold(entity.type === 'player' ? entity.username : entity.name)}`)
+            serv.info(`Killed ${colors.bold(entity.type === 'player' ? (entity as Player).username : entity.name ?? '<unknown>')}`)
           })
         }
       } else {
