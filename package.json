@@ -6,7 +6,7 @@
   "bin": "dist/app.js",
   "scripts": {
     "start": "tsc && node dist/app.js",
-    "build": "tsc",
+    "build": "tsc && node scripts/genTypes.mjs",
     "prepublishOnly": "pnpm build",
     "lint": "eslint src/**",
     "fix": "eslint src/** --fix",

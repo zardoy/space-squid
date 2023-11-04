@@ -1,7 +1,7 @@
 import { Vec3 } from 'vec3'
 
 export const server = function (serv: Server, { version }: Options) {
-  const mcData = require('minecraft-data')(version)
+  const mcData = serv.mcData
 
   const redstoneWireType = mcData.blocksByName.redstone_wire.id
   const redstoneTorchType = mcData.blocksByName.redstone_torch.id

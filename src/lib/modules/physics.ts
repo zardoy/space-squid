@@ -1,7 +1,7 @@
 import { Vec3 } from 'vec3'
 
 export const entity = function (entity: Entity, serv: Server, { version }: Options) {
-  const blocks = require('minecraft-data')(version).blocks
+  const blocks = serv.mcData.blocks
 
   entity.calculatePhysics = async (delta) => {
     if (entity.gravity) {

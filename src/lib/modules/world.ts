@@ -218,7 +218,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
         bitMap: chunk.getMask(),
         ...serv.supportFeature('blockStateId') ? {
           groundUp: false,
-          bitMap: undefined // use full mask (e.g. 0xffff is default). workaround for https://github.com/PrismarineJS/prismarine-chunk/issues/205
+          // bitMap: undefined // use full mask (e.g. 0xffff is default). workaround for https://github.com/PrismarineJS/prismarine-chunk/issues/205
         } : {},
         biomes: chunk.dumpBiomes(),
         ignoreOldData: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
@@ -308,7 +308,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
       .catch((err) => setTimeout(() => { throw err }))
   }
 
-  // todo as I understand need to handle difficulty packet instead?
+  // todo remove
   player.on('playerChangeRenderDistance', (newDistance = player.view, unloadFirst = false) => {
     player.view = newDistance
     if (unloadFirst) player._unloadAllChunks()

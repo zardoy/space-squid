@@ -2,6 +2,7 @@
 import { Vec3 } from 'vec3'
 
 import * as crypto from 'crypto'
+import PrismarineItem from 'prismarine-item'
 import * as playerDat from '../playerDat'
 import * as convertInventorySlotId from '../convertInventorySlotId'
 import * as plugins from './index'
@@ -46,8 +47,8 @@ export const server = function (serv: Server, options: Options) {
 }
 
 export const player = async function (player: Player, serv: Server, settings: Options) {
-  const Item = require('prismarine-item')(settings.version)
-  const mcData = require('minecraft-data')(settings.version)
+  const Item = PrismarineItem(settings.version)
+  const mcData = serv.mcData
 
   let playerData
 
@@ -77,11 +78,15 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
   function updateInventory () {
     playerData.inventory.forEach((item) => {
-      /** @type {string | number} */
-      const itemValue = item.id.value
-      const itemName = typeof itemValue === 'string' ? skipMcPrefix(itemValue) : mcData.itemsArray.find(item => item.id === itemValue).name
+      const itemValue: string | number = item.id.value
+      const itemName = typeof itemValue === 'string' ? skipMcPrefix(itemValue) : mcData.itemsArray.find(item => item.id === itemValue)?.name
       // todo how it can be block?
       const theItem = mcData.itemsByName[itemName] || mcData.blocksByName[itemName]
+      // todo test with undefined values (need to preserve!)
+      if (!theItem) {
+        console.warn(`Unknown item ${itemName} (id in player ${player.username} inventory ${itemValue})`)
+        return
+      }
 
       let newItem
       // todo use supports

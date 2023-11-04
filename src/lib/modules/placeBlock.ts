@@ -11,7 +11,7 @@ const materialToSound = {
 }
 
 export const server = (serv: Server, { version }: Options) => {
-  const mcData = require('minecraft-data')(version)
+  const mcData = serv.mcData
 
   const itemPlaceHandlers = new Map()
   serv.placeItem = (data) => {
@@ -26,8 +26,7 @@ export const server = (serv: Server, { version }: Options) => {
    * It should return the id and data of the block to place
    */
   serv.onItemPlace = (name, handler, warn = true) => {
-    let item = mcData.itemsByName[name]
-    if (!item) item = mcData.blocksByName[name]
+    const item = mcData.itemsByName[name] ?? mcData.blocksByName[name]
     if (!item) {
       serv.warn(`Unknown item or block ${name}`)
       return
@@ -69,9 +68,9 @@ export const server = (serv: Server, { version }: Options) => {
     for (const name of Object.keys(mcData.itemsByName)) {
       const block = mcData.blocksByName[name]
       if (block) {
-        if (block.states.length > 0) {
+        if (block.states && block.states.length > 0) {
           serv.onItemPlace(name, ({ properties }) => {
-            const data = block.defaultState - block.minStateId
+            const data = block.defaultState! - block.minStateId!
             return { id: block.id, data: serv.setBlockDataProperties(data, block.states, properties) }
           })
         } else {
@@ -104,7 +103,7 @@ export const server = (serv: Server, { version }: Options) => {
   }
 
   const PrismarineBlock = require('prismarine-block')(version)
-  const { blocksArray: blocks } = require('minecraft-data')(version)
+  const { blocksArray: blocks } = serv.mcData
   // todo use map for speed
   // doors/gates opening/closing
   const blocksWithOpenState = blocks.filter(b => ['_door', '_gate', '_trapdoor'].some(predicate => b.name.endsWith(predicate))).map((b) => b.name)
@@ -149,7 +148,7 @@ export const server = (serv: Server, { version }: Options) => {
 }
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
-  const mcData = require('minecraft-data')(version)
+  const mcData = serv.mcData
   const blocks = mcData.blocks
 
   player._client.on('block_place', async ({ direction, location, cursorY } = {}) => {
@@ -196,7 +195,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
     if (!blocks[id]) return
 
-    const sound = 'dig.' + (materialToSound[blocks[id].material] || 'stone')
+    const sound = 'dig.' + (materialToSound[blocks[id].material ?? ''] || 'stone')
     serv.playSound(sound, player.world, placedPosition.offset(0.5, 0.5, 0.5), {
       pitch: 0.8
     })

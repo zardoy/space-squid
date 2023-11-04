@@ -1,16 +1,16 @@
-const UserError = require('flying-squid').UserError
 import UUID from 'uuid-1345'
 import { skipMcPrefix } from '../utils'
 import { Vec3 } from 'vec3'
 
 import * as plugins from './index'
 import { CustomWorld } from './world'
+import UserError from '../user_error'
 
 export const server = function (serv: Server, options: Options) {
   const version = options.version
 
   const Entity = require('prismarine-entity')(version)
-  const mcData = require('minecraft-data')(version)
+  const mcData = serv.mcData
   const mobsById = mcData.mobs
   const objectsById = mcData.objects
 
@@ -104,7 +104,7 @@ export const server = function (serv: Server, options: Options) {
     delete serv.entities[entity.id]
   }
 
-  const entitiesByName = require('minecraft-data')(version).entitiesByName
+  const entitiesByName = serv.mcData.entitiesByName
 
   serv.commands.add({
     base: 'summon',

@@ -43,7 +43,7 @@ class ChunkUpdates {
 }
 
 export const server = (serv: Server, { version }: Options) => {
-  const mcData = require('minecraft-data')(version)
+  const mcData = serv.mcData
 
   serv.MAX_UPDATES_PER_TICK = 10000
 

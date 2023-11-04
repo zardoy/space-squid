@@ -7,7 +7,7 @@ function randomInt (low, high) {
 export const server = function (serv: Server, settings: Options) {
   serv.gameMode = settings.gameMode
   serv.difficulty = settings.difficulty
-  const mcData = require('minecraft-data')(settings.version)
+  const mcData = serv.mcData
 
   const waterBlocks = new Set([mcData.blocksByName.water.id])
   if (mcData.blocksByName.flowing_water !== undefined) {
@@ -45,6 +45,7 @@ export const player = function (player: Player, serv: Server) {
   }
   player._client.on('settings', ({ viewDistance }) => {
     player.view = viewDistance
+    player.sendRestMap()
   })
 }
 declare global {

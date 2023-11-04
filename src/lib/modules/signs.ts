@@ -1,5 +1,5 @@
 export const server = (serv: Server, { version }: Options) => {
-  const mcData = require('minecraft-data')(version)
+  const mcData = serv.mcData
 
   const oakSign = serv.supportFeature('theFlattening') ? mcData.blocksByName.sign : mcData.blocksByName.standing_sign
   const oakWallSign = mcData.blocksByName.wall_sign
@@ -18,7 +18,7 @@ export const server = (serv: Server, { version }: Options) => {
           location: placedPosition
         })
 
-        const data = serv.setBlockDataProperties(block.defaultState - block.minStateId, block.states, properties)
+        const data = serv.setBlockDataProperties(block.defaultState! - block.minStateId!, block.states, properties)
         return { id: block.id, data }
       }
       if (serv.supportFeature('multiTypeSigns')) {

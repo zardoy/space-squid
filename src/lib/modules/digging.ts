@@ -1,7 +1,7 @@
 import { Vec3 } from 'vec3'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
-  const mcData = require('minecraft-data')(version)
+  const mcData = serv.mcData
   function cancelDig ({ position, block }) {
     player.sendBlock(position, block.type)
   }

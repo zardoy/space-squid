@@ -52,22 +52,22 @@ export const player = function (player: Player, serv: Server, options: Options) 
   })
 
   serv.tabComplete.add('item', () => {
-    const mcData = require('minecraft-data')(options.version)
+    const mcData = serv.mcData
     return mcData.itemsArray.map(item => item.name)
   })
 
   serv.tabComplete.add('block', () => {
-    const mcData = require('minecraft-data')(options.version)
+    const mcData = serv.mcData
     return mcData.blocksArray.map(item => item.name)
   })
 
   serv.tabComplete.add('entity', () => {
-    const mcData = require('minecraft-data')(options.version)
+    const mcData = serv.mcData
     return mcData.entitiesArray.map(item => item.name)
   })
 
   serv.tabComplete.add('effect', () => {
-    const mcData = require('minecraft-data')(options.version)
+    const mcData = serv.mcData
     return mcData.effectsArray.map(item => snakeCase(item.name))
   })
 
