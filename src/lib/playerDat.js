@@ -1,15 +1,14 @@
 //@ts-check
-/* global BigInt */
 
-const fs = require('fs')
-const Vec3 = require('vec3').Vec3
-const nbt = require('prismarine-nbt')
-const long = require('long')
-const { gzip } = require('node-gzip')
-const { promisify } = require('util')
-const convertInventorySlotId = require('./convertInventorySlotId')
+import { promises } from 'fs'
+import { Vec3 } from 'vec3'
+import { parse, writeUncompressed } from 'prismarine-nbt'
+import long from 'long'
+import { gzip } from 'node-gzip'
+import { promisify } from 'util'
+import { toNBT } from './convertInventorySlotId'
 
-const nbtParse = promisify(nbt.parse)
+const nbtParse = promisify(parse)
 
 const playerDefaults = {
   health: 20,
@@ -19,7 +18,7 @@ const playerDefaults = {
 
 async function read (uuid, spawnPoint, worldFolder) {
   try {
-    const playerDataFile = await fs.promises.readFile(`${worldFolder}/playerdata/${uuid}.dat`)
+    const playerDataFile = await promises.readFile(`${worldFolder}/playerdata/${uuid}.dat`)
     /** @type {any} */
     const playerData = (await nbtParse(playerDataFile)).value
     return {
@@ -55,7 +54,7 @@ function playerInventoryToNBT (playerInventory, theFlattening) {
       const nbtItem = {
         Slot: {
           type: 'byte',
-          value: convertInventorySlotId.toNBT(item.slot)
+          value: toNBT(item.slot)
         },
         id: {
           type: 'string',
@@ -91,7 +90,7 @@ async function save (player, worldFolder, snakeCase, theFlattening) {
   }
 
   try {
-    const playerDataFile = await fs.promises.readFile(`${worldFolder}/playerdata/${player.uuid}.dat`)
+    const playerDataFile = await promises.readFile(`${worldFolder}/playerdata/${player.uuid}.dat`)
     /** @type {any} */
     const newUncompressedData = await nbtParse(playerDataFile)
 
@@ -107,21 +106,21 @@ async function save (player, worldFolder, snakeCase, theFlattening) {
     newUncompressedData.value.Inventory.value.value = playerInventoryToNBT(player.inventory, theFlattening)
     newUncompressedData.value.abilities.value.flying.value = player.flying ?? 0
 
-    const newDataCompressed = await gzip(nbt.writeUncompressed(newUncompressedData))
-    await fs.promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
+    const newDataCompressed = await gzip(writeUncompressed(newUncompressedData))
+    await promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
 
     return newUncompressedData
   } catch (e) {
     /** @type {any} */
     const newUncompressedData = getNewPlayerData(player, snakeCase, theFlattening)
 
-    const newDataCompressed = await gzip(nbt.writeUncompressed(newUncompressedData))
+    const newDataCompressed = await gzip(writeUncompressed(newUncompressedData))
     try {
-      await fs.promises.mkdir(`${worldFolder}/playerdata/`, { recursive: true })
+      await promises.mkdir(`${worldFolder}/playerdata/`, { recursive: true })
     } catch (err) {
       // todo fix browserfs behavior instead
     }
-    await fs.promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
+    await promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)
 
     return newUncompressedData
   }
@@ -474,4 +473,4 @@ const getNewPlayerData = (player, snakeCase, theFlattening) => {
   return newUncompressedData
 }
 
-module.exports = { read, save, playerDefaults, getNewPlayerData }
+export { read, save, playerDefaults, getNewPlayerData }
