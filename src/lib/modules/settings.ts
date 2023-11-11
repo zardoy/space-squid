@@ -1,4 +1,5 @@
 import { Vec3 } from 'vec3'
+import { CustomWorld } from './world'
 
 function randomInt (low, high) {
   return Math.floor(Math.random() * (high - low) + low)
@@ -9,19 +10,20 @@ export const server = function (serv: Server, settings: Options) {
   serv.difficulty = settings.difficulty
   const mcData = serv.mcData
 
+  // todo make logic general
   const waterBlocks = new Set([mcData.blocksByName.water.id])
   if (mcData.blocksByName.flowing_water !== undefined) {
     waterBlocks.add(mcData.blocksByName.flowing_water.id)
   }
 
-  async function findSpawnZone (world, initialPoint: Vec3) {
+  async function findSpawnZone (world: CustomWorld, initialPoint: Vec3) {
     let point = initialPoint
     while ((await (world.getBlockStateId(point))) === 0 && point.y > 0) { point = point.offset(0, -1, 0) }
     let i = 0
-    const LIMIT = 300
+    const LIMIT = 600
     while (true) {
       i++
-      const p = await world.getBlockStateId(point)
+      const p = await world.getBlockType(point)
       if (!waterBlocks.has(p) || i > LIMIT) { break }
       point = point.offset(1, 0, 0)
     }
