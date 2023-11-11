@@ -327,12 +327,6 @@ export const player = function (player: Player, serv: Server, settings: Options)
       .catch((err) => setTimeout(() => { throw err }))
   }
 
-  // todo remove
-  player.on('playerChangeRenderDistance', (newDistance = player.view, unloadFirst = false) => {
-    player.view = newDistance
-    if (unloadFirst) player._unloadAllChunks()
-    player.sendRestMap()
-  })
   player.sendRestMap = () => {
     player.sendingChunks = true
     player.sendNearbyChunks(Math.min(player.view, settings['max-view-distance'] ?? player.view), true)
@@ -380,7 +374,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
 
     await player.sendMap()
 
-    player.sendSelfPosition()
+    player.sendSelfPosition(false)
     player.emit('change_world')
 
     await player.waitPlayerLogin()

@@ -237,7 +237,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
     await addPlayer()
     sendLogin()
     player.sendSpawnPosition()
-    player.sendSelfPosition()
+    player.sendSelfPosition(false)
     player.sendAbilities()
     const distance = settings['view-distance']
     player.setLoadingStatus(`Getting initial chunks (distance = ${distance})`)

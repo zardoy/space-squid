@@ -39,9 +39,10 @@ export const server = (serv: Server) => {
 
           // Vanilla behavior: teleport to center of block if decimal not specified
 
-          if (args[0].indexOf('.') === -1) x += 0.5
-          if (args[1].indexOf('.') === -1) y += 0.5
-          if (args[2].indexOf('.') === -1) z += 0.5
+          // note pos can be negative
+          if (args[0].indexOf('.') === -1) x += 0.5 * (Math.sign(x) || 1)
+          if (args[1].indexOf('.') === -1) y += 0.5 * (Math.sign(y) || 1)
+          if (args[2].indexOf('.') === -1) z += 0.5 * (Math.sign(z) || 1)
           e.teleport(new Vec3(x, y, z))
         }
       }

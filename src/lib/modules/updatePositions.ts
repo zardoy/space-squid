@@ -46,7 +46,7 @@ export const player = function (player: Player) {
     sendLook(yaw, pitch, onGround)
   })
 
-  player.sendSelfPosition = () => {
+  player.sendSelfPosition = (sendChunks = true) => {
     // double position in all versions
     player._client.write('position', {
       x: player.position.x,
@@ -57,6 +57,7 @@ export const player = function (player: Player) {
       flags: 0x00,
       teleportId: 1
     })
+    if (sendChunks) player.emit('move')
   }
 
   player.teleport = async (position) => {
@@ -178,8 +179,10 @@ declare global {
     pitch: number
     /** @internal */
     onGround: boolean
-    /** @internal */
-    "sendSelfPosition": () => void
+    /**
+     * Using to actually update player's position, that's why it also sends chunks by default
+     * @internal */
+    "sendSelfPosition": (sendChunks?: boolean) => void
     /** @internal */
     "sendPosition": (position: Vec3, onGround: boolean, teleport?: boolean) => any
     /** @internal */
