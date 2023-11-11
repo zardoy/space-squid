@@ -1,3 +1,5 @@
+import { Vec3 } from 'vec3'
+
 export const player = function (player: Player, serv: Server) {
   player._client.on('client_command', (data) => {
     let actionId
@@ -9,6 +11,7 @@ export const player = function (player: Player, serv: Server) {
     }
 
     if (actionId === 0) {
+      player.position = player.spawnPoint
       player.behavior('requestRespawn', {}, () => {
         player._client.write('respawn', {
           previousGameMode: player.prevGameMode,

@@ -394,10 +394,10 @@ declare global {
     looseProtocolMode: any
     /** @internal */
     lastPositionChunkUpdated: Vec3
-    /** @internal */
-    spawnPoint: Vec3
-    /** @internal */
-    levelData: LevelDatFull
+    /** Global spawn and respawn point for every player */
+    spawnPoint?: Vec3
+    /** Parsed level.dat of the loaded world (only if worldFolder is specificed) */
+    levelData?: LevelDatFull
     /** Contains the overworld world. This is where the default spawn point is */
     "overworld": CustomWorld
     /** Contains the nether world. This **WILL** be used when a player travels through a portal if they are in the overworld! */

@@ -60,7 +60,7 @@ declare global {
     "getSpawnPoint": (world: any) => Promise<any>
   }
   interface Player {
-    /** @internal */
+    /** Either serv.spawnPoint or randomly selected for each player. Possibly could be overridden in future (e.g. beds or anchors), serv global serv.spawnPoint should as fallback */
     spawnPoint: Vec3
     /** The view size of the player, for example 8 for 16x16 */
     view: number
