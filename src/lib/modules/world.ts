@@ -182,6 +182,7 @@ export const server = async function (serv: Server, options: Options) {
   })
 
   serv.savePlayersSingleplayer = async () => {
+    if (!worldFolder) return
     const savedData = await serv.players[0].save()
     // if we ever support level.dat saving this function needs to be changed i guess
     const levelDatContent = await fs.promises.readFile(worldFolder + '/level.dat')
