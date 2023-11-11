@@ -62,6 +62,7 @@ export const server = async function (serv: Server, options: Options) {
   serv.emit('seed', generationOptions.seed)
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
   serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
+  serv.overworld.seed = generationOptions.seed
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
   // serv.endworld = new World(generations["end"]({}));
 
@@ -163,6 +164,21 @@ export const server = async function (serv: Server, options: Options) {
       if (world === 'nether') ctx.player.changeWorld(serv.netherworld, { dimension: -1 })
       if (world === 'overworld') ctx.player.changeWorld(serv.overworld, { dimension: 0 })
     }
+  })
+  serv.commands.add({
+    base: 'seed',
+    info: 'Get world\'s seed',
+    usage: '/seed',
+    action (data, ctx) {
+      const world = ctx.player?.world ?? serv.overworld
+      // todo need concept of command output
+      const message = `Seed: ${world.seed}`
+      if (ctx.player) {
+        ctx.player.chat(message)
+      } else {
+        console.log(message)
+      }
+    },
   })
 
   serv.savePlayersSingleplayer = async () => {
@@ -375,6 +391,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
 export interface CustomWorld extends World {
   blockEntityData: Record<string, any>
   portals: any[]
+  seed: number
 }
 
 declare global {
