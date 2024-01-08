@@ -12,10 +12,10 @@ const allRenamesMapFromLatest = Object.fromEntries(
   ['blocks', 'items'].map(x =>
     [
       x,
-      Object.fromEntries(Object.entries(itemBlockRenames).flatMap(([ver, t]) => t[x].map(([oldName, newName]) => [
+      Object.fromEntries(Object.entries(itemBlockRenames).flatMap(([ver, t]) => t[x]?.map(([oldName, newName]) => [
         newName,
         { version: versionToNumber(ver), oldName }
-      ])))
+      ])).filter(x => x))
     ])
 ) as { [thing: string]: Record<string, { version: number, oldName: string }> }
 
@@ -23,7 +23,15 @@ export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', versio
   const map = allRenamesMapFromLatest[type]
   const ver = versionToNumber(version)
   return names.map(name => {
-    const renamed = map[name] // todo it might be useful if followed by chain
+    let renamed = map[name]
+    while (renamed) {
+      const newRenamed = map[renamed.oldName]
+      if (newRenamed && newRenamed.version < renamed.version) {
+        renamed = newRenamed
+      } else {
+        break
+      }
+    }
     if (renamed && ver < renamed.version) {
       return renamed.oldName
     }
