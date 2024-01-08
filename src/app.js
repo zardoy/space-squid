@@ -27,6 +27,7 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
 
 const mcServer = require('./index')
 
+//@ts-ignore
 const defaultSettings = require('../config/default-settings.json')
 
 let settings
