@@ -26,7 +26,7 @@ export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', versio
     let renamed = map[name]
     while (renamed) {
       const newRenamed = map[renamed.oldName]
-      if (newRenamed && newRenamed.version < renamed.version) {
+      if (newRenamed && ver < newRenamed.version) {
         renamed = newRenamed
       } else {
         break
