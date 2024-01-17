@@ -417,7 +417,8 @@ declare global {
     "pardonUUID": (username: string) => Promise<boolean>
     /** @internal */
     'pardonIP': (IP: string) => Promise<boolean>
-    /** Object of players that are banned, key is their uuid. Use `serv.getUUIDFromUsername()` if you only have their username.
+    /**
+     * Object of players that are banned, key is their uuid. Use {@link getUUIDFromUsername() `getUUIDFromUsername()`} if you only have their username.
      *
      * Example player:
      * ```

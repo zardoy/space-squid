@@ -34,7 +34,7 @@ declare global {
     'lastTickTime': number
     /** Resets tick interval to occur `ticksPerSecond` times per second.
      *
-     * Use `server.stopTickInterval()` if you want but this method already calls that and you can use `serv.doDaylightCycle` to stop it anyway.
+     * Use {@link stopTickInterval `server.stopTickInterval()`} if you want but this method already calls that and you can use `serv.doDaylightCycle` to stop it anyway.
      */
     'setTickInterval': (ticksPerSecond: any) => void
     /** @internal */
