@@ -6,13 +6,13 @@ import fs from 'fs'
 import { level, Anvil as AnvilLoader } from 'prismarine-provider-anvil'
 
 import * as playerDat from '../playerDat'
-import { generateSpiralMatrix } from '../../utils'
 import { Chunk, World } from 'prismarine-world/types/world'
 import WorldLoader from 'prismarine-world'
-import DataLoader from 'minecraft-data'
+import RegistryLoader from 'prismarine-registry'
 import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
 import { Vec3 } from 'vec3'
+import { generateSpiralMatrix } from '../../utils'
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
@@ -20,8 +20,8 @@ const fsMkdir = promisify(fs.mkdir)
 export const server = async function (serv: Server, options: Options) {
   const { version, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
   const World = WorldLoader(version)
-  const mcData = DataLoader(version)
-  const Anvil = AnvilLoader(version)
+  const registry = RegistryLoader(version)
+  const Anvil = AnvilLoader.Anvil(version)
 
   const newSeed = generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31))
   let seed
@@ -100,7 +100,7 @@ export const server = async function (serv: Server, options: Options) {
 
   if (serv.supportFeature('theFlattening')) {
     serv.setBlockType = async (world, position, id) => {
-      serv.setBlock(world, position, mcData.blocks[id].minStateId!)
+      serv.setBlock(world, position, registry.blocks[id].minStateId!)
     }
   } else {
     serv.setBlockType = async (world, position, id) => {
@@ -186,7 +186,8 @@ export const server = async function (serv: Server, options: Options) {
     const savedData = await serv.players[0].save()
     // if we ever support level.dat saving this function needs to be changed i guess
     const levelDatContent = await fs.promises.readFile(worldFolder + '/level.dat')
-    const { parsed } = await nbt.parse(levelDatContent) as any
+    const { parsed } = await nbt.parse(levelDatContent)
+    //@ts-ignore
     parsed.value.Data.value.Player = savedData
     const newDataCompressed = await gzip(nbt.writeUncompressed(parsed))
     await fs.promises.writeFile(worldFolder + '/level.dat', newDataCompressed)
@@ -196,6 +197,8 @@ export const server = async function (serv: Server, options: Options) {
 }
 
 export const player = function (player: Player, serv: Server, settings: Options) {
+  const registry = RegistryLoader(settings.version)
+
   player.flying = 0
   player._client.on('abilities', ({ flags }) => {
     // todo check can fly!!
@@ -332,7 +335,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
     player.sendingChunks = true
     player.sendNearbyChunks(Math.min(player.view, settings['max-view-distance'] ?? player.view), true)
       .then(() => { player.sendingChunks = false })
-      .catch((err) => setTimeout(() => { throw err }, 0))
+      .catch((err) => setTimeout(() => { throw err }))
   }
 
   player.sendSpawnPosition = () => {

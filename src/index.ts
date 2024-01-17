@@ -65,7 +65,6 @@ class MCServer extends EventEmitter {
     }
     server.commands = new Command({})
     server._server = createServer(options)
-    server.mcData = mcData
 
     const promises: Promise<any>[] = []
     for (const plugin of modules.builtinPlugins) {
@@ -92,10 +91,16 @@ class MCServer extends EventEmitter {
 
 declare global {
   interface Server {
-    mcData: IndexedData
     commands: Command
     pluginsReady: boolean
     _server: ProtocolServer
     supportFeature: (feature: string) => boolean
   }
 }
+
+export * as Behavior from './lib/behavior'
+export * as Command from './lib/command'
+export { default as generations } from './lib/generations'
+export * as experience from './lib/experience'
+export * as UserError from './lib/user_error'
+export { default as portal_detector } from './lib/portal_detector'
