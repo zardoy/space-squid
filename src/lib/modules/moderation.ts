@@ -401,9 +401,12 @@ declare global {
     /** Ban player given a uuid. If the player is online, using `player.ban()`. Bans with reason or `You are banned!`. */
     "ban": (uuid: string, reason?: string) => Promise<boolean>
     /** @internal */
-    "banIP": (IP: string, reason?: string) => Promise<boolean>
-    /** Gets UUID from username. Since it needs to fetch from mojang servers, it is not immediate.,    * ,    * Arguments in format: `callback(uuid)`. `uuid` is null if no such username exists.    */
-    "getUUIDFromUsername": (username: string) => Promise<string>
+    'banIP': (IP: string, reason?: string) => Promise<boolean>
+    /** Gets UUID from username. Since it needs to fetch from mojang servers, it is not immediate.
+     *
+     * Arguments in format: `callback(uuid)`. `uuid` is null if no such username exists.
+     */
+    'getUUIDFromUsername': (username: string) => Promise<string>
     /** Bans players given a username. Mainly used if player is not online, otherwise use `player.ban()`. */
     "banUsername": (username: string, reason: string) => Promise<boolean>
     /** @internal */
@@ -413,9 +416,18 @@ declare global {
     /** @internal */
     "pardonUUID": (username: string) => Promise<boolean>
     /** @internal */
-    "pardonIP": (IP: string) => Promise<boolean>
-    /** Object of players that are banned, key is their uuid. Use `serv.getUUIDFromUsername()` if you only have their username.,    * ,    * Example player:,    * ```,    * {,    *     time: <time in epoch>,,    *     reason: <reason given>,    * },    * ```    */
-    "bannedPlayers": {}
+    'pardonIP': (IP: string) => Promise<boolean>
+    /** Object of players that are banned, key is their uuid. Use `serv.getUUIDFromUsername()` if you only have their username.
+     *
+     * Example player:
+     * ```
+     * {
+     *     time: <time in epoch>,
+     *     reason: <reason given>
+     * }
+     * ```
+     */
+    'bannedPlayers': {}
     /** @internal */
     "bannedIPs": Record<string, {
       time: number,

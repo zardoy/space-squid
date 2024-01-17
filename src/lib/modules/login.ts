@@ -78,6 +78,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
   function updateInventory () {
     playerData.inventory.forEach((item) => {
+      const registry = mcData
       const itemValue: string | number = item.id.value
       const itemName = typeof itemValue === 'string' ? skipMcPrefix(itemValue) : registry.itemsArray.find(item => item.id === itemValue)?.name
       // todo how it can be block?

@@ -125,7 +125,15 @@ export const player = function (player: Player, serv: Server, options: Options) 
 }
 declare global {
   interface Server {
-    /** `serv.tabComplete` has types and tab completition function,    * ,    * You can provide your types:,    * ```js,    * serv.tabComplete.add('tabId', () => {,    *   return ['some', 'values', 'in array', 'ONLY STRINGS!'],    * }),    * ```    */
-    "tabComplete": { types: any[]; use: (id: any, otherData?: null, existingContent?: string) => void; add: (id: any, cb: any) => void }
+    /** `serv.tabComplete` has types and tab completition function
+     *
+     * You can provide your types:
+     * ```js
+     * serv.tabComplete.add('tabId', () => {
+     *   return ['some', 'values', 'in array', 'ONLY STRINGS!']
+     * })
+     * ```
+     */
+    'tabComplete': { types: any[], use: (id: any, otherData?: null, existingContent?: string) => void, add: (id: any, cb: any) => void }
   }
 }

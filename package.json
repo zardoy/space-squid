@@ -3,6 +3,7 @@
   "description": "A minecraft server written in JS",
   "version": "0.0.0-dev",
   "main": "dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": "dist/app.js",
   "scripts": {
     "start": "tsc && node dist/app.js",
@@ -18,6 +19,9 @@
     "test": "npm run mocha_test",
     "pretest": "npm run lint"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "browser",
     "minecraft server",

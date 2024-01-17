@@ -13,7 +13,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     }
   }
 }
-function changeType<T>(arg): asserts arg is T { }
+function changeType<T> (arg): asserts arg is T { }
 
 export const entity = function (entity: Entity, serv: Server) {
   entity.selectorString = (str) => serv.selectorString(str, entity.position, entity.world)
@@ -34,7 +34,7 @@ export const server = function (serv: Server, { version }: Options) {
     base: 'ping',
     info: 'to pong!',
     usage: '/ping [number]',
-    action(params, ctx) {
+    action (params, ctx) {
       const num = params[0] * 1 + 1
 
       let str = 'pong'
@@ -50,8 +50,8 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'for modpe commands',
     usage: '/modpe <params>',
     onlyPlayer: true,
-    parse(str) { return str || false },
-    action(str, ctx) {
+    parse (str) { return str || false },
+    action (str, ctx) {
       ctx.player!.emit('modpe', str)
     }
   })
@@ -60,7 +60,7 @@ export const server = function (serv: Server, { version }: Options) {
     base: 'version',
     info: 'to get version of the server',
     usage: '/version',
-    action() {
+    action () {
       return 'This server is running flying-squid version ' + version
     }
   })
@@ -69,7 +69,7 @@ export const server = function (serv: Server, { version }: Options) {
     base: 'bug',
     info: 'to bug report',
     usage: '/bug',
-    action() {
+    action () {
       return 'Report bugs or issues here: https://github.com/PrismarineJS/flying-squid/issues'
     }
   })
@@ -79,10 +79,10 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'Get entities id from selector like @a',
     usage: '/selector <selector>',
     op: true,
-    parse(str) {
+    parse (str) {
       return str || false
     },
-    action(sel, ctx) {
+    action (sel, ctx) {
       const arr = ctx.player ? serv.selectorString(sel, ctx.player.position, ctx.player.world) : serv.selectorString(sel)
       if (ctx.player) ctx.player.chat(JSON.stringify(arr.map(a => a.id)))
       else serv.info(JSON.stringify(arr.map(a => a.id)))
@@ -95,7 +95,7 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'to show all commands',
     usage: '/help [command]',
     tab: ['command'],
-    parse(str) {
+    parse (str) {
       const params = str.split(' ')
       const page = parseInt(params[params.length - 1])
       if (page) {
@@ -104,7 +104,7 @@ export const server = function (serv: Server, { version }: Options) {
       const search = params.join(' ')
       return { search, page: (page && page - 1) || 0 }
     },
-    action({ search, page }, ctx) {
+    action ({ search, page }, ctx) {
       if (page < 0) return 'Page # must be >= 1'
       const hash = serv.commands.uniqueHash
 
@@ -149,7 +149,7 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'Stop the server',
     usage: '/stop',
     op: true,
-    action() {
+    action () {
       serv.quit('Server closed')
       process.exit()
     }
@@ -160,10 +160,10 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'Broadcast a message',
     usage: '/say <message>',
     op: true,
-    parse(params) {
+    parse (params) {
       return params || false
     },
-    action(params, ctx) {
+    action (params, ctx) {
       const who = ctx.player ? ctx.player.username : 'Server'
       serv.broadcast(`[${who}] ` + params)
       serv.info(`[CHAT]: [${who}] ` + params)
@@ -175,17 +175,17 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'Displays a message about yourself',
     usage: '/me <message>',
     op: false,
-    parse(params) {
+    parse (params) {
       return params || false
     },
-    action(params, ctx) {
+    action (params, ctx) {
       const who = ctx.player ? ctx.player.username : 'Server'
       serv.broadcast(`* ${who} ` + params)
       serv.info(`* ${who} ` + params)
     }
   })
 
-  function shuffleArray(array) {
+  function shuffleArray (array) {
     let currentIndex = array.length
     let temporaryValue
     let randomIndex
@@ -375,9 +375,14 @@ declare global {
     /** @internal */
     "handleCommand": (str: string) => Promise<void>
     /** @internal */
-    "selector": (type: any, opt: any, selfEntityId: any) => Entity[]
-    /** Returns an array of entities that satisfies the given command selector string `str`, execution position `pos`, execution world `world`, and the ID of the entity that initiated the execution `ctxEntityId`.,    * ,    * Valid selector string values are names of online players and [valid target selector variables](https://minecraft.fandom.com/wiki/Target_selectors#Target_selector_variables).,    * ,    * Setting `allowUser` to `true` (default value) enables players to be included in the returned array, disables otherwise.    */
-    "selectorString": (str: string, pos?: Vec3, world?: any, allowUser?: boolean | undefined, ctxEntityId?: any) => Entity[]
+    'selector': (type: any, opt: any, selfEntityId: any) => Entity[]
+    /** Returns an array of entities that satisfies the given command selector string `str`, execution position `pos`, execution world `world`, and the ID of the entity that initiated the execution `ctxEntityId`.
+     *
+     * Valid selector string values are names of online players and [valid target selector variables](https://minecraft.fandom.com/wiki/Target_selectors#Target_selector_variables).
+     *
+     * Setting `allowUser` to `true` (default value) enables players to be included in the returned array, disables otherwise.
+     */
+    'selectorString': (str: string, pos?: Vec3, world?: any, allowUser?: boolean | undefined, ctxEntityId?: any) => Entity[]
     /** @internal */
     "posFromString": (str: string, pos: number) => any
   }

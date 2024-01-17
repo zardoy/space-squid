@@ -1,6 +1,7 @@
 import { Client } from 'minecraft-protocol'
 import TypedEmitter from 'typed-emitter'
 import EventEmitter from 'events'
+import { IndexedData } from 'minecraft-data'
 
 // all is coherent and stays in the same place
 declare global {
@@ -33,7 +34,9 @@ declare global {
     seed: (seed: number) => void
   }
 
-  interface Server extends TypedEmitter<ServerEvents> { }
+  interface Server extends TypedEmitter<ServerEvents> {
+    mcData: IndexedData
+  }
   // Omit is to allow inheritance of Entity
   interface Player extends Omit<Entity, keyof TypedEmitter<{}>>, TypedEmitter<PlayerEvents> {
     _client: Client
