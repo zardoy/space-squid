@@ -17,7 +17,7 @@ export const server = function (serv: Server, { version }: Options) {
   }
 
   serv.getPlayers = (selector, ctxPlayer) => {
-    return serv.selectorString(selector, ctxPlayer?.position, ctxPlayer?.world, true, ctxPlayer?.id).filter(entity => entity.type === 'player')
+    return serv.selectorString(selector, ctxPlayer?.position, ctxPlayer?.world, true, ctxPlayer?.id).filter(entity => entity.type === 'player') as Player[]
   }
 
   serv.commands.add({
@@ -136,7 +136,7 @@ export const server = function (serv: Server, { version }: Options) {
         }
 
         if (!slotToUpdateFound) {
-          player.inventory.updateSlot(player.inventory.firstEmptyInventorySlot(), newItem)
+          player.inventory.updateSlot(player.inventory.firstEmptyInventorySlot()!, newItem)
         }
       }
     }
@@ -172,6 +172,76 @@ export const server = function (serv: Server, { version }: Options) {
       })
     }
   })
+
+  const resolveItem = (item) => {
+    const itemR = isNaN(+item) ? serv.mcData.itemsByName[item]?.id : serv.mcData.itemsByName[item]?.id // todo blocks?;
+    if (!itemR) throw new UserError(`Couldn't find the item ${item}`)
+    return itemR
+  }
+
+  serv.commands.add({
+    base: 'clear',
+    info: '',
+    usage: '/clear',
+    parse(string, ctx) {
+      let players = [] as Player[]
+      const [playersArg, item, count] = string.split(' ')
+      if (playersArg) {
+        players = serv.getPlayers(playersArg, ctx.player)
+      } else if (ctx.player) {
+        players = [ctx.player]
+      }
+      if (players.length < 1) throw new UserError('Player not found')
+      if (count && !count.match(/\d+/)) throw new UserError('Count must be numerical')
+      return {
+        players,
+        item: item && resolveItem(item),
+        count: count ?? 1
+      }
+    },
+    action(data, ctx) {
+      let removed = 0
+      for (const player of data.players) {
+        for (const [i, slot] of player.inventory.slots.entries()) {
+          if (!slot || (data.item && slot.type !== data.item)) continue
+          // todo impl to remove count
+          player.inventory.updateSlot(i, null as any)
+        }
+      }
+    },
+  })
+
+  serv.commands.add({
+    base: 'tell',
+    info: 'Whispers a message to a player.',
+    usage: '/tell <player> <message>',
+    tab: ['player', 'text'],
+    parse(str, ctx) {
+      // todo change validation
+      return str.match(/^([\w\d]+) (.+)$/) || false
+    },
+    action([target, message], ctx) {
+      const players = serv.getPlayers(target, ctx.player)
+      if (players.length < 1) throw new UserError('Player not found')
+      players.forEach(player => player.chat(`from ${ctx.player?.username ?? 'server'}: ${message}`))
+    }
+  })
+
+  // serv.commands.add({
+  //   base: 'title',
+  //   info: 'Shows a title to a player.',
+  //   usage: '/title <player> <title> [subtitle]',
+  //   tab: ['player', 'text', 'text'],
+  //   parse(str, ctx) {
+  //     // todo change validation
+  //     return str.match(/^([\w\d]+) (.+)$/) || false
+  //   },
+  //   action([target, title, subtitle], ctx) {
+  //     const players = serv.getPlayers(target, ctx.player)
+  //     if (players.length < 1) throw new UserError('Player not found')
+  //     players.forEach(player => player.showTitle(title, subtitle))
+  //   }
+  // })
 }
 declare global {
   interface Server {
@@ -186,6 +256,6 @@ declare global {
     /** Returns player object with that username or, if no such player is on the server, null. */
     "getPlayer": (username: any) => any
     /** @internal */
-    "getPlayers": (selector: any, ctxPlayer: any) => any
+    "getPlayers": (selector: any, ctxPlayer: any) => Player[]
   }
 }
