@@ -1,6 +1,6 @@
 import {Vec3} from 'vec3'
 import PrismarineItem from 'prismarine-item'
-import PrismarineWindows from 'prismarine-windows'
+import PrismarineWindows, { Window } from 'prismarine-windows'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
   const Item = PrismarineItem(version)
@@ -252,7 +252,7 @@ declare global {
     /** @internal */
     "heldItem": any
     /** @internal */
-    "inventory": any
+    "inventory": Window
     /** @internal */
     "collect": (collectEntity: any) => void
   }

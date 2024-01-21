@@ -21,7 +21,7 @@ export const server = async function (serv: Server, options: Options) {
   const { version, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
   const World = WorldLoader(version)
   const registry = RegistryLoader(version)
-  const Anvil = AnvilLoader.Anvil(version)
+  const Anvil = AnvilLoader(version)
 
   const newSeed = generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31))
   let seed

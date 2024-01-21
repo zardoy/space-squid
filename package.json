@@ -1,10 +1,15 @@
 {
-  "name": "flying-squid",
-  "description": "A minecraft server written in JS",
+  "name": "@zardoy/flying-squid",
+  "description": "A minecraft server written in TS",
   "version": "0.0.0-dev",
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": "dist/app.js",
+  "release": {
+    "initialVersion": {
+      "version": "0.0.2"
+    }
+  },
   "scripts": {
     "start": "tsc && node dist/app.js",
     "build": "tsc && node scripts/genTypes.mjs",
@@ -19,9 +24,6 @@
     "test": "npm run mocha_test",
     "pretest": "npm run lint"
   },
-  "files": [
-    "dist"
-  ],
   "keywords": [
     "browser",
     "minecraft server",
@@ -61,13 +63,6 @@
     "uuid-1345": "^1.0.1",
     "vec3": "^0.1.8",
     "yargs": "^17.0.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/PrismarineJS/flying-squid.git"
-  },
-  "bugs": {
-    "url": "http://github.com/PrismarineJS/flying-squid/issues"
   },
   "devDependencies": {
     "expect": "^29.1.2",
