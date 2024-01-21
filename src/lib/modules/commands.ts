@@ -1,6 +1,7 @@
 import colors from 'colors'
 import UserError from '../user_error'
 import { Vec3 } from 'vec3'
+import { Ctx } from '../command'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
   player.handleCommand = async (str) => {
@@ -20,10 +21,11 @@ export const entity = function (entity: Entity, serv: Server) {
 }
 
 export const server = function (serv: Server, { version }: Options) {
-  serv.handleCommand = async (str) => {
+  serv.handleCommand = async (str, ctx, op) => {
     try {
-      const res = await serv.commands.use(str)
+      const res = await serv.commands.use(str, ctx, op)
       if (res) serv.info(res)
+      return res
     } catch (err) {
       if (err.userError) serv.err(err.message)
       else setTimeout(() => { throw err }, 0)
@@ -373,7 +375,7 @@ declare global {
   }
   interface Server {
     /** @internal */
-    "handleCommand": (str: string) => Promise<void>
+    "handleCommand": (str: string, ctx?: Ctx<false>, op?: boolean) => Promise<string | undefined>
     /** @internal */
     'selector': (type: any, opt: any, selfEntityId: any) => Entity[]
     /** Returns an array of entities that satisfies the given command selector string `str`, execution position `pos`, execution world `world`, and the ID of the entity that initiated the execution `ctxEntityId`.

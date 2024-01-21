@@ -194,6 +194,68 @@ export const server = async function (serv: Server, options: Options) {
 
     await Promise.all(serv.players.slice(1).map(async player => player.save()))
   }
+
+  // serv.commands.add({
+  //   base: 'data',
+  //   info: 'Gets, merges, modifies and removes block entity and entity NBT data',
+  //   usage: '/data',
+  //   parse(string, ctx) {
+  //     const [action, action2, arg3] = string.split(' ')
+  //     return {
+  //       action,
+  //       action2,
+  //       arg3
+  //     }
+  //   },
+  //   action(data, ctx) {
+  //   },
+  // })
+
+  serv.commands.add({
+    // temp
+    base: 'setdata',
+    info: 'Set entity data - for testing',
+    usage: '/setdata',
+    tab: [
+      'blockX', 'blockY', 'blockZ'
+    ],
+    parse(string, ctx) {
+        return string.split(' ')
+    },
+    async action(data, ctx) {
+      const [blockX, blockY, blockZ, ..._data] = data
+      const dataString = _data.join(' ')
+      const pos = new Vec3(+blockX, +blockY, +blockZ)
+      const block = await ctx.player!.world.getBlock(pos)
+      if (block.name!== 'command_block') return
+      const key = `${pos.x},${pos.y},${pos.z}`
+      //@ts-ignore
+      const {blockEntities, setBlock} = await ctx.player!.world.getColumnAt(pos)
+      blockEntities[key] ??= {
+        name: '',
+        value: {}
+      }
+      blockEntities[key].value ??= {
+        id: { type: 'string', value: 'command_block' },
+        Command: { type: 'string', value: '' },
+        auto: { type: 'byte', value: 0 },
+        powered: { type: 'byte', value: 0 },
+        conditionMet: { type: 'byte', value: 0 },
+        UpdateLastExecution: { type: 'byte', value: 0 },
+        LastExecution: { type: 'long', value: 0 },
+        LastOutput: { type: 'string', value: '' },
+        TrackOutput: { type: 'byte', value: 0 },
+        SuccessCount: { type: 'int', value: 0 },
+        CustomName: { type: 'string', value: '' },
+        color: { type: 'string', value: 'white' },
+        x: { type: 'int', value: pos.x },
+        y: { type: 'int', value: pos.y },
+        z: { type: 'int', value: pos.z },
+      }
+      blockEntities[key].value.Command = {type: 'string', value: dataString}
+      ctx.player!.world.blockEntityData[key] = blockEntities[key]
+    },
+  })
 }
 
 export const player = function (player: Player, serv: Server, settings: Options) {

@@ -1,6 +1,6 @@
 import UserError from './user_error'
 
-type Ctx<P extends boolean> = P extends true ? {
+export type Ctx<P extends boolean> = P extends true ? {
   player: Player
 } : {
   player?: Player

@@ -1,7 +1,11 @@
+import { Block } from 'prismarine-block'
 import { Vec3 } from 'vec3'
+import { CustomWorld } from './world'
 
 export const server = function (serv: Server, { version }: Options) {
   const mcData = serv.mcData
+
+  serv.redstoneConsumers = {}
 
   const redstoneWireType = mcData.blocksByName.redstone_wire.id
   const redstoneTorchType = mcData.blocksByName.redstone_torch.id
@@ -307,7 +311,67 @@ export const server = function (serv: Server, { version }: Options) {
 
       return changed
     })
+
+    const { blocksArray: blocks } = serv.mcData
+    const commandBlocks = blocks.filter(b => b.name.endsWith('command_block')).map((b) => b.name)
+    for (const commandBlock of commandBlocks) {
+      serv.redstoneConsumers[commandBlock] = async ({ block, world }) => {
+        const { position:pos } = block
+        const key = `${pos.x},${pos.y},${pos.z}`
+
+        const entity = serv.overworld.blockEntityData[key]
+        if (!entity) return
+        const command = entity.value.Command.value
+        if (!command) return
+        await serv.handleCommand(command, {
+          //@ts-ignore
+          player: {
+            world: world,
+            // todo fix essentials
+            chat(message) {
+              serv.broadcast(message)
+            },
+            setBlock(position, stateId) {
+              serv.setBlock(world, position, stateId)
+            },
+            position: block.position,
+            selectorString(str) {
+              return serv.selectorString(str, block.position, world)
+            },
+            gameMode: 1,
+          },
+        })
+        // todo output, save
+      }
+    }
+
+    const buttons = blocks.filter(block => block.name.endsWith('_button')).map(block => block.name)
+    const plates = blocks.filter(block => block.name.endsWith('_pressure_plate')).map(block => block.name)
+    const pushables = [...buttons, ...plates]
+    for (const pushable of pushables) {
+      const isPlate = pushable.includes('_pressure_plate')
+      serv.onBlockInteraction(pushable, async ({ block, player }) => {
+        const nearby = isPlate ? [
+          block.position.offset(0, -1, 0),
+          block.position.offset(1, -1, 0),
+          block.position.offset(-1, -1, 0),
+          block.position.offset(0, -1, 1),
+          block.position.offset(0, -1, -1),
+        ] : [
+          // todo
+        ]
+        for (const pos of nearby) {
+          const block = await player.world.getBlock(pos)
+          const activator = serv.redstoneConsumers[block.name]
+          const world = player.world
+          activator?.({ block, world })
+        }
+      })
+    }
   })
 }
 declare global {
+  interface Server {
+    redstoneConsumers: { [block: string]: (data: { block: Block, world: CustomWorld }) => any }
+  }
 }

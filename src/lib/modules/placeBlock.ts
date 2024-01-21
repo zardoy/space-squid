@@ -1,3 +1,4 @@
+import { Block } from 'prismarine-block'
 import { Vec3 } from 'vec3'
 
 const materialToSound = {
@@ -203,7 +204,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     if (player.gameMode === 0) {
       heldItem.count--
       if (heldItem.count === 0) {
-        player.inventory.updateSlot(36 + player.heldItemSlot, null)
+        player.inventory.updateSlot(36 + player.heldItemSlot, null!)
       } else {
         player.inventory.updateSlot(36 + player.heldItemSlot, heldItem)
       }
@@ -235,6 +236,6 @@ declare global {
      *
      * The argument given to the handler is an object containing the clicked block and the player. It should return true if the block interaction occurred and the block placement should be cancelled.
      */
-    'onBlockInteraction': (name: any, handler: any) => void
+    'onBlockInteraction': (name: string, handler: (data: {block: Block, player: Player}) => void) => void
   }
 }
