@@ -89,13 +89,15 @@ export const player = function (player: Player, serv: Server, { version }: Optio
             // Inventory handles removing one
 
             const heldItem = player.inventory.slots[36 + player.heldItemSlot]
-            serv.spawnObject(2, player.world, player.position, {
-              velocity: new Vec3(0, 0, 0),
-              itemId: heldItem.type,
-              itemDamage: heldItem.metadata,
-              pickupTime: 500,
-              deathTime: 60 * 5 * 100
-            })
+            if (heldItem) {
+              serv.spawnObject(2, player.world, player.position, {
+                velocity: new Vec3(0, 0, 0),
+                itemId: heldItem.type,
+                itemDamage: heldItem.metadata,
+                pickupTime: 500,
+                deathTime: 60 * 5 * 100
+              })
+            }
           } else {
             // Drop full stack at slot
             // Inventory handles removing the whole stack
@@ -156,7 +158,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     // It's important to let it know of the click later, because it destroys
     // information we need about the inventory.
     try {
-      player.inventory.acceptClick(clickInfo)
+      player.inventory.acceptClick(clickInfo, player.gameMode)
     } catch (err) {
       serv.emit('error', err)
     }
@@ -164,14 +166,15 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
   player._client.on('set_creative_slot', ({ slot, item } = {}) => {
     if (item.blockId === -1) {
-      player.inventory.updateSlot(slot, undefined)
+      player.inventory.updateSlot(slot, null!)
       return
     }
 
     const newItem = Item.fromNotch(item)
-    player.inventory.updateSlot(slot, newItem)
+    player.inventory.updateSlot(slot, newItem!)
   })
 
+  //@ts-ignore
   player.inventory.on('updateSlot', function (slot, oldItem, newItem) {
     const equipments = {
       5: 4,

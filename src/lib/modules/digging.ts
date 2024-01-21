@@ -33,8 +33,8 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       const currentSlot = player.inventory.slots[36 + player.heldItemSlot]
       const offhand = player.inventory.slots[45]
 
-      player.inventory.updateSlot(36 + player.heldItemSlot, offhand)
-      player.inventory.updateSlot(45, currentSlot)
+      player.inventory.updateSlot(36 + player.heldItemSlot, offhand!)
+      player.inventory.updateSlot(45, currentSlot!)
     } else {
       let pos = new Vec3(location.x, location.y, location.z)
 
