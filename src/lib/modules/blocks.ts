@@ -102,6 +102,55 @@ export const server = function (serv: Server, { version }: Options) {
       else serv.setBlockAction(serv.overworld, new Vec3(+params[1], +params[2], +params[3]).floored(), +params[4], params[5])
     }
   })
+
+  serv.commands.add({
+    base: 'fill',
+    info: 'Fills a region with a specific block',
+    usage: '/fill <from> <to> <block>', // todo impl destroy|hollow|keep|outline|replace filter
+    parse(string, ctx) {
+      return string.split(' ')
+    },
+    action([_sX, _sY, _sZ, _tX, _tY, _tZ, blockArg], ctx) {
+      const [sX, sY, sZ, tX, tY, tZ] = [_sX, _sY, _sZ, _tX, _tY, _tZ].map(x => +x)
+       const block = [] // todo resolve block
+       for (let x = Math.min(sX, tX); x <= Math.max(sX, tX); x++) {
+         for (let y = Math.min(sY, tY); y <= Math.max(sY, tY); y++) {
+           for (let z = Math.min(sZ, tZ); z <= Math.max(sZ, tZ); z++) {
+            // todo
+            ctx.player!.setBlock(new Vec3(x, y, z), block)
+           }
+         }
+       }
+    },
+  })
+
+  // serv.commands.add({
+  //   base: 'clone',
+  //   info: 'Fills a region with a specific block',
+  //   usage: '/clone <from> <to> <block>', // todo impl destroy|hollow|keep|outline|replace filter
+  //   parse(string, ctx) {
+  //       return string.split(' ')
+  //   },
+  //   action([sX, sY, sZ, tX, tY, tZ, blockArg], ctx) {
+  //      const block = [] // todo resolve block
+
+  //   },
+  // })
+
+  serv.commands.add({
+    base: 'testforblock',
+    info: '',
+    usage: '/testforblock',
+    tab: ['blockX', 'blockY', 'blockZ', 'block'],
+    parse(string, ctx) {
+      return string.split(' ')
+    },
+    action([blockX, blockY, blockZ, block, blockStates], ctx) {
+      const pos = new Vec3(+blockX, +blockY, +blockZ) // todo relative eg testforblock ~ ~-1 ~ jukebox
+      const worldBlock = ctx.player!.world.getBlock(pos)
+      return !!worldBlock
+    }
+  })
 }
 declare global {
   interface Player {
