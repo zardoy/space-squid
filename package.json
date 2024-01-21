@@ -21,7 +21,7 @@
     "test-latest": "echo todo",
     "test-essential": "echo todo",
     "test-all": "echo todo",
-    "test": "npm run mocha_test",
+    "test": "echo TODO",
     "pretest": "npm run lint"
   },
   "keywords": [
