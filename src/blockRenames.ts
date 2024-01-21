@@ -5,36 +5,43 @@ import itemBlockRenames from './itemBlockRenames.json'
 
 const versionToNumber = (ver: string) => {
   const [x, y = '0', z = '0'] = ver.split('.')
-  return +`${x.padStart(2, '0')}${y.padStart(2, '0')}${z.padStart(2, '0')}`
+  return +`${x.padStart(2, '0')}${(parseInt(y).toString().padStart(2, '0'))}${parseInt(z).toString().padStart(2, '0')}`
 }
 
-const allRenamesMapFromLatest = Object.fromEntries(
-  ['blocks', 'items'].map(x =>
-    [
-      x,
-      Object.fromEntries(Object.entries(itemBlockRenames).flatMap(([ver, t]) => t[x]?.map(([oldName, newName]) => [
-        newName,
-        { version: versionToNumber(ver), oldName }
-      ])).filter(x => x))
-    ])
-) as { [thing: string]: Record<string, { version: number, oldName: string }> }
+console.log(versionToNumber('0.30c'))
+console.log(versionToNumber('1.8'))
 
-export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', version: string, names: string[]) => {
-  const map = allRenamesMapFromLatest[type]
-  const ver = versionToNumber(version)
-  return names.map(name => {
-    let renamed = map[name]
-    while (renamed) {
-      const newRenamed = map[renamed.oldName]
-      if (newRenamed && ver < newRenamed.version) {
-        renamed = newRenamed
-      } else {
+// const allRenamesMapFromLatest = Object.fromEntries(
+//   ['blocks', 'items'].map(x =>
+//     [
+//       x,
+//       Object.fromEntries(Object.entries(itemBlockRenames).flatMap(([ver, t]) => t[x]?.map(([oldName, newName]) => [
+//         newName,
+//         { version: versionToNumber(ver), oldName }
+//       ])).filter(x => x))
+//     ])
+// ) as { [thing: string]: Record<string, { version: number, oldName: string }> }
+
+export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', blockOrItem: string | string[], versionFrom: string, versionTo: string) => {
+  const verFrom = versionToNumber(versionFrom)
+  const verTo = versionToNumber(versionTo)
+  const dir = verFrom < verTo ? 1 : -1
+  const targetIdx = dir > 0 ? 1 : 0
+  let renamed = blockOrItem
+  const mapVersions = Object.keys(itemBlockRenames).sort((a, b) => dir * (versionToNumber(a) - versionToNumber(b)))
+  for (const mapVersion of mapVersions) {
+    const nextMapData = itemBlockRenames[mapVersion][type]
+    if (!nextMapData) continue
+    for (const namesArr of nextMapData) {
+      const targetName = namesArr[targetIdx]
+      const compareName = namesArr[1 - targetIdx]
+      if (Array.isArray(renamed)) {
+        if (renamed.includes(compareName)) renamed = renamed.map(x => x === compareName ? targetName : x)
+      } else if (renamed === compareName) {
+        renamed = targetName
         break
       }
     }
-    if (renamed && ver < renamed.version) {
-      return renamed.oldName
-    }
-    return name
-  })
+  }
+  return renamed
 }
