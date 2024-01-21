@@ -88,6 +88,22 @@ export const server = function (serv: Server) {
       }
     }
   })
+  
+  serv.commands.add({
+    base: 'damage',
+    info: 'Applies damage to the specified entities',
+    usage: '/damage',
+    tab: ['player', 'number'],
+    parse(string, ctx) {
+        return string.split(' ') // todo validate
+    },
+    action(data, ctx) {
+      const players = serv.getPlayers(data[0], ctx.player)
+      for (const player of players) {
+        player.takeDamage({ damage: +data[1], })
+      }
+    },
+  })
 }
 declare global {
   interface Entity {
