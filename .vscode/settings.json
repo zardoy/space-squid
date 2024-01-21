@@ -1,3 +1,20 @@
 {
-    "tsEssentialPlugins.enableHooksFile": true
+    "tsEssentialPlugins.enableHooksFile": true,
+    "javascript.format.insertSpaceAfterConstructor": true,
+    "javascript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": true,
+    "javascript.format.insertSpaceBeforeFunctionParenthesis": true,
+    "javascript.preferences.quoteStyle": "single",
+    "typescript.format.semicolons": "remove",
+    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": true,
+    "typescript.format.insertSpaceBeforeFunctionParenthesis": true,
+    "[javascript][typescript]": {
+        "editor.defaultFormatter": "standard.vscode-standard"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features",
+        "editor.tabSize": 2
+    },
+    "cSpell.words": [
+        "serv"
+    ]
 }
