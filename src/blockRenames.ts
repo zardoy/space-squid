@@ -8,9 +8,6 @@ const versionToNumber = (ver: string) => {
   return +`${x.padStart(2, '0')}${(parseInt(y).toString().padStart(2, '0'))}${parseInt(z).toString().padStart(2, '0')}`
 }
 
-console.log(versionToNumber('0.30c'))
-console.log(versionToNumber('1.8'))
-
 // const allRenamesMapFromLatest = Object.fromEntries(
 //   ['blocks', 'items'].map(x =>
 //     [
@@ -29,7 +26,11 @@ export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', blockO
   const targetIdx = dir > 0 ? 1 : 0
   let renamed = blockOrItem
   const mapVersions = Object.keys(itemBlockRenames).sort((a, b) => dir * (versionToNumber(a) - versionToNumber(b)))
+  const upperBoundVer = dir > 0 ? verTo : verFrom
+  const lowerBoundVer = dir > 0 ? verFrom : verTo
   for (const mapVersion of mapVersions) {
+    if (dir > 0 && versionToNumber(mapVersion) > upperBoundVer) break
+    if (dir < 0 && versionToNumber(mapVersion) < lowerBoundVer) break
     const nextMapData = itemBlockRenames[mapVersion][type]
     if (!nextMapData) continue
     for (const namesArr of nextMapData) {
