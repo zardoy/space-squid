@@ -316,7 +316,7 @@ export const server = function (serv: Server, { version }: Options) {
     const commandBlocks = blocks.filter(b => b.name.endsWith('command_block')).map((b) => b.name)
     for (const commandBlock of commandBlocks) {
       serv.redstoneConsumers[commandBlock] = async ({ block, world }) => {
-        const { position:pos } = block
+        const { position: pos } = block
         const key = `${pos.x},${pos.y},${pos.z}`
 
         const entity = serv.overworld.blockEntityData[key]
@@ -328,14 +328,14 @@ export const server = function (serv: Server, { version }: Options) {
           player: {
             world: world,
             // todo fix essentials
-            chat(message) {
+            chat (message) {
               serv.broadcast(message)
             },
-            setBlock(position, stateId) {
+            setBlock (position, stateId) {
               serv.setBlock(world, position, stateId)
             },
             position: block.position,
-            selectorString(str) {
+            selectorString (str) {
               return serv.selectorString(str, block.position, world)
             },
             gameMode: 1,
@@ -345,6 +345,32 @@ export const server = function (serv: Server, { version }: Options) {
       }
     }
 
+    const getButtonRedstoneDirection = (block: Block) => {
+      const props = block.getProperties()
+      if (props.face === 'floor' || props.face === 'down') return new Vec3(0, -1, 0)
+      if (props.face === 'wall') {
+        if (props.facing === 'north') return new Vec3(0, 0, 1)
+        if (props.facing === 'south') return new Vec3(0, 0, -1)
+        if (props.facing === 'east') return new Vec3(1, 0, 0)
+        if (props.facing === 'west') return new Vec3(-1, 0, 0)
+      }
+      return null
+    }
+
+    const getButtonNearby = (block: Block) => {
+      const dir = getButtonRedstoneDirection(block)
+      if (!dir) return []
+      return [
+        block.position.plus(dir),
+        block.position.plus(dir).offset(1, 0, 0),
+        block.position.plus(dir).offset(-1, 0, 0),
+        block.position.plus(dir).offset(0, 0, 1),
+        block.position.plus(dir).offset(0, 0, -1),
+        block.position.plus(dir).offset(0, 1, 0),
+        block.position.plus(dir).offset(0, -1, 0),
+      ]
+    }
+
     const buttons = blocks.filter(block => block.name.endsWith('_button')).map(block => block.name)
     const plates = blocks.filter(block => block.name.endsWith('_pressure_plate')).map(block => block.name)
     const pushables = [...buttons, ...plates]
@@ -352,14 +378,19 @@ export const server = function (serv: Server, { version }: Options) {
       const isPlate = pushable.includes('_pressure_plate')
       serv.onBlockInteraction(pushable, async ({ block, player }) => {
         const nearby = isPlate ? [
+          // below
           block.position.offset(0, -1, 0),
           block.position.offset(1, -1, 0),
           block.position.offset(-1, -1, 0),
           block.position.offset(0, -1, 1),
           block.position.offset(0, -1, -1),
-        ] : [
-          // todo
-        ]
+
+          // same level
+          block.position.offset(1, 0, 0),
+          block.position.offset(-1, 0, 0),
+          block.position.offset(0, 0, 1),
+          block.position.offset(0, 0, -1),
+        ] : getButtonNearby(block)
         for (const pos of nearby) {
           const block = await player.world.getBlock(pos)
           const activator = serv.redstoneConsumers[block.name]
