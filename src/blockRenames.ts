@@ -19,6 +19,7 @@ const versionToNumber = (ver: string) => {
 //     ])
 // ) as { [thing: string]: Record<string, { version: number, oldName: string }> }
 
+/** @deprecated */
 export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', blockOrItem: string | string[], versionFrom: string, versionTo: string) => {
   const verFrom = versionToNumber(versionFrom)
   const verTo = versionToNumber(versionTo)
@@ -29,8 +30,8 @@ export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', blockO
   const upperBoundVer = dir > 0 ? verTo : verFrom
   const lowerBoundVer = dir > 0 ? verFrom : verTo
   for (const mapVersion of mapVersions) {
-    if (dir > 0 && versionToNumber(mapVersion) > upperBoundVer) break
-    if (dir < 0 && versionToNumber(mapVersion) < lowerBoundVer) break
+    if (dir > 0 && versionToNumber(mapVersion) >= upperBoundVer) break
+    if (dir < 0 && versionToNumber(mapVersion) <= lowerBoundVer) break
     const nextMapData = itemBlockRenames[mapVersion][type]
     if (!nextMapData) continue
     for (const namesArr of nextMapData) {
@@ -46,3 +47,5 @@ export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', blockO
   }
   return renamed
 }
+
+export const getRenamedData = adoptBlockOrItemNamesFromLatest
