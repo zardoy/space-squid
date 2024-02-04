@@ -2467,19 +2467,6 @@
             ]
         ]
     },
-    "1.14.4": {
-        "blocks": [
-            [
-                "sign",
-                "oak_sign"
-            ],
-            [
-                "wall_sign",
-                "oak_wall_sign"
-            ]
-        ],
-        "items": []
-    },
     "1.15.2": {
         "blocks": [],
         "items": []
