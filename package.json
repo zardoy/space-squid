@@ -36,6 +36,10 @@
   "engines": {
     "node": ">=8"
   },
+  "files": [
+    "dist",
+    "config"
+  ],
   "dependencies": {
     "change-case": "^4.1.2",
     "colors": "1.4.0",
@@ -74,6 +78,7 @@
     "minecraft-wrap": "^1.2.3",
     "mineflayer": "^4.0.0",
     "mocha": "^10.0.0",
+    "typescript": "^5.3.3",
     "vitest": "^0.34.6"
   }
 }
