@@ -5,6 +5,11 @@
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": "dist/app.js",
+  "release": {
+    "sharedActionsOverride": {
+      "updateHomepage": false
+    }
+  },
   "scripts": {
     "start": "tsc && node dist/app.js",
     "build": "tsc && node scripts/genTypes.mjs",
