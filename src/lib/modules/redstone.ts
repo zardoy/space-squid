@@ -392,10 +392,14 @@ export const server = function (serv: Server, { version }: Options) {
           block.position.offset(0, 0, -1),
         ] : getButtonNearby(block)
         for (const pos of nearby) {
-          const block = await player.world.getBlock(pos)
-          const activator = serv.redstoneConsumers[block.name]
+          const targetBlock = await player.world.getBlock(pos)
+          const activator = serv.redstoneConsumers[targetBlock.name]
           const world = player.world
-          activator?.({ block, world })
+          activator?.({
+            block: targetBlock,
+            world,
+            source: block
+          })
         }
       })
     }
@@ -403,6 +407,6 @@ export const server = function (serv: Server, { version }: Options) {
 }
 declare global {
   interface Server {
-    redstoneConsumers: { [block: string]: (data: { block: Block, world: CustomWorld }) => any }
+    redstoneConsumers: { [block: string]: (data: { block: Block, world: CustomWorld, source: Block }) => any }
   }
 }
