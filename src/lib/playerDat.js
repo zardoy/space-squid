@@ -37,12 +37,14 @@ async function read (uuid, spawnPoint, worldFolder) {
       inventory: playerData.Inventory.value.value.map(nbtItem => {
         if (nbtItem?.tag && !nbtItem.tag.name) nbtItem.tag.name = ''
         return nbtItem
-      })
+      }),
+      new: false
     }
   } catch (e) {
     return {
       player: { ...playerDefaults, ...{ position: spawnPoint.clone() } },
-      inventory: []
+      inventory: [],
+      new: true
     }
   }
 }

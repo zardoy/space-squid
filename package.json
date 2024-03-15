@@ -33,10 +33,6 @@
   "engines": {
     "node": ">=8"
   },
-  "files": [
-    "dist",
-    "config"
-  ],
   "dependencies": {
     "change-case": "^4.1.2",
     "colors": "1.4.0",

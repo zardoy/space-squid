@@ -260,7 +260,10 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.sendRestMap()
     sendChunkWhenMove()
 
-    player.save()
+    if (playerData.new) {
+      // skip unnecessary fs operation
+      player.save()
+    }
   }
 
   const dimensionCodec = { // Dumped from a vanilla 1.16.1 server, as these are hardcoded constants
