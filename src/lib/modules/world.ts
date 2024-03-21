@@ -219,18 +219,18 @@ export const server = async function (serv: Server, options: Options) {
     tab: [
       'blockX', 'blockY', 'blockZ'
     ],
-    parse(string, ctx) {
-        return string.split(' ')
+    parse (string, ctx) {
+      return string.split(' ')
     },
-    async action(data, ctx) {
+    async action (data, ctx) {
       const [blockX, blockY, blockZ, ..._data] = data
       const dataString = _data.join(' ')
       const pos = new Vec3(+blockX, +blockY, +blockZ)
       const block = await ctx.player!.world.getBlock(pos)
-      if (block.name!== 'command_block') return
+      if (block.name !== 'command_block') return
       const key = `${pos.x},${pos.y},${pos.z}`
       //@ts-ignore
-      const {blockEntities, setBlock} = await ctx.player!.world.getColumnAt(pos)
+      const { blockEntities, setBlock } = await ctx.player!.world.getColumnAt(pos)
       blockEntities[key] ??= {
         name: '',
         value: {}
@@ -252,7 +252,7 @@ export const server = async function (serv: Server, options: Options) {
         y: { type: 'int', value: pos.y },
         z: { type: 'int', value: pos.z },
       }
-      blockEntities[key].value.Command = {type: 'string', value: dataString}
+      blockEntities[key].value.Command = { type: 'string', value: dataString }
       ctx.player!.world.blockEntityData[key] = blockEntities[key]
     },
   })
@@ -453,6 +453,12 @@ export interface CustomWorld extends World {
   portals: any[]
   seed: number
 }
+
+export const usedServerPathsV1 = [
+  'region',
+  'level.dat',
+  'playerdata',
+]
 
 declare global {
   interface Server {

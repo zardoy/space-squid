@@ -1,0 +1,9 @@
+{
+    // todo maybe think of just publishing the typescript files
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "sourceMap": false
+    },
+}

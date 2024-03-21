@@ -19,6 +19,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       - run: node scripts/beforePublish.mjs
+      - run: pnpm build-npm
       - run: pnpx zardoy-release npm
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
