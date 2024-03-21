@@ -54,6 +54,7 @@ export const server = async function (serv: Server, options: Options) {
     info: 'Teleport to a warp',
     usage: '/warp [set] <name>',
     op: true,
+    tab: ['warps', 'warps'],
     commandBlock: false,
     parse (string, ctx) {
       // todo worlds support
@@ -62,7 +63,7 @@ export const server = async function (serv: Server, options: Options) {
         return { name, set: true }
       }
       const warp = serv.warps.find(w => w.name === string)
-      if (!warp) return
+      if (!warp) return false
       return { name: warp.name }
     },
     async action ({ name, set }, { player }) {
@@ -80,7 +81,7 @@ export const server = async function (serv: Server, options: Options) {
       player.teleport(new Vec3(warp.x, warp.y, warp.z))
       if (warp.yaw) player.yaw = warp.yaw
       if (warp.pitch) player.pitch = warp.pitch
-      return true
+      player.chat(`Teleported to ${name}. Press ctrl+a if nothing appears on your screen.`)
     }
   })
 }

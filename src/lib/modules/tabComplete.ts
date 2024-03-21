@@ -122,6 +122,10 @@ export const player = function (player: Player, serv: Server, options: Options) 
   serv.tabComplete.add('item_enchantment', () => {
     return ['unbreaking', 'silk_touch', 'fortune']
   })
+
+  serv.tabComplete.add('warps', () => {
+    return serv.warps.map(w => w.name)
+  })
 }
 declare global {
   interface Server {
