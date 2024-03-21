@@ -32,6 +32,7 @@ declare global {
     tick: (delta: number, tickCount: number) => void
     /** Emit seed once the world is loaded */
     seed: (seed: number) => void
+    warpsLoaded: () => void
   }
 
   interface Server extends TypedEmitter<ServerEvents> {

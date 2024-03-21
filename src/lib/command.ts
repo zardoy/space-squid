@@ -18,6 +18,8 @@ type AddParams<T, P extends boolean = false> = {
   parse?: (string: string, ctx: Ctx<P>) => T
   action: (data: NonFalsey<T>, ctx: Ctx<P>) => any
   tab?: string[]
+  merged?: boolean
+  commandBlock?: boolean
 }
 
 class Command {
@@ -26,12 +28,14 @@ class Command {
   parentBase: any
   base: any
   path: string
+  commandBlock = true
 
-  constructor (public params, public parent?, hash?) {
+  constructor(public params, public parent?, hash?) {
     this.hash = parent ? parent.hash : {}
     this.uniqueHash = parent ? parent.uniqueHash : {}
     this.parentBase = (this.parent && this.parent.base && this.parent.base + ' ') || ''
     this.base = this.parentBase + (this.params.base || '')
+    this.commandBlock = this.params.commandBlock
 
     if (this.params.base) this.updateHistory()
   }
@@ -93,7 +97,7 @@ class Command {
     this.uniqueHash[this.base] = this
   }
 
-  add <T, P extends boolean>(params: AddParams<T, P>) {
+  add<T, P extends boolean> (params: AddParams<T, P>) {
     return new Command(params, this)
   }
 

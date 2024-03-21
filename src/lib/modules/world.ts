@@ -458,6 +458,7 @@ export const usedServerPathsV1 = [
   'region',
   'level.dat',
   'playerdata',
+  'Warp files'
 ]
 
 declare global {
