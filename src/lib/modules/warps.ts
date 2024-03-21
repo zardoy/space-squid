@@ -84,6 +84,28 @@ export const server = async function (serv: Server, options: Options) {
       player.chat(`Teleported to ${name}. Press f3+a if nothing appears on your screen.`)
     }
   })
+
+  serv.commands.add({
+    base: 'home',
+    info: 'Teleport to your home',
+    usage: '/home',
+    op: false, // todo
+    commandBlock: false,
+    async action ({ }, { player }) {
+      player?.handleCommand('warp home')
+    }
+  })
+  serv.commands.add({
+    base: 'sethome',
+    info: 'Set your home',
+    usage: '/sethome',
+    op: false, // todo
+    commandBlock: false,
+    async action ({ }, { player }) {
+      player?.handleCommand('warp set home')
+    }
+  })
+
 }
 
 declare global {
