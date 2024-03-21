@@ -81,7 +81,7 @@ export const server = async function (serv: Server, options: Options) {
       player.teleport(new Vec3(warp.x, warp.y, warp.z))
       if (warp.yaw) player.yaw = warp.yaw
       if (warp.pitch) player.pitch = warp.pitch
-      player.chat(`Teleported to ${name}. Press ctrl+a if nothing appears on your screen.`)
+      player.chat(`Teleported to ${name}. Press f3+a if nothing appears on your screen.`)
     }
   })
 }
