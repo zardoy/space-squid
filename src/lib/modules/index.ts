@@ -14,7 +14,7 @@ export const initPlugins = () => {
       builtinPlugins = filterKeys(pluginsMap.keys()).map(k => pluginsMap(k))
     } else {
       // esbuild custom plugin
-      const files = require(/* webpackIgnore: true */ 'esbuild-import-glob(path:.,skipFiles:index.js,external.js,index.ts,external.ts)')
+      const files = require(/* webpackIgnore: true */ 'esbuild-import-glob(path:.,skipFiles:index.js,external.js,generator.js,index.ts,external.ts)')
       builtinPlugins = Object.values(files)
     }
   } else {

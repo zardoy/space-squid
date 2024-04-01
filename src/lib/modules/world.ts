@@ -13,6 +13,7 @@ import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
 import { Vec3 } from 'vec3'
 import { generateSpiralMatrix } from '../../utils'
+import generateChunk from './generator'
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
@@ -60,7 +61,16 @@ export const server = async function (serv: Server, options: Options) {
     version,
   }
   serv.emit('seed', generationOptions.seed)
-  const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
+  let worldGeneratorCustom = generateChunk
+  try {
+    const worldGeneratorCode = await fs.promises.readFile(worldFolder + '/worldGenerator.js', 'utf8')
+    let worldGeneratorFn = eval(worldGeneratorCode)(generationOptions)
+    worldGeneratorCustom = (x, z) => {
+      return worldGeneratorFn(x, z)
+    }
+  } catch (err) {
+  }
+  const generationModule: (options) => any = worldGeneratorCustom ?? (generations[generation.name] ? generations[generation.name] : require(generation.name))
   serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = generationOptions.seed
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
