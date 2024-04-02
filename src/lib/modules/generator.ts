@@ -9,8 +9,9 @@ export const player = () => { }
 export default ({ version }) => {
   const Chunk = PrismarineChunk(version)
   const data = minecraftData(version)
-  // const noise = createNoise3D()
-  const noise2d = fbm2d(createNoise2D())
+  const noise3d = createNoise3D()
+  const noise2DRaw = createNoise2D()
+  const noise2d = fbm2d(noise2DRaw)
   return (chunkX, chunkZ) => {
     const chunk = new Chunk({
       x: chunkX, z: chunkZ
@@ -21,11 +22,21 @@ export default ({ version }) => {
     //     chunk.setBlockStateId(new Vec3(x, noise2d(x + chunkX * 16, z + chunkZ * 16) * 256, z), data.blocksByName['grass_block']!.defaultState!)
     //   }
     // }
+    let offset = new Vec3(0, 0, 0)
     generateChunk(chunkX, chunkZ, {
       setBlock (x, y, z, block) {
-        chunk.setBlockStateId(new Vec3(x, y, z), data.blocksByName[block]!.defaultState!)
+        block = block.split('[')[0]
+        const blockStat = data.blocksByName[block]!
+        if (!blockStat) throw new Error(`Block ${block} not found`)
+        chunk.setBlockStateId(new Vec3(x, y, z).add(offset), blockStat.defaultState!)
+      },
+      setOffset (newOffset) {
+        offset = newOffset
+      },
+      getHeight () {
+        return 100
       }
-    }, noise2d)
+    }, noise2d, noise3d, noise2DRaw)
     return chunk
   }
 }
@@ -82,7 +93,8 @@ function fbm2d (noise2D) {
 //   }
 // }
 
-function generateChunk (chunkX, chunkZ, chunk, get2DNoise) {
+const waterLine = 25
+function generateChunk (chunkX, chunkZ, chunk, get2DNoise, get3DNoise, noise2DRaw) {
   const chunkSize = 16
   const freq = get2DNoise(chunkX, chunkZ)
   // const maxHeight = 100
@@ -101,24 +113,28 @@ function generateChunk (chunkX, chunkZ, chunk, get2DNoise) {
       // Generate terrain
       generateTerrain(chunk, x, z, height)
 
-      // Generate forests
-      generateForests(chunk, x, z, worldX, worldZ, height, get2DNoise, forestThreshold)
-
       // Add water at the bottom
-      if (height <= 25) {
-        chunk.setBlock(x, 25, z, 'water')
+      if (height <= waterLine) {
+        chunk.setBlock(x, waterLine, z, 'water')
+      } else {
+        // Generate forests
+        generateForests(chunk, x, z, worldX, worldZ, height, get2DNoise, forestThreshold)
       }
 
       // Add rare generated builds
-      generateRareBuilds(chunk, x, z, worldX, worldZ, get2DNoise)
     }
   }
+  // generateRareBuilds(chunk, chunkX * chunkSize, chunkZ * chunkSize, get2DNoise)
+  // generateMines(chunk, chunkX * chunkSize, chunkZ * chunkSize, get3DNoise)
+  // generateMineshafts2(chunkX, chunkZ, chunk, get2DNoise, get3DNoise)
+  // generateRareBuilds2(chunk, chunkX * chunkSize, chunkZ * chunkSize, noise2DRaw, 30)
+  // generateMines(chunk, chunkX * chunkSize, chunkZ * chunkSize, get2DNoise)
 }
 
 function generateTerrain (chunk, x, z, height) {
   for (let y = 0; y < height; y++) {
     if (y === height - 1) {
-      chunk.setBlock(x, y, z, 'grass_block')
+      chunk.setBlock(x, y, z, y < waterLine ? 'sand' : 'grass_block')
     } else {
       chunk.setBlock(x, y, z, 'stone')
     }
