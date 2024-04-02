@@ -65,8 +65,9 @@ export const server = async function (serv: Server, options: Options) {
   try {
     const worldGeneratorCode = await fs.promises.readFile(worldFolder + '/worldGenerator.js', 'utf8')
     let worldGeneratorFn = eval(worldGeneratorCode)(generationOptions)
-    worldGeneratorCustom = (x, z) => {
-      return worldGeneratorFn(x, z)
+    worldGeneratorCustom = (options) => {
+      const fn = worldGeneratorFn(options)
+      return fn
     }
   } catch (err) {
   }
