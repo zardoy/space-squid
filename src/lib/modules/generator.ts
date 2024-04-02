@@ -111,7 +111,8 @@ function generateChunk (chunkX, chunkZ, chunk, get2DNoise, get3DNoise, noise2DRa
       const height = Math.floor((heightNoise + 1) * maxHeight / 2)
 
       // Generate terrain
-      generateTerrain(chunk, x, z, height)
+      generateTerrain(chunk, x, z, height, noise2DRaw)
+      generateOres(chunk, x, height, z, get3DNoise)
 
       // Add water at the bottom
       if (height <= waterLine) {
@@ -131,12 +132,32 @@ function generateChunk (chunkX, chunkZ, chunk, get2DNoise, get3DNoise, noise2DRa
   // generateMines(chunk, chunkX * chunkSize, chunkZ * chunkSize, get2DNoise)
 }
 
-function generateTerrain (chunk, x, z, height) {
+function generateTerrain (chunk, x, z, height, noise2DRaw) {
   for (let y = 0; y < height; y++) {
     if (y === height - 1) {
-      chunk.setBlock(x, y, z, y < waterLine ? 'sand' : 'grass_block')
+      const isClay = y < waterLine && Math.abs(noise2DRaw(x, z)) < 0.05
+      chunk.setBlock(x, y, z, isClay ? 'clay' : y < waterLine ? 'sand' : 'grass_block')
     } else {
       chunk.setBlock(x, y, z, 'stone')
+    }
+  }
+}
+
+const generateOres = (chunk, x, height, z, get3DNoise) => {
+  const oreTypes = ['coal_ore', 'iron_ore', 'gold_ore', 'diamond_ore'] // Types of ores to generate
+  const oreFrequency = 0.005 // Adjust frequency to control ore density
+
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dz = -2; dz <= 2; dz++) {
+      for (let dy = 1; dy < 3; dy++) {
+        // Use 3D noise to determine if an ore should be generated at this location
+        const noiseValue = get3DNoise(x + dx, 0 + dy, z + dz)
+        if (noiseValue > 0 && noiseValue < oreFrequency) {
+          // Choose a random ore type and place it at this location
+          const oreType = oreTypes[Math.floor(Math.random() * oreTypes.length)]
+          chunk.setBlock(x + dx, 0 + dy, z + dz, oreType)
+        }
+      }
     }
   }
 }
