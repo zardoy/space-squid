@@ -360,7 +360,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
     })
   }
 
-  player.sendNearbyChunks = (viewDistance, group = false) => {
+  player.sendNearbyChunks = async (viewDistance, group = false) => {
     player.lastPositionChunkUpdated = player.position
     const playerChunkX = Math.floor(player.position.x / 16)
     const playerChunkZ = Math.floor(player.position.z / 16)
@@ -370,11 +370,20 @@ export const player = function (player: Player, serv: Server, settings: Options)
       .filter(([x, z]) => Math.abs(x - playerChunkX) > viewDistance || Math.abs(z - playerChunkZ) > viewDistance)
       .forEach(([x, z]) => player._unloadChunk(x, z))
 
-    return generateSpiralMatrix(viewDistance)
+    const loadChunks = generateSpiralMatrix(viewDistance)
       .map(t => ({
         chunkX: playerChunkX + t[0],
         chunkZ: playerChunkZ + t[1]
       }))
+    if (viewDistance > 7 && serv.loadChunksOptimized) {
+      const chunks = await serv.loadChunksOptimized(loadChunks.map(({ chunkX, chunkZ }) => [chunkX, chunkZ]))
+      chunks.forEach((chunk, i) => {
+        const { chunkX, chunkZ } = loadChunks[i]
+        player.sendChunk(chunkX, chunkZ, chunk)
+      })
+      return
+    }
+    return loadChunks
       .filter(({ chunkX, chunkZ }) => serv._loadPlayerChunk(chunkX, chunkZ, player))
       .reduce((acc, { chunkX, chunkZ }) => {
         const p = acc
@@ -464,6 +473,8 @@ export const usedServerPathsV1 = [
 
 declare global {
   interface Server {
+    /** @internal */
+    loadChunksOptimized?(chunks: [number, number][]): Promise<Chunk[]>
     /** @internal */
     looseProtocolMode: any
     /** @internal */
