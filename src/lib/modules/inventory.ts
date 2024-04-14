@@ -1,5 +1,5 @@
-import {Vec3} from 'vec3'
-import PrismarineItem from 'prismarine-item'
+import { Vec3 } from 'vec3'
+import PrismarineItem, { Item } from 'prismarine-item'
 import PrismarineWindows, { Window } from 'prismarine-windows'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
@@ -36,6 +36,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     // When window is closed we remove data about it from player
     player.windowType = ''
     player.windowPos = undefined
+    player.customWindow = undefined
   })
 
   player._client.on('window_click', function (clickInfo) {
@@ -158,7 +159,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     // It's important to let it know of the click later, because it destroys
     // information we need about the inventory.
     try {
-      player.inventory.acceptClick(clickInfo, player.gameMode)
+      (player.inventory || player.customWindow).acceptClick(clickInfo, player.gameMode)
     } catch (err) {
       serv.emit('error', err)
     }
@@ -176,6 +177,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
   //@ts-ignore
   player.inventory.on('updateSlot', function (slot, oldItem, newItem) {
+    if (player.customWindow) return
     const equipments = {
       5: 4,
       6: 3,
@@ -252,10 +254,9 @@ declare global {
     setEquipment: (slot: number, item: any) => void
     /** @internal */
     "heldItemSlot": number
-    /** @internal */
-    "heldItem": any
-    /** @internal */
+    "heldItem": Item
     "inventory": Window
+    "customWindow": Window | undefined
     /** @internal */
     "collect": (collectEntity: any) => void
   }

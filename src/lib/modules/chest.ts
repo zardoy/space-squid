@@ -11,7 +11,7 @@ export const server = (serv: Server, { version }: Options) => {
     const blockEnderChest = registry.blocksByName.ender_chest
     // TODO: Large chest (NOT IMPLEMENTED)
     // Shulker boxes
-    let blockShulkerBox: string[] = []
+    let blockShulkerBox: number[] = []
     if (registry.supportFeature('theShulkerBoxes')) {
       blockShulkerBox = [registry.blocksByName.shulker_box.id, registry.blocksByName.red_shulker_box.id,
       registry.blocksByName.orange_shulker_box.id, registry.blocksByName.yellow_shulker_box.id, registry.blocksByName.lime_shulker_box.id,
@@ -63,14 +63,16 @@ export const server = (serv: Server, { version }: Options) => {
       })
     }
     // Interaction with a container block
-    const containerBlockInteractionHandler = async ({ block, player }) => {
+    const containerBlockInteractionHandler = async ({ block, player }: { block, player: Player }) => {
       if (player.crouching) return
+      player.chat('Chests are dangerous! Wait for the next update!')
+      return // NEED TO IMPLEMENT FIRST!!!
       try {
         // Getting current block and block above it
         const id = await player.world.getBlockType(block.position)
-        const blockAbove = await player.world.getBlockType(block.position.plus(new Vec3(0, 1, 0)))
+        const blockAbove = await player.world.getBlock(block.position.plus(new Vec3(0, 1, 0)))
         // If there is any block directly above container then we can't open it
-        if (blockAbove) { return }
+        if (blockAbove?.boundingBox === 'block') { return }
         // Dynamic window ID feature
         if (player.windowId === undefined) { player.windowId = 1 } else { player.windowId = player.windowId + 1 }
         player.windowPos = block.position
@@ -108,4 +110,7 @@ export const server = (serv: Server, { version }: Options) => {
   })
 }
 declare global {
+  interface Player {
+    windowId: number
+  }
 }
