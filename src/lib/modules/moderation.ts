@@ -1,12 +1,10 @@
-import moment from 'moment'
-import needle from 'needle'
 import UserError from '../user_error'
 
 export const server = function (serv: Server, settings: Options) {
   serv.ban = async (uuid, reason) => {
     if (!serv.bannedPlayers[uuid]) {
       serv.bannedPlayers[uuid] = {
-        time: +moment(),
+        time: Date.now(),
         reason: reason || 'Your account is banned!'
       }
       return true
@@ -15,7 +13,7 @@ export const server = function (serv: Server, settings: Options) {
   serv.banIP = async (IP, reason) => {
     if (!serv.bannedIPs[IP]) {
       serv.bannedIPs[IP] = {
-        time: +moment(),
+        time: Date.now(),
         reason: reason || 'Your IP is banned!'
       }
       Object.keys(serv.players)
@@ -31,12 +29,11 @@ export const server = function (serv: Server, settings: Options) {
 
   serv.getUUIDFromUsername = async username => {
     return await new Promise((resolve, reject) => {
-      needle('get', 'https://api.mojang.com/users/profiles/minecraft/' + username, { json: true })
-        .then((response) => {
-          if (!response.body) throw new Error('username not found')
-          const idstr = response.body.id
-          if (typeof idstr !== 'string') throw new Error('username not found')
-          resolve(uuidInParts(idstr))
+      fetch('https://api.mojang.com/users/profiles/minecraft/' + username)
+        .then(response => response.json())
+        .then(body => {
+          if (!body || typeof body.id !== 'string') throw new Error('username not found')
+          resolve(uuidInParts(body.id))
         })
         .catch(err => { throw err })
     })

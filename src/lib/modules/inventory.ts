@@ -7,7 +7,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   const windows = PrismarineWindows(version)
 
   player.heldItemSlot = 0
-  player.heldItem = new Item(256, 1)
+  // player.heldItem = new Item(256, 1)
   player.inventory = windows.createWindow(1, 'minecraft:inventory', 'inv', 36)
 
   player._client.on('held_item_slot', ({ slotId } = {}) => {

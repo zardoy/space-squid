@@ -1,7 +1,6 @@
 import fs from 'fs'
 
 import path from 'path'
-import moment from 'moment'
 import colors from 'colors'
 
 const timeStarted = Math.floor(Date.now() / 1000).toString()
@@ -45,7 +44,9 @@ export const server = function (serv: Server, settings: Options) {
 
   serv.log = message => {
     readline?.cursorTo(process.stdout, 0)
-    message = moment().format('MMMM Do YYYY, HH:mm:ss') + ' ' + message
+    let date = new Date()
+    let formattedDate = `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()} ${date.getFullYear()}, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
+    message = formattedDate + ' ' + message // todo use intl
     message = serv.formatMessage?.(message) ?? message
     if (!message) return
     if (!settings.noConsoleOutput) console.log(message)
