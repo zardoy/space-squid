@@ -8,7 +8,7 @@ export const player = function (player: Player) {
     })
   )
 
-  player._client.on('entity_action', ({ actionId } = {}) => {
+  player._client.on('entity_action', ({ actionId }) => {
     if (actionId === 3) {
       player.setAndUpdateMetadata([{ key: 0, type: 0, value: 0x08 }])
     } else if (actionId === 4) {

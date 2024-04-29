@@ -6,8 +6,8 @@ function randomInt (low, high) {
 }
 
 export const server = function (serv: Server, settings: Options) {
-  serv.gameMode = settings.gameMode
-  serv.difficulty = settings.difficulty
+  serv.gameMode = settings.gameMode ?? 1
+  serv.difficulty = settings.difficulty ?? 1
   const mcData = serv.mcData
 
   // todo make logic general
@@ -40,8 +40,8 @@ export const server = function (serv: Server, settings: Options) {
 }
 
 export const player = function (player: Player, serv: Server) {
-  player.prevGameMode = 255
   player.gameMode = serv.gameMode
+  player.prevGameMode = player.gameMode
   player.findSpawnPoint = async () => {
     player.spawnPoint = await serv.getSpawnPoint(player.world)
   }
@@ -64,11 +64,8 @@ declare global {
     spawnPoint: Vec3
     /** The view size of the player, for example 8 for 16x16 */
     view: number
-    /** @internal */
     "prevGameMode": number
-    /** @internal */
-    "gameMode": any
-    /** @internal */
+    "gameMode": 0 | 1 | 2 | 3
     "findSpawnPoint": () => Promise<void>
   }
 }

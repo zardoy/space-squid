@@ -8,6 +8,7 @@ import { level, Anvil as AnvilLoader } from 'prismarine-provider-anvil'
 import * as playerDat from '../playerDat'
 import { Chunk, World } from 'prismarine-world/types/world'
 import WorldLoader from 'prismarine-world'
+import ChunkLoader from 'prismarine-chunk'
 import RegistryLoader from 'prismarine-registry'
 import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
@@ -18,10 +19,13 @@ const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
 export const server = async function (serv: Server, options: Options) {
-  const { version, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
+  const { version, worldSaveVersion, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
+  generation.options.worldHeight = serv.supportFeature('tallWorld') ? 384 : 256
+  generation.options.minY = serv.supportFeature('tallWorld') ? -64 : 0
+
   const World = WorldLoader(version)
   const registry = RegistryLoader(version)
-  const Anvil = AnvilLoader(version)
+  const Anvil = worldFolder ? AnvilLoader(worldSaveVersion ?? version) : undefined
 
   const newSeed = generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31))
   let seed
@@ -61,7 +65,7 @@ export const server = async function (serv: Server, options: Options) {
   }
   serv.emit('seed', generationOptions.seed)
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
-  serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
+  serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = generationOptions.seed
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
   // serv.endworld = new World(generations["end"]({}));
@@ -295,14 +299,20 @@ export const player = function (player: Player, serv: Server, settings: Options)
       x: chunkX,
       z: chunkZ,
       chunk: column
-    }, ({ x, z, chunk }) => {
+    }, ({ x, z, chunk }/* : {x, z, chunk: import('prismarine-chunk').PCChunk} */) => {
+      const newLightsFormat = serv.supportFeature('newLightingDataFormat')
+      const dumpedLights = chunk.dumpLight()
+      const newLightsData = newLightsFormat ? { skyLight: dumpedLights.skyLight, blockLight: dumpedLights.blockLight } : undefined
+      const chunkBuffer = chunk.dump()
       player._client.write('map_chunk', {
         x,
         z,
         groundUp: true,
+        //note: it's a flag that tells the client to trust the edges of the chunk, meaning that the client can render the chunk without having to wait for the edges to be sent
+        trustEdges: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
         bitMap: chunk.getMask(),
         ...serv.supportFeature('blockStateId') ? {
-          groundUp: false,
+          // groundUp: false,
           // bitMap: undefined // use full mask (e.g. 0xffff is default). workaround for https://github.com/PrismarineJS/prismarine-chunk/issues/205
         } : {},
         biomes: chunk.dumpBiomes(),
@@ -311,50 +321,62 @@ export const player = function (player: Player, serv: Server, settings: Options)
           type: 'compound',
           name: '',
           value: {
-            MOTION_BLOCKING: { type: 'longArray', value: new Array(36).fill([0, 0]) }
+            MOTION_BLOCKING: { type: 'longArray', value: new Array(37).fill([0, 0]) },
+            WORLD_SURFACE: { type: 'longArray', value: new Array(37).fill([0, 0]) },
           }
         }, // FIXME: fake heightmap
-        chunkData: chunk.dump(),
-        blockEntities: []
+        chunkData: chunkBuffer,
+        blockEntities: [],
+        skyLightMask: chunk.skyLightMask,
+        // skyLightMask: [chunk.skyLightMask.data],
+        emptySkyLightMask: chunk.emptySkyLightMask,
+        blockLightMask: chunk.blockLightMask,
+        emptyBlockLightMask: chunk.emptyBlockLightMask,
+        ...newLightsData
       })
-      if (serv.supportFeature('lightSentSeparately')) {
+      if (serv.supportFeature('lightSentSeparately') && !serv.supportFeature('newLightingDataFormat')) {
         player._client.write('update_light', {
           chunkX: x,
           chunkZ: z,
           trustEdges: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
           skyLightMask: chunk.skyLightMask,
           blockLightMask: chunk.blockLightMask,
-          emptySkyLightMask: 0,
-          emptyBlockLightMask: 0,
-          data: chunk.dumpLight()
+          emptySkyLightMask: chunk.emptySkyLightMask,
+          emptyBlockLightMask: chunk.emptyBlockLightMask,
+          ...newLightsData ? newLightsData : {
+            data: dumpedLights
+          }
         })
       }
       Object.assign(serv.overworld.blockEntityData, column.blockEntities)
-      for (const key in column.blockEntities) {
+      for (const key in column.blockEntities ?? []) {
         const blockEntity = column.blockEntities[key]
         const actionPerId = {
           MobSpawner: 1,
           Control: 2
         }
-        let action = actionPerId[blockEntity.value.id?.value]
-        if (action === undefined) {
-          if (serv.looseProtocolMode) { // eg mineflayer don't care of action passed here, so lets always send tile entity
-            action = 0
-          } else {
-            continue
+        const value = blockEntity.value?.id?.value
+        if (value) {
+          let action = actionPerId[value]
+          if (action === undefined) {
+            if (serv.looseProtocolMode) { // eg mineflayer don't care of action passed here, so lets always send tile entity
+              action = 0
+            } else {
+              continue
+            }
           }
+          const [x, y, z] = key.split(',').map(a => parseInt(a))
+          blockEntity.name = ''
+          player._client.write('tile_entity_data', {
+            location: {
+              x,
+              y,
+              z
+            },
+            action,
+            nbtData: blockEntity
+          })
         }
-        const [x, y, z] = key.split(',').map(a => parseInt(a))
-        blockEntity.name = ''
-        player._client.write('tile_entity_data', {
-          location: {
-            x,
-            y,
-            z
-          },
-          action,
-          nbtData: blockEntity
-        })
       }
       return Promise.resolve()
     })
@@ -402,7 +424,8 @@ export const player = function (player: Player, serv: Server, settings: Options)
 
   player.sendSpawnPosition = () => {
     player._client.write('spawn_position', {
-      location: player.spawnPoint
+      location: player.spawnPoint,
+      angle: 0,
     })
   }
 

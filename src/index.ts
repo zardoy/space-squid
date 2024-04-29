@@ -61,10 +61,11 @@ class MCServer extends EventEmitter {
       console.warn(`Version ${version.minecraftVersion} is not supported.`)
     }
     server.supportFeature = feature => {
-      if (feature === 'theFlattening') feature = 'blockStateId'
+      if (feature === 'theFlattening') feature = 'blockStateId' as any
       return mcData.supportFeature(feature)
     }
     server.commands = new Command({})
+    // pass version, motd, port, max-players, online-mode
     server._server = createServer(options)
 
     const promises: Promise<any>[] = []
@@ -95,7 +96,7 @@ declare global {
     commands: Command
     pluginsReady: boolean
     _server: ProtocolServer
-    supportFeature: (feature: string) => boolean
+    supportFeature: IndexedData['supportFeature']
   }
 }
 

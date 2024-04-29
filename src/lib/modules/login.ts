@@ -7,6 +7,7 @@ import * as playerDat from '../playerDat'
 import * as convertInventorySlotId from '../convertInventorySlotId'
 import * as plugins from './index'
 import { skipMcPrefix } from '../utils'
+import { dimensionOverworld, getDimensionCodec } from './dimensionCodec'
 
 export const server = function (serv: Server, options: Options) {
   serv._server.on('connection', client => {
@@ -23,7 +24,7 @@ export const server = function (serv: Server, options: Options) {
     }
     try {
       const player = serv.initEntity('player', null, serv.overworld, new Vec3(0, 0, 0))
-      player._client = client
+      player._client = client as any
 
       player.profileProperties = player._client.profile ? player._client.profile.properties : []
 
@@ -104,19 +105,27 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   function sendLogin () {
+    const MAX_HEIGHT = serv.supportFeature('tallWorld') ? 384 : 256
     // send init data so client will start rendering world
+    const viewDistance = (settings['view-distance'] ??= 10)
+    const dimensionCodec = getDimensionCodec(MAX_HEIGHT, serv.supportFeature('dimensionDataIsAvailable'))
+
     player._client.write('login', {
       entityId: player.id,
-      levelType: 'default',
+      isHardcore: player.gameMode === 0,
       gameMode: player.gameMode,
       previousGameMode: player.prevGameMode,
       worldNames: Object.values(serv.dimensionNames),
       dimensionCodec,
+      levelType: 'minecraft:overworld',
+      worldType: 'minecraft:overworld',
       worldName: serv.dimensionNames[0],
-      dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : 0,
+      dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : serv.supportFeature('dimensionIsAnInt') ? 0 : dimensionOverworld,
       hashedSeed: serv.hashedSeed,
       difficulty: serv.difficulty,
-      viewDistance: settings['view-distance'],
+      viewDistance,
+      simulationDistance: viewDistance,
+      portalCooldown: 0,
       reducedDebugInfo: false,
       maxPlayers: Math.min(255, serv._server.maxPlayers),
       enableRespawnScreen: true,
@@ -168,6 +177,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       action: 1,
       data: [{
         UUID: player.uuid,
+        uuid: player.uuid,
         gamemode: player.gameMode
       }]
     })
@@ -179,6 +189,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       action: 0,
       data: [{
         UUID: player.uuid,
+        uuid: player.uuid,
         name: player.username,
         properties: player.profileProperties,
         gamemode: player.gameMode,
@@ -190,6 +201,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       action: 0,
       data: serv.players.map((otherPlayer) => ({
         UUID: otherPlayer.uuid,
+        uuid: otherPlayer.uuid,
         name: otherPlayer.username,
         properties: otherPlayer.profileProperties,
         gamemode: otherPlayer.gameMode,
@@ -200,6 +212,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       action: 2,
       data: serv.players.map(otherPlayer => ({
         UUID: otherPlayer.uuid,
+        uuid: otherPlayer.uuid,
         ping: otherPlayer._client.latency
       }))
     }), 5000)
@@ -217,8 +230,35 @@ export const player = async function (player: Player, serv: Server, settings: Op
         events.map(event => player._client.removeListener(event, listener))
         resolve()
       }
-      events.map(event => player._client.on(event, listener))
+      events.map(event => player._client.on(event as any, listener))
     })
+  }
+
+  const sendWorldInfo = () => {
+    player._client.write('update_view_distance', {
+      viewDistance: settings['view-distance']
+    })
+    player._client.write('simulation_distance', {
+      distance: settings['view-distance']
+    })
+    player._client.write('update_view_position', {
+      chunkX: 0,
+      chunkZ: 0
+    })
+    const worldBorder = settings['worldBorder']?.radius/*  ?? 250_000 */
+    // todo still need to be supported
+    if (worldBorder) {
+      player._client.write('initialize_world_border', {
+        x: 0,
+        z: 0,
+        oldDiameter: worldBorder * 2,
+        newDiameter: worldBorder * 2,
+        speed: 0,
+        portalTeleportBoundary: worldBorder,
+        warningBlocks: 5,
+        warningTime: 15
+      })
+    }
   }
 
   player.login = async () => {
@@ -240,6 +280,8 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.sendSpawnPosition()
     player.sendSelfPosition(false)
     player.sendAbilities()
+    sendWorldInfo()
+
     const distance = settings['view-distance']
     player.setLoadingStatus(`Getting initial chunks (distance = ${distance})`)
     await player.sendMap()
@@ -266,249 +308,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
     }
   }
 
-  const dimensionCodec = { // Dumped from a vanilla 1.16.1 server, as these are hardcoded constants
-    type: 'compound',
-    name: '',
-    value: {
-      dimension: {
-        type: 'list',
-        value: {
-          type: 'compound',
-          value: [
-            {
-              name: {
-                type: 'string',
-                value: 'minecraft:overworld'
-              },
-              bed_works: {
-                type: 'byte',
-                value: 1
-              },
-              shrunk: {
-                type: 'byte',
-                value: 0
-              },
-              piglin_safe: {
-                type: 'byte',
-                value: 0
-              },
-              has_ceiling: {
-                type: 'byte',
-                value: 0
-              },
-              has_skylight: {
-                type: 'byte',
-                value: 1
-              },
-              infiniburn: {
-                type: 'string',
-                value: 'minecraft:infiniburn_overworld'
-              },
-              ultrawarm: {
-                type: 'byte',
-                value: 0
-              },
-              ambient_light: {
-                type: 'float',
-                value: 0
-              },
-              logical_height: {
-                type: 'int',
-                value: 256
-              },
-              has_raids: {
-                type: 'byte',
-                value: 1
-              },
-              natural: {
-                type: 'byte',
-                value: 1
-              },
-              respawn_anchor_works: {
-                type: 'byte',
-                value: 0
-              }
-            }, /*, minecraft:overworld_caves is not implemented in flying-squid yet            {
-              "name": {
-                "type": "string",
-                "value": "minecraft:overworld_caves"
-              },
-              "bed_works": {
-                "type": "byte",
-                "value": 1
-              },
-              "shrunk": {
-                "type": "byte",
-                "value": 0
-              },
-              "piglin_safe": {
-                "type": "byte",
-                "value": 0
-              },
-              "has_ceiling": {
-                "type": "byte",
-                "value": 1
-              },
-              "has_skylight": {
-                "type": "byte",
-                "value": 1
-              },
-              "infiniburn": {
-                "type": "string",
-                "value": "minecraft:infiniburn_overworld"
-              },
-              "ultrawarm": {
-                "type": "byte",
-                "value": 0
-              },
-              "ambient_light": {
-                "type": "float",
-                "value": 0
-              },
-              "logical_height": {
-                "type": "int",
-                "value": 256
-              },
-              "has_raids": {
-                "type": "byte",
-                "value": 1
-              },
-              "natural": {
-                "type": "byte",
-                "value": 1
-              },
-              "respawn_anchor_works": {
-                "type": "byte",
-                "value": 0
-              }
-            } */
-            {
-              infiniburn: {
-                type: 'string',
-                value: 'minecraft:infiniburn_nether'
-              },
-              ultrawarm: {
-                type: 'byte',
-                value: 1
-              },
-              logical_height: {
-                type: 'int',
-                value: 128
-              },
-              natural: {
-                type: 'byte',
-                value: 0
-              },
-              name: {
-                type: 'string',
-                value: 'minecraft:the_nether'
-              },
-              bed_works: {
-                type: 'byte',
-                value: 0
-              },
-              fixed_time: {
-                type: 'long',
-                value: [
-                  0,
-                  18000
-                ]
-              },
-              shrunk: {
-                type: 'byte',
-                value: 1
-              },
-              piglin_safe: {
-                type: 'byte',
-                value: 1
-              },
-              has_skylight: {
-                type: 'byte',
-                value: 0
-              },
-              has_ceiling: {
-                type: 'byte',
-                value: 1
-              },
-              ambient_light: {
-                type: 'float',
-                value: 0.1
-              },
-              has_raids: {
-                type: 'byte',
-                value: 0
-              },
-              respawn_anchor_works: {
-                type: 'byte',
-                value: 1
-              }
-            }/*, minecraft:the_end is not implemented in flying-squid yet
-            {
-              "infiniburn": {
-                "type": "string",
-                "value": "minecraft:infiniburn_end"
-              },
-              "ultrawarm": {
-                "type": "byte",
-                "value": 0
-              },
-              "logical_height": {
-                "type": "int",
-                "value": 256
-              },
-              "natural": {
-                "type": "byte",
-                "value": 0
-              },
-              "name": {
-                "type": "string",
-                "value": "minecraft:the_end"
-              },
-              "bed_works": {
-                "type": "byte",
-                "value": 0
-              },
-              "fixed_time": {
-                "type": "long",
-                "value": [
-                  0,
-                  6000
-                ]
-              },
-              "shrunk": {
-                "type": "byte",
-                "value": 0
-              },
-              "piglin_safe": {
-                "type": "byte",
-                "value": 0
-              },
-              "has_skylight": {
-                "type": "byte",
-                "value": 0
-              },
-              "has_ceiling": {
-                "type": "byte",
-                "value": 0
-              },
-              "ambient_light": {
-                "type": "float",
-                "value": 0
-              },
-              "has_raids": {
-                "type": "byte",
-                "value": 1
-              },
-              "respawn_anchor_works": {
-                "type": "byte",
-                "value": 0
-              }
-            } */
-          ]
-        }
-      }
-    }
-  }
+
 }
 declare global {
   interface Server {

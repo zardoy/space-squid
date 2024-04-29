@@ -47,6 +47,15 @@ declare global {
   }
   interface Options {
     version: string
+    /**
+     * @deprecated will be reworked in the future
+     */
+    worldSaveVersion?: string
+    worldBorder?: {
+      /** The radius of the world border */
+      radius: number
+      /** The center of the world border */
+    }
     /** initial write level name */
     levelName?: string
     motd?: string
@@ -61,6 +70,7 @@ declare global {
       name: string
       options: {
         worldHeight?: number
+        minY?: number
         seed?: number
         version?: string
       }

@@ -1,6 +1,7 @@
 const Vec3 = require('vec3').Vec3
 
 function generation (options = {}) {
+  const {minY, worldHeight} = options
   const Chunk = require('prismarine-chunk')(options.version)
   const mcData = require('minecraft-data')(options.version)
   const theFlattening = mcData.supportFeature('blockStateId')
@@ -13,7 +14,7 @@ function generation (options = {}) {
   const debug = options.debug || false
 
   function generateChunk () {
-    const chunk = new Chunk()
+    const chunk = new Chunk({ minY, worldHeight })
     const height = middleThickness + 1
     const DEBUG_POINTS = [new Vec3(0, height, 0), new Vec3(15, height, 0), new Vec3(0, height, 15), new Vec3(15, height, 15)]
     for (let x = 0; x < 16; x++) {

@@ -318,6 +318,8 @@ export const entity = function (entity: Entity, serv: Server) {
       entityPosition = entity.position
     }
 
+    // clamped
+    const yaw = Math.max(0, Math.min(255, Math.floor((entity.yaw % 360) * 256 / 360)))
     if (entity.type === 'player') {
       return {
         entityId: entity.id,
@@ -325,7 +327,7 @@ export const entity = function (entity: Entity, serv: Server) {
         x: entityPosition.x,
         y: entityPosition.y,
         z: entityPosition.z,
-        yaw: entity.yaw,
+        yaw,
         pitch: entity.pitch,
         currentItem: 0,
         metadata: entity.metadata
@@ -364,11 +366,13 @@ export const entity = function (entity: Entity, serv: Server) {
     }
   }
 
+  const isPlayer = (arg: Entity): arg is Player => arg.type === 'player'
+
   entity.updateAndSpawn = () => {
     const updatedEntities = entity.getNearby()
     const entitiesToAdd = updatedEntities.filter(e => entity.nearbyEntities.indexOf(e) === -1)
     const entitiesToRemove = entity.nearbyEntities.filter(e => updatedEntities.indexOf(e) === -1)
-    if (entity.type === 'player') {
+    if (isPlayer(entity)) {
       entity.despawnEntities(entitiesToRemove)
       entitiesToAdd.forEach(entity.spawnEntity)
     }
@@ -379,7 +383,7 @@ export const entity = function (entity: Entity, serv: Server) {
 
     playersToRemove.forEach(p => p.despawnEntities([entity]))
     playersToRemove.forEach(p => { p.nearbyEntities = p.getNearby() })
-    playersToAdd.forEach(p => p.spawnEntity(entity))
+    playersToAdd.forEach(p => (p as Player).spawnEntity(entity))
     playersToAdd.forEach(p => { p.nearbyEntities = p.getNearby() })
 
     entity.nearbyEntities = updatedEntities
@@ -462,8 +466,6 @@ declare global {
     headPitch: number
     /** @internal */
     despawnEntities: (arg0: any[]) => void
-    /** @internal */
-    spawnEntity: any
     /** @internal */
     "initEntity": (type: any, entityType: any, world: any, position: any) => void
     /** @internal */

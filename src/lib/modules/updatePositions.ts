@@ -1,7 +1,9 @@
 import { Vec3 } from 'vec3'
 
 export const player = function (player: Player) {
-  player._client.on('look', ({ yaw, pitch, onGround } = {}) => sendLook(yaw, pitch, onGround))
+  player._client.on('look', ({ yaw, pitch, onGround } = {} as never) => {
+    sendLook(yaw, pitch, onGround)
+  })
 
   // float (degrees) --> byte (1/256 "degrees")
   function conv (f) {
@@ -37,11 +39,11 @@ export const player = function (player: Player) {
     })
   }
 
-  player._client.on('position', ({ x, y, z, onGround } = {}) => {
+  player._client.on('position', ({ x, y, z, onGround } = {} as never) => {
     player.sendPosition((new Vec3(x, y, z)), onGround)
   })
 
-  player._client.on('position_look', ({ x, y, z, onGround, yaw, pitch } = {}) => {
+  player._client.on('position_look', ({ x, y, z, onGround, yaw, pitch } = {} as never) => {
     player.sendPosition((new Vec3(x, y, z)), onGround)
     sendLook(yaw, pitch, onGround)
   })
@@ -162,7 +164,7 @@ declare global {
   }
   interface Entity {
     /** ID of entity on server */
-    id: string // do we need 2 ids?
+    id: number // do we need 2 ids?
     /** @internal */
     uuid: string
     /** Current position (currently in fixed position (x32 what you'd expect) so do entity.position.scaled(1/32) to get normal position) */
