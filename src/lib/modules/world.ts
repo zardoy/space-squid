@@ -311,8 +311,8 @@ export const player = function (player: Player, serv: Server, settings: Options)
         //note: it's a flag that tells the client to trust the edges of the chunk, meaning that the client can render the chunk without having to wait for the edges to be sent
         trustEdges: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
         bitMap: chunk.getMask(),
-        ...serv.supportFeature('blockStateId') ? {
-          // groundUp: false,
+        ...serv.supportFeature('blockStateId') && serv.looseProtocolMode ? {
+          groundUp: false,
           // bitMap: undefined // use full mask (e.g. 0xffff is default). workaround for https://github.com/PrismarineJS/prismarine-chunk/issues/205
         } : {},
         biomes: chunk.dumpBiomes(),
