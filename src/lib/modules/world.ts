@@ -18,7 +18,7 @@ import { generateSpiralMatrix } from '../../utils'
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
-export const server = async function (serv: Server, options: Options) {
+export const server: ServerModule = async function (serv, options) {
   const { version, worldSaveVersion: _worldSaveVersion, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
   generation.options.worldHeight = serv.supportFeature('tallWorld') ? 384 : 256
   generation.options.minY = serv.supportFeature('tallWorld') ? -64 : 0
@@ -73,6 +73,12 @@ export const server = async function (serv: Server, options: Options) {
   serv.overworld.seed = generationOptions.seed
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
   // serv.endworld = new World(generations["end"]({}));
+
+  serv.worlds = {
+    'overworld': serv.overworld,
+    'nether': serv.netherworld
+    // 'end': serv.endworld
+  }
 
   serv.dimensionNames = {
     '-1': 'minecraft:nether',
@@ -264,6 +270,13 @@ export const server = async function (serv: Server, options: Options) {
       ctx.player!.world.blockEntityData[key] = blockEntities[key]
     },
   })
+
+  return () => {
+    for (const world of Object.values(serv.worlds)) {
+      // world.throwOnReadWrite = true
+      world.stopSaving()
+    }
+  }
 }
 
 export const player = function (player: Player, serv: Server, settings: Options) {
@@ -276,6 +289,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
   })
 
   player.save = async () => {
+    if (!settings.worldFolder) return
     return await playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
   }
 
@@ -499,6 +513,7 @@ declare global {
     spawnPoint?: Vec3
     /** Parsed level.dat of the loaded world (only if worldFolder is specificed) */
     levelData?: LevelDatFull
+    worlds: Record<string, CustomWorld>
     /** Contains the overworld world. This is where the default spawn point is */
     "overworld": CustomWorld
     /** Contains the nether world. This **WILL** be used when a player travels through a portal if they are in the overworld! */

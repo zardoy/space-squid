@@ -43,7 +43,7 @@ module.exports = function (dir, basenames) {
       const stats = fs.statSync(filepath)
 
       // Don't require non-javascript files (.txt, .md, etc.)
-      if (stats.isFile() && !(['.js', '.node', '.json', '.ts', '.tsx'].includes(ext))) {
+      if (['.d.ts'].some(ext => filename.endsWith(ext)) || (stats.isFile() && !(['.js', '.node', '.json', '.ts', '.tsx'].includes(ext)))) {
         return
       }
 

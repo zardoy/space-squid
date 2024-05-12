@@ -44,4 +44,4 @@ It's recommended to also install `pm2` for process auto-restart on crashes and s
 0. Clone, setup Node.js (at least v18.6.0)
 1. Install dependencies: `npm install` or `pnpm install`
 2. Run `npm run dev`, `npm run start` for without watch or `npm run watch` for watch mode (for prismarine-web-client)
-2.1. If using [Bun](https://bun.sh) (recommended) instead: `bun --watch src/app.js` or `bun --hot src/app.js` (preview)
+2.1. If using [Bun](https://bun.sh) (experimental) instead: `bun --watch src/app.js` or `bun --hot src/app.js` (preview)

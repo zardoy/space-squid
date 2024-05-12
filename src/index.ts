@@ -47,6 +47,7 @@ export { supportedVersions }
 
 class MCServer extends EventEmitter {
   pluginsReady = false
+  private abortController = new AbortController()
   constructor() {
     modules.initPlugins()
     super()
@@ -54,8 +55,13 @@ class MCServer extends EventEmitter {
 
   connect (options: Options) {
     const server = this as unknown as Server
+    server.abortSignal = this.abortController.signal
+    server.cleanupFunctions = [
+      () => this.abortController.abort()
+    ]
     const mcData = require('minecraft-data')(options.version)
     server.mcData = mcData
+    if (mcData === null) throw new Error(`Version ${options.version} is not supported as it doesn't have the data.`)
     const version = mcData.version
     if (!supportedVersions.some(v => v.includes(version.majorVersion))) {
       console.warn(`Version ${version.minecraftVersion} is not supported.`)
@@ -92,13 +98,20 @@ class MCServer extends EventEmitter {
   }
 }
 
+type Cleanup = () => void
+type MaybePromise<T> = T | Promise<T>
+
 declare global {
   interface Server {
     commands: Command
     pluginsReady: boolean
     _server: ProtocolServer
     supportFeature: IndexedData['supportFeature']
+    abortSignal: AbortSignal
+    cleanupFunctions: Cleanup[]
   }
+
+  type ServerModule = (server: Server, options: Options) => MaybePromise<void | Cleanup>
 }
 
 export * as Behavior from './lib/behavior'

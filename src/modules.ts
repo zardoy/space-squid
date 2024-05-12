@@ -65,7 +65,7 @@ declare global {
     logging?: boolean
     gameMode?: number
     difficulty?: number
-    worldFolder?: string
+    worldFolder?: string | false
     generation?: {
       name: string
       options: {
@@ -91,5 +91,9 @@ declare global {
     "max-entities": number
     noConsoleOutput?: boolean
     savingInterval?: number | false
+    /**
+     * @jsOnly
+     */
+    oldServerInstance?: Server
   }
 }

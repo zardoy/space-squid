@@ -2,6 +2,7 @@ import once from '@tootallnate/once'
 
 export const server = function (serv: Server) {
   serv.quit = async (reason = 'Server closed') => {
+    serv.cleanupFunctions.forEach(fn => fn())
     await Promise.all(serv.players.map((player) => {
       player.kick(reason)
       return once(player, 'disconnected')
@@ -41,7 +42,9 @@ export const player = function (player: Player, serv: Server, { worldFolder }: O
 }
 declare global {
   interface Server {
-    /** @internal */
+    /**
+     * Stop and dispose the server
+     */
     "quit": (reason?: string) => Promise<void>
   }
   interface Player {

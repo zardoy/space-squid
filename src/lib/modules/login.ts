@@ -68,7 +68,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
     await player.findSpawnPoint()
 
     player.setLoadingStatus('Reading player data')
-    playerData = await playerDat.read(player.uuid, player.spawnPoint, settings.worldFolder)
+    playerData = await playerDat.read(player.uuid, player.spawnPoint, settings.worldFolder ?? false)
     Object.keys(playerData.player).forEach(k => { player[k] = playerData.player[k] })
 
     serv.players.push(player)
@@ -309,8 +309,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.sendRestMap()
     sendChunkWhenMove()
 
-    if (playerData.new) {
-      // skip unnecessary fs operation
+    if (playerData.new) { // otherwise we skip unnecessary fs operation
       player.save()
     }
   }

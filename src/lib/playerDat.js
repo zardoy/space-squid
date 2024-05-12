@@ -16,7 +16,22 @@ const playerDefaults = {
   heldItemSlot: 0
 }
 
+/**
+ * @param {string} uuid
+ * @param {Vec3} spawnPoint
+ * @param {string | false} worldFolder
+ */
 async function read (uuid, spawnPoint, worldFolder) {
+  const newPlayerData = () => {
+    return {
+      player: { ...playerDefaults, ...{ position: spawnPoint.clone() } },
+      inventory: [],
+      new: true
+    }
+  }
+
+  if (!worldFolder) return newPlayerData()
+
   try {
     const playerDataFile = await promises.readFile(`${worldFolder}/playerdata/${uuid}.dat`)
     /** @type {any} */
@@ -41,11 +56,7 @@ async function read (uuid, spawnPoint, worldFolder) {
       new: false
     }
   } catch (e) {
-    return {
-      player: { ...playerDefaults, ...{ position: spawnPoint.clone() } },
-      inventory: [],
-      new: true
-    }
+    return newPlayerData()
   }
 }
 
@@ -86,6 +97,12 @@ function playerInventoryToNBT (playerInventory, theFlattening) {
   return nbtInventory
 }
 
+/**
+ * @param {Player} player
+ * @param {string | undefined} worldFolder
+ * @param {boolean} snakeCase
+ * @param {boolean} theFlattening
+ */
 async function save (player, worldFolder, snakeCase, theFlattening) {
   if (worldFolder === undefined) {
     return
