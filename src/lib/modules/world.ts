@@ -19,13 +19,14 @@ const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
 export const server = async function (serv: Server, options: Options) {
-  const { version, worldSaveVersion, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
+  const { version, worldSaveVersion: _worldSaveVersion, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
   generation.options.worldHeight = serv.supportFeature('tallWorld') ? 384 : 256
   generation.options.minY = serv.supportFeature('tallWorld') ? -64 : 0
 
   const World = WorldLoader(version)
   const registry = RegistryLoader(version)
-  const Anvil = worldFolder ? AnvilLoader(worldSaveVersion ?? version) : undefined
+  const worldSaveVersion = _worldSaveVersion ?? version
+  const Anvil = worldFolder ? AnvilLoader(worldSaveVersion) : undefined
 
   const newSeed = generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31))
   let seed
@@ -47,6 +48,9 @@ export const server = async function (serv: Server, options: Options) {
         serv.spawnPoint = new Vec3(SpawnX, SpawnY, SpawnZ)
       }
       seed = levelData.RandomSeed[0]
+      if (serv.levelData.Version !== undefined && serv.levelData.Version.Name !== worldSaveVersion) {
+        console.warn(`World save version mismatch: you select: ${serv.levelData.Version.Name} actual stored: ${worldSaveVersion}`)
+      }
     } catch (err) {
       seed = newSeed
       await level.writeLevel(worldFolder + '/level.dat', {
@@ -312,7 +316,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
         trustEdges: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
         bitMap: chunk.getMask(),
         ...serv.supportFeature('blockStateId') && serv.looseProtocolMode ? {
-          groundUp: false,
+          // groundUp: false,
           // bitMap: undefined // use full mask (e.g. 0xffff is default). workaround for https://github.com/PrismarineJS/prismarine-chunk/issues/205
         } : {},
         biomes: chunk.dumpBiomes(),
@@ -321,8 +325,8 @@ export const player = function (player: Player, serv: Server, settings: Options)
           type: 'compound',
           name: '',
           value: {
-            MOTION_BLOCKING: { type: 'longArray', value: new Array(37).fill([0, 0]) },
-            WORLD_SURFACE: { type: 'longArray', value: new Array(37).fill([0, 0]) },
+            MOTION_BLOCKING: { type: 'longArray', value: new Array(serv.supportFeature('dimensionDataIsAvailable') ? 37 : 36).fill([0, 0]) }, // must be
+            WORLD_SURFACE: { type: 'longArray', value: new Array(serv.supportFeature('dimensionDataIsAvailable') ? 37 : 36).fill([0, 0]) },
           }
         }, // FIXME: fake heightmap
         chunkData: chunkBuffer,

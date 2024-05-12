@@ -117,7 +117,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       previousGameMode: player.prevGameMode,
       worldNames: Object.values(serv.dimensionNames),
       dimensionCodec,
-      levelType: 'minecraft:overworld',
+      levelType: 'default',
       worldType: 'minecraft:overworld',
       worldName: serv.dimensionNames[0],
       dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : serv.supportFeature('dimensionIsAnInt') ? 0 : dimensionOverworld,
@@ -238,26 +238,33 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player._client.write('update_view_distance', {
       viewDistance: settings['view-distance']
     })
-    player._client.write('simulation_distance', {
-      distance: settings['view-distance']
-    })
-    player._client.write('update_view_position', {
-      chunkX: 0,
-      chunkZ: 0
-    })
+    // todo cleanup
+    if (+settings.version.split('.')[1] >= 18) {
+      player._client.write('simulation_distance', {
+        distance: settings['view-distance']
+      })
+    }
+    if (serv.supportFeature('updateViewPosition')) {
+      player._client.write('update_view_position', {
+        chunkX: 0,
+        chunkZ: 0
+      })
+    }
     const worldBorder = settings['worldBorder']?.radius/*  ?? 250_000 */
     // todo still need to be supported
     if (worldBorder) {
-      player._client.write('initialize_world_border', {
-        x: 0,
-        z: 0,
-        oldDiameter: worldBorder * 2,
-        newDiameter: worldBorder * 2,
-        speed: 0,
-        portalTeleportBoundary: worldBorder,
-        warningBlocks: 5,
-        warningTime: 15
-      })
+      if (+settings.version.split('.')[1] >= 17) {
+        player._client.write('initialize_world_border', {
+          x: 0,
+          z: 0,
+          oldDiameter: worldBorder * 2,
+          newDiameter: worldBorder * 2,
+          speed: 0,
+          portalTeleportBoundary: worldBorder,
+          warningBlocks: 5,
+          warningTime: 15
+        })
+      }
     }
   }
 

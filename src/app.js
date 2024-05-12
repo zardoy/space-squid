@@ -33,12 +33,10 @@ const argv = yargs
   .option('ver', {
     description: 'The version of the server to run (for clients and world)',
     type: 'string',
-    default: 'false'
   })
   .option('world', {
     description: 'Path to Java world save folder',
     type: 'string',
-    default: 'false'
   })
   .argv
 
@@ -60,7 +58,7 @@ if (argv.log) settings.logging = true
 if (argv.op) settings['everybody-op'] = true
 if (argv.port) settings.port = +argv.port
 if (argv.ver) settings.version = argv.ver
-if (argv.world) settings.worldFolder = argv.world
+if (argv.world) settings.worldFolder = argv.world === 'false' ? false : argv.world
 
 if (!require('./lib/version').supportedVersions.includes(settings.version)) {
   // throw new Error(`Version ${settings.version} is not supported.`)

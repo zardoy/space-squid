@@ -14,6 +14,11 @@ let rl: import("readline").Interface
 if (isInNode) {
   import(/* webpackIgnore: true */ 'exit-hook').then((hook) => {
     hook.default(() => {
+      // todo fix, instead use double ctrl+c
+      setTimeout(() => {
+        console.log('Forcefully shutting down...')
+        process.exit(0)
+      }, 2000)
       for (const serv of _servers) {
         serv.log('Server shutting down...')
         serv.quit()

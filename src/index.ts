@@ -62,6 +62,7 @@ class MCServer extends EventEmitter {
     }
     server.supportFeature = feature => {
       if (feature === 'theFlattening') feature = 'blockStateId' as any
+      if (feature === 'dimensionDataIsAvailable') return +options.version.split('.')[1] >= 16
       return mcData.supportFeature(feature)
     }
     server.commands = new Command({})

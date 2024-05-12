@@ -14,6 +14,7 @@
   "scripts": {
     "start": "tsc && node dist/app.js",
     "build": "tsc && node scripts/genTypes.mjs",
+    "dev": "tsx watch src/app.js",
     "watch": "tsc -w",
     "make-exe": "pkg dist/app.js --targets node18-win-x64",
     "build-npm": "tsc -p tsconfig.npm.json && node scripts/genTypes.mjs",
@@ -42,7 +43,7 @@
     "colors": "1.4.0",
     "diamond-square": "^1.2.0",
     "emit-then": "^2.0.0",
-    "event-promise": "^0.0.1",
+    "@tootallnate/once": "^3.0.0",
     "exit-hook": "^2.2.1",
     "flatmap": "^0.0.3",
     "long": "^5.1.0",
@@ -69,8 +70,8 @@
     "yargs": "^17.0.1"
   },
   "devDependencies": {
+    "tsx": "^4.10.1",
     "expect": "^29.1.2",
-    "flying-squid": "file:.",
     "longjohn": "^0.2.12",
     "minecraft-wrap": "^1.2.3",
     "mineflayer": "^4.0.0",

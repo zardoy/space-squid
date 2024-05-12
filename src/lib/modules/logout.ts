@@ -1,4 +1,4 @@
-import once from 'event-promise'
+import once from '@tootallnate/once'
 
 export const server = function (serv: Server) {
   serv.quit = async (reason = 'Server closed') => {
@@ -7,7 +7,7 @@ export const server = function (serv: Server) {
       return once(player, 'disconnected')
     }))
     serv._server.close()
-    await once(serv._server, 'close')
+    await once(serv._server, 'close' as any)
   }
 }
 
