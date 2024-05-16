@@ -65,7 +65,27 @@ if (!require('./lib/version').supportedVersions.includes(settings.version)) {
   console.warn(`Version ${settings.version} is not supported.`)
 }
 
-module.exports = globalThis.server = mcServer.createMCServer(settings)
+if (globalThis.server) {
+  globalThis.__hot_reload = true
+  settings.oldServerData = globalThis.server
+}
+
+const server = mcServer.createMCServer(settings)
+
+globalThis.server = {
+  _server: server._server,
+  cleanupFunctions: server.cleanupFunctions,
+  players: server.players,
+  oldData: {}
+}
+module.exports = server
+
+const saveData = ['time']
+server.on('tick', () => {
+  for (const data of saveData) {
+    globalThis.server.oldData[data] = server[data]
+  }
+})
 
 process.on('unhandledRejection', err => {
   console.log(err.stack)

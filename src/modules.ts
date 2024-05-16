@@ -92,8 +92,9 @@ declare global {
     noConsoleOutput?: boolean
     savingInterval?: number | false
     /**
+     * @internal
      * @jsOnly
      */
-    oldServerInstance?: Server
+    oldServerData?: Partial<Server> & { oldData: Record<string, any> }
   }
 }

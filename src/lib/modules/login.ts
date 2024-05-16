@@ -10,11 +10,46 @@ import { skipMcPrefix } from '../utils'
 import { dimensionOverworld, getDimensionCodec } from './dimensionCodec'
 
 export const server = function (serv: Server, options: Options) {
+  serv.players ??= []
+  serv.uuidToPlayer = {}
+
   serv._server.on('connection', client => {
     client.on('error', error => {
       serv.emit('clientError', client, error)
     })
   })
+
+  const patchClient = (client) => {
+    client.oldAddListener ??= client.on.bind(client)
+    client.patchedAddListener = (name, ...args) => {
+      client.oldAddListener(name, ...args)
+      serv.cleanupFunctions.push(() => client.removeListener(name, ...args))
+    }
+    client.on = client.patchedAddListener
+    client.addListener = client.patchedAddListener
+  }
+
+  const addPlayerShared = async (player: Player) => {
+    patchClient(player._client)
+
+    for (const plugin of plugins.builtinPlugins) plugin.player?.(player, serv, options)
+
+    serv.emit('newPlayer', player)
+    player.emit('asap')
+  }
+
+  // #region hot reload
+  serv.on('pluginsReady', () => {
+    // add players from old server
+    for (const player of serv.players ?? []) {
+      addPlayerShared(player)
+      player.world = serv.overworld
+      player.sendChunkWhenMove()
+      player._unloadAllChunks()
+      player.sendRestMap()
+    }
+  })
+  // #endregion
 
   serv._server.on('login', async (client) => {
     if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
@@ -28,10 +63,8 @@ export const server = function (serv: Server, options: Options) {
 
       player.profileProperties = player._client.profile ? player._client.profile.properties : []
 
-      for (const plugin of plugins.builtinPlugins) plugin.player?.(player, serv, options)
+      await addPlayerShared(player)
 
-      serv.emit('newPlayer', player)
-      player.emit('asap')
       await player.login()
     } catch (err) {
       setTimeout(() => { throw err }, 0)
@@ -140,7 +173,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
     }
   }
 
-  function sendChunkWhenMove () {
+  player.sendChunkWhenMove = () => {
     player.on('move', () => {
       if (!player.sendingChunks && player.position.distanceTo(player.lastPositionChunkUpdated) > 16) { player.sendRestMap() }
       if (!serv.supportFeature('updateViewPosition')) {
@@ -307,7 +340,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
     await player.waitPlayerLogin()
     player.sendRestMap()
-    sendChunkWhenMove()
+    player.sendChunkWhenMove()
 
     if (playerData.new) { // otherwise we skip unnecessary fs operation
       player.save()
@@ -322,6 +355,8 @@ declare global {
     "hashedSeed": number[]
   }
   interface Player {
+    /** @internal */
+    sendChunkWhenMove: () => void
     /** @internal */
     profileProperties: any
     /** @internal */

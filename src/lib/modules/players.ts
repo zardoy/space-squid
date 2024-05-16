@@ -6,8 +6,6 @@ export const server = function (serv: Server, { version }: Options) {
   const mcData = serv.mcData
   const Item = PrismarineItem(version)
   serv.entityMaxId = 0
-  serv.players = []
-  serv.uuidToPlayer = {}
   serv.entities = {}
 
   serv.getPlayer = username => {
@@ -183,7 +181,7 @@ export const server = function (serv: Server, { version }: Options) {
     base: 'clear',
     info: '',
     usage: '/clear',
-    parse(string, ctx) {
+    parse (string, ctx) {
       let players = [] as Player[]
       const [playersArg, item, count] = string.split(' ')
       if (playersArg) {
@@ -199,7 +197,7 @@ export const server = function (serv: Server, { version }: Options) {
         count: count ?? 1
       }
     },
-    action(data, ctx) {
+    action (data, ctx) {
       let removed = 0
       for (const player of data.players) {
         for (const [i, slot] of player.inventory.slots.entries()) {
@@ -216,11 +214,11 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'Whispers a message to a player.',
     usage: '/tell <player> <message>',
     tab: ['player', 'text'],
-    parse(str, ctx) {
+    parse (str, ctx) {
       // todo change validation
       return str.match(/^([\w\d]+) (.+)$/) || false
     },
-    action([target, message], ctx) {
+    action ([target, message], ctx) {
       const players = serv.getPlayers(target, ctx.player)
       if (players.length < 1) throw new UserError('Player not found')
       players.forEach(player => player.chat(`from ${ctx.player?.username ?? 'server'}: ${message}`))

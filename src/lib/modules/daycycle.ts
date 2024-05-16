@@ -9,7 +9,7 @@ export const server = function (serv: Server) {
 
   serv.doDaylightCycle = true
 
-  serv.time = 0
+  serv.time ??= 0
 
   serv.on('tick', (delta, count) => {
     if (!serv.doDaylightCycle) return

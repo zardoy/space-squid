@@ -5,7 +5,7 @@ import colors from 'colors'
 
 const timeStarted = Math.floor(Date.now() / 1000).toString()
 
-const isInNode = typeof process !== 'undefined' && !process.browser && process.platform !== 'browser'
+const isInNode = typeof process !== 'undefined' && !process.browser && process.platform !== 'browser' && !globalThis.__hot_reload
 
 const _servers: Server[] = []
 
@@ -113,6 +113,7 @@ export const server = function (serv: Server, settings: Options) {
     })
   }
 
+  // todo fix hotreload
   rl?.on('line', (data) => {
     serv.handleCommand(data)
     rl.prompt(true)

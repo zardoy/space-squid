@@ -54,6 +54,11 @@ class MCServer extends EventEmitter {
   }
 
   connect (options: Options) {
+    if (globalThis.server) {
+      // don't call quit so we don't disconnect players
+      globalThis.server.cleanupFunctions.forEach(fn => fn())
+    }
+
     const server = this as unknown as Server
     server.abortSignal = this.abortController.signal
     server.cleanupFunctions = [
@@ -73,7 +78,26 @@ class MCServer extends EventEmitter {
     }
     server.commands = new Command({})
     // pass version, motd, port, max-players, online-mode
-    server._server = createServer(options)
+    const oldServer = options.oldServerData
+    server._server = oldServer?._server ?? createServer(options)
+    if (oldServer) {
+      server.players = oldServer.players!
+      for (const [key, value] of Object.entries(oldServer.oldData)) {
+        server[key] = value
+      }
+    }
+
+    const patchServer = (server) => {
+      server.oldAddListener ??= server.on.bind(server)
+      server.patchedAddListener = (name, ...args) => {
+        server.oldAddListener(name, ...args)
+        server.cleanupFunctions.push(() => server.removeListener(name, ...args))
+      }
+      server.on = server.patchedAddListener
+      server.addListener = server.patchedAddListener
+    }
+
+    patchServer(server)
 
     const promises: Promise<any>[] = []
     for (const plugin of modules.builtinPlugins) {
@@ -82,6 +106,15 @@ class MCServer extends EventEmitter {
     Promise.allSettled(promises).then((values) => {
       for (const rejected of values.filter(value => value.status === 'rejected')) {
         server._server.emit('error', (rejected as any).reason)
+      }
+      // handle successful results of promises
+      for (const value of values.filter(value => value.status === 'fulfilled')) {
+        // todo remove when updated to typescript 5.5
+        //@ts-ignore
+        if (value.value) {
+          //@ts-ignore
+          server.cleanupFunctions.push(value.value)
+        }
       }
       server.emit('pluginsReady')
       server.pluginsReady = true

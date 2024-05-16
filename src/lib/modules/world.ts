@@ -28,7 +28,7 @@ export const server: ServerModule = async function (serv, options) {
   const worldSaveVersion = _worldSaveVersion ?? version
   const Anvil = worldFolder ? AnvilLoader(worldSaveVersion) : undefined
 
-  const newSeed = generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31))
+  const newSeed = serv.seed ?? (generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31)))
   let seed
   let regionFolder
   if (worldFolder) {
@@ -70,7 +70,7 @@ export const server: ServerModule = async function (serv, options) {
   serv.emit('seed', generationOptions.seed)
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
   serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
-  serv.overworld.seed = generationOptions.seed
+  serv.overworld.seed = serv.seed = generationOptions.seed
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
   // serv.endworld = new World(generations["end"]({}));
 
@@ -537,7 +537,9 @@ declare global {
     /** @internal */
     "_unloadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
     /** @internal */
-    "savePlayersSingleplayer": () => Promise<void>
+    "savePlayersSingleplayer": () => Promise<void>,
+    /** Alias to serv.overworld.seed */
+    seed: number
   }
   interface Player {
     /** @internal */
