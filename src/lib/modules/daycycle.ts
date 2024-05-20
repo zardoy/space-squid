@@ -7,7 +7,7 @@ export const server = function (serv: Server) {
     })
   }
 
-  serv.doDaylightCycle = true
+  serv.doDaylightCycle ??= true
 
   serv.time ??= 0
 

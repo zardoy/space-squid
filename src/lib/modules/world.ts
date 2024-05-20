@@ -14,6 +14,7 @@ import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
 import { Vec3 } from 'vec3'
 import { generateSpiralMatrix } from '../../utils'
+import { longArrayToNumber, writeLevelDat } from '../../levelDat'
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
@@ -22,6 +23,7 @@ export const server: ServerModule = async function (serv, options) {
   const { version, worldSaveVersion: _worldSaveVersion, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
   generation.options.worldHeight = serv.supportFeature('tallWorld') ? 384 : 256
   generation.options.minY = serv.supportFeature('tallWorld') ? -64 : 0
+  levelDatWriter(serv, options)
 
   const World = WorldLoader(version)
   const registry = RegistryLoader(version)
@@ -41,6 +43,7 @@ export const server: ServerModule = async function (serv, options) {
 
     try {
       const levelData = await level.readLevel(worldFolder + '/level.dat')
+      // serv.levelDataRaw = ... TODO!
       serv.levelData = levelData
       // destruct SpawnY, SpawnX, SpawnZ
       const { SpawnY, SpawnX, SpawnZ } = levelData
@@ -51,17 +54,17 @@ export const server: ServerModule = async function (serv, options) {
       if (serv.levelData.Version !== undefined && serv.levelData.Version.Name !== worldSaveVersion) {
         console.warn(`World save version mismatch: you select: ${serv.levelData.Version.Name} actual stored: ${worldSaveVersion}`)
       }
+      if (!serv.time) serv.time = longArrayToNumber(levelData.DayTime)
+      const parseBool = (x, defValue) => x ? x === 'false' : defValue
+      serv.doDaylightCycle = parseBool(serv.levelData.GameRules?.doDaylightCycle, serv.doDaylightCycle)
     } catch (err) {
       seed = newSeed
-      await level.writeLevel(worldFolder + '/level.dat', {
-        RandomSeed: [seed, 0],
-        Version: { Name: options.version },
-        generatorName: generation.name === 'superflat' ? 'flat' : generation.name === 'diamond_square' ? 'default' : 'customized',
-        LevelName: options.levelName!, // todo fix typing
-        allowCommands: 1
+      setTimeout(() => {
+        serv.writeLevelDat()
       })
     }
   } else { seed = newSeed }
+
   const generationOptions = {
     ...generation.options,
     seed,
@@ -71,7 +74,10 @@ export const server: ServerModule = async function (serv, options) {
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
   serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = serv.seed = generationOptions.seed
+  serv.overworld.generatorName = generation.name
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
+  serv.netherworld.seed = generationOptions.seed
+  serv.netherworld.generatorName = 'nether'
   // serv.endworld = new World(generations["end"]({}));
 
   serv.worlds = {
@@ -279,6 +285,21 @@ export const server: ServerModule = async function (serv, options) {
   }
 }
 
+const levelDatWriter = (serv: Server, options: Options) => {
+  serv.writeLevelDat = async () => {
+    const { worldFolder } = options
+    if (!worldFolder) return
+    await writeLevelDat(worldFolder + '/level.dat', {
+      RandomSeed: serv.levelData?.RandomSeed ?? [serv.seed, 0],
+      Version: serv.levelData?.Version ?? { Name: options.version },
+      generatorName: serv.levelData?.generatorName ?? serv.overworld.generatorName === 'superflat' ? 'flat' : serv.overworld.generatorName === 'diamond_square' ? 'default' : 'customized',
+      LevelName: serv.levelData?.LevelName ?? options.levelName!, // todo fix typing
+      allowCommands: serv.levelData?.allowCommands ?? 1,
+      time: serv.time
+    })
+  }
+}
+
 export const player = function (player: Player, serv: Server, settings: Options) {
   const registry = RegistryLoader(settings.version)
 
@@ -418,7 +439,10 @@ export const player = function (player: Player, serv: Server, settings: Options)
       .filter(({ chunkX, chunkZ }) => serv._loadPlayerChunk(chunkX, chunkZ, player))
       .reduce((acc, { chunkX, chunkZ }) => {
         const p = acc
-          .then(() => player.world.getColumn(chunkX, chunkZ))
+          .then(() => {
+            serv.abortSignal.throwIfAborted()
+            return player.world.getColumn(chunkX, chunkZ)
+          })
           .then((column) => player.sendChunk(chunkX, chunkZ, column))
         return group ? p.then(() => sleep(5)) : p
       }, Promise.resolve())
@@ -493,6 +517,7 @@ export interface CustomWorld extends World {
   blockEntityData: Record<string, any>
   portals: any[]
   seed: number
+  generatorName: string
 }
 
 export const usedServerPathsV1 = [
@@ -539,7 +564,8 @@ declare global {
     /** @internal */
     "savePlayersSingleplayer": () => Promise<void>,
     /** Alias to serv.overworld.seed */
-    seed: number
+    seed: number,
+    writeLevelDat: () => Promise<void>
   }
   interface Player {
     /** @internal */
