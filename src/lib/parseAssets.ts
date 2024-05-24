@@ -107,6 +107,15 @@ const parser = new AssetsParser('1.17.1', null, null)
 
 console.log(parser.getElements(parser.mcData.blocksByName['anvil'].minStateId!))
 
+/*
+[
+  [ [ 2, 0, 2 ], [ 14, 4, 14 ] ],
+  [ [ 4, 4, 3 ], [ 12, 5, 13 ] ],
+  [ [ 6, 5, 4 ], [ 10, 10, 12 ] ],
+  [ [ 3, 10, 0 ], [ 13, 16, 16 ] ]
+]
+*/
+
 // TYPES
 
 type ModelBasic = {
