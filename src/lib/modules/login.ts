@@ -141,9 +141,11 @@ export const player = async function (player: Player, serv: Server, settings: Op
     const MAX_HEIGHT = serv.supportFeature('tallWorld') ? 384 : 256
     // send init data so client will start rendering world
     const viewDistance = (settings['view-distance'] ??= 10)
-    const dimensionCodec = getDimensionCodec(MAX_HEIGHT, serv.supportFeature('dimensionDataIsAvailable'))
+    const dimensionCodec = getDimensionCodec(MAX_HEIGHT, serv.supportFeature('dimensionDataIsAvailable'), settings.version)
+    // const dimensionCodec = serv.mcData.loginPacket.dimensionCodec
 
     player._client.write('login', {
+      ...serv.mcData.loginPacket, // for new fields
       entityId: player.id,
       isHardcore: player.gameMode === 0,
       gameMode: player.gameMode,

@@ -478,7 +478,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
   }
 
   player.changeWorld = async (world, opt) => {
-    if (player.world === world) return Promise.resolve()
+    if (player.world === world && !opt?.force) return Promise.resolve()
     opt = opt || {}
     player.world = world
     player._unloadAllChunks()
