@@ -15,6 +15,7 @@ import generations from '../generations'
 import { Vec3 } from 'vec3'
 import { generateSpiralMatrix } from '../../utils'
 import { longArrayToNumber, writeLevelDat } from '../../levelDat'
+import { getRenamedData } from '../../blockRenames'
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
@@ -69,6 +70,7 @@ export const server: ServerModule = async function (serv, options) {
     ...generation.options,
     seed,
     version,
+    getRenamedData
   }
   serv.emit('seed', generationOptions.seed)
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)

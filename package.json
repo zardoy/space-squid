@@ -41,7 +41,7 @@
   "dependencies": {
     "change-case": "^4.1.2",
     "colors": "1.4.0",
-    "diamond-square": "^1.2.0",
+    "diamond-square": "github:zardoy/diamond-square",
     "emit-then": "^2.0.0",
     "@tootallnate/once": "2.0.0",
     "exit-hook": "^2.2.1",
