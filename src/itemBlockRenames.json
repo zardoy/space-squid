@@ -22,40 +22,8 @@
     "1.13": {
         "blocks": [
             [
-                "stone",
-                "granite"
-            ],
-            [
-                "stone",
-                "polished_granite"
-            ],
-            [
-                "stone",
-                "diorite"
-            ],
-            [
-                "stone",
-                "polished_diorite"
-            ],
-            [
-                "stone",
-                "andesite"
-            ],
-            [
-                "stone",
-                "polished_andesite"
-            ],
-            [
                 "grass",
                 "grass_block"
-            ],
-            [
-                "dirt",
-                "coarse_dirt"
-            ],
-            [
-                "dirt",
-                "podzol"
             ],
             [
                 "planks",
@@ -384,10 +352,6 @@
             [
                 "brick_block",
                 "bricks"
-            ],
-            [
-                "torch",
-                "wall_torch"
             ],
             [
                 "mob_spawner",

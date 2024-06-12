@@ -29,7 +29,7 @@ export const adoptBlockOrItemNamesFromLatest = (type: 'blocks' | 'items', blockO
   const mapVersions = Object.keys(itemBlockRenames).sort((a, b) => dir * (versionToNumber(a) - versionToNumber(b)))
   const upperBoundVer = dir > 0 ? verTo : verFrom
   const lowerBoundVer = dir > 0 ? verFrom : verTo
-  for (const mapVersion of mapVersions) {
+  for (const mapVersion of mapVersions.filter(x => versionToNumber(x) <= upperBoundVer && versionToNumber(x) >= lowerBoundVer)) {
     if (dir > 0 && versionToNumber(mapVersion) >= upperBoundVer) break
     if (dir < 0 && versionToNumber(mapVersion) <= lowerBoundVer) break
     const nextMapData = itemBlockRenames[mapVersion][type]
