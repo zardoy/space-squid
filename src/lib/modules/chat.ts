@@ -128,7 +128,7 @@ export const server = function (serv: Server) {
 }
 
 export const player = function (player: Player, serv: Server) {
-  player._client.on('chat', ({ message } = {}) => {
+  const chatHandler = ({ message }: { message: string }) => {
     if (message[0] === '/') {
       player.behavior('command', { command: message.slice(1) }, ({ command }) => player.handleCommand(command))
       serv.info(`${player.username} issued command: ${message.split(' ')[0]}`)
@@ -149,6 +149,12 @@ export const player = function (player: Player, serv: Server) {
         })
       })
     }
+  }
+  player._client.on('chat', chatHandler)
+  player._client.on('chat_message', chatHandler)
+  player._client.on('chat_command', ({ command }: { command: string }) => {
+    // serv.info(`${player.username} issued command: ${command}`)
+    chatHandler({ message: `/${command}` })
   })
 
   player.chat = message => {
