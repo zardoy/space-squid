@@ -393,13 +393,13 @@ export const player = function (player: Player, serv: Server, settings: Options)
       Object.assign(serv.overworld.blockEntityData, column.blockEntities)
       for (const key in column.blockEntities ?? []) {
         const blockEntity = column.blockEntities[key]
-        const actionPerId = {
-          MobSpawner: 1,
-          Control: 2
+        const actionPerBlockName = {
+          mobspawner: 1,
+          control: 2
         }
-        const value = blockEntity.value?.id?.value
-        if (value) {
-          let action = actionPerId[value]
+        const blockName = blockEntity?.id?.value.split(':')[1].toLowerCase()
+        if (blockName) {
+          let action = actionPerBlockName[blockName]
           if (action === undefined) {
             if (serv.looseProtocolMode) { // eg mineflayer don't care of action passed here, so lets always send tile entity
               action = 0
@@ -408,7 +408,6 @@ export const player = function (player: Player, serv: Server, settings: Options)
             }
           }
           const [x, y, z] = key.split(',').map(a => parseInt(a))
-          blockEntity.name = ''
           player._client.write('tile_entity_data', {
             location: {
               x,
@@ -416,7 +415,11 @@ export const player = function (player: Player, serv: Server, settings: Options)
               z
             },
             action,
-            nbtData: blockEntity
+            nbtData: {
+              type: 'compound',
+              name: '',
+              value: blockEntity
+            }
           })
         }
       }
