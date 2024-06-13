@@ -397,7 +397,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
           mobspawner: 1,
           control: 2
         }
-        const blockName = blockEntity?.id?.value.split(':')[1].toLowerCase()
+        const blockName = blockEntity?.id?.value.replace('minecraft:', '').toLowerCase()
         if (blockName) {
           let action = actionPerBlockName[blockName]
           if (action === undefined) {
