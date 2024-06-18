@@ -2,9 +2,13 @@ import path from 'path'
 import fs from 'fs'
 import { parse } from 'yaml'
 import { Vec3 } from 'vec3'
+import sanitizeFilename from 'sanitize-filename'
 
 export type WorldWarp = {
   name: string
+  /**
+   * @default world
+   */
   world?: string
   x: number
   y: number
@@ -12,6 +16,9 @@ export type WorldWarp = {
   yaw?: number
   pitch?: number
   lastowner?: string
+  /** Not shown in the world & faded in map */
+  disabled?: boolean
+  color?: string
 }
 
 const existsViaStats = async (path: string) => {
@@ -49,6 +56,19 @@ export const server = async function (serv: Server, options: Options) {
     loadWarps(warpsFolder, serv)
   }
 
+  serv.setWarp = async (warp: WorldWarp) => {
+    if (!serv.warps.find(w => w.name === warp.name)) {
+      serv.warps.push(warp)
+    }
+
+    // write to fs, ensure dir
+    if (!await existsViaStats(warpsFolder)) {
+      await fs.promises.mkdir(warpsFolder)
+      const fileNameClean = sanitizeFilename(`${warp.name}.yml`)
+      await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), `name: ${warp.name}\nworld: ${'world'}\nx: ${warp.x}\ny: ${warp.y}\nz: ${warp.z}\nyaw: ${warp.yaw}\npitch: ${warp.pitch}\nlastowner: ${warp.lastowner}`)
+    }
+  }
+
   serv.commands.add({
     base: 'warp',
     info: 'Teleport to a warp',
@@ -69,11 +89,16 @@ export const server = async function (serv: Server, options: Options) {
     async action ({ name, set }, { player }) {
       if (!warpsFolder || !player) return
       if (set) {
-        // write to fs, ensure dir
-        if (!await existsViaStats(warpsFolder)) {
-          await fs.promises.mkdir(warpsFolder)
-          await fs.promises.writeFile(path.join(warpsFolder, `${name}.yml`), `name: ${name}\nworld: ${'world'}\nx: ${player.position.x}\ny: ${player.position.y}\nz: ${player.position.z}\nyaw: ${player.yaw}\npitch: ${player.pitch}\nlastowner: ${player.uuid}`)
-        }
+        await serv.setWarp({
+          name,
+          world: player.world === serv.overworld ? 'world' : player.world === serv.netherworld ? 'nether' : 'end',
+          x: player.position.x,
+          y: player.position.y,
+          z: player.position.z,
+          yaw: player.yaw,
+          pitch: player.pitch,
+          lastowner: player.uuid
+        })
         return
       }
       const warp = serv.warps.find(w => w.name === name)
@@ -110,7 +135,8 @@ export const server = async function (serv: Server, options: Options) {
 
 declare global {
   interface Server {
-    warps: WorldWarp[]
+    warps: WorldWarp[],
+    setWarp: (warp: WorldWarp) => Promise<void>
   }
 }
 
