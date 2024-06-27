@@ -15,6 +15,8 @@ declare global {
     move: () => void
     change_world: () => void
     modpe: (data: string) => void
+    /** Emitted when the player's data is loaded from playerdata folder and can be patched if needed (but will be saved back to playerdata folder if patched) */
+    dataLoaded: () => void
   }
 
   interface ServerEvents {

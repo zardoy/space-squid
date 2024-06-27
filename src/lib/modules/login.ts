@@ -108,6 +108,8 @@ export const player = async function (player: Player, serv: Server, settings: Op
     serv.uuidToPlayer[player.uuid] = player
     player.loadedChunks = {}
     player.setLoadingStatus(null)
+
+    player.emit('dataLoaded')
   }
 
   function updateInventory () {
