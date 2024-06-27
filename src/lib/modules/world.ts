@@ -49,7 +49,7 @@ export const server: ServerModule = async function (serv, options) {
       // destruct SpawnY, SpawnX, SpawnZ
       const { SpawnY, SpawnX, SpawnZ } = levelData
       if ([SpawnY, SpawnX, SpawnZ].every(x => x !== undefined)) {
-        serv.spawnPoint = new Vec3(SpawnX, SpawnY, SpawnZ)
+        serv.spawnPoint ??= new Vec3(SpawnX, SpawnY, SpawnZ)
       }
       seed = levelData.RandomSeed[0]
       if (serv.levelData.Version !== undefined && serv.levelData.Version.Name !== worldSaveVersion) {
