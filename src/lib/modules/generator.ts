@@ -188,3 +188,48 @@ function generateRareBuilds (chunk, x, z, worldX, worldZ, get2DNoise) {
     // Example: chunk.setBlock(x, height, z, 'rare_block');
   }
 }
+
+function applyCellularAutomata(chunk) {
+  const tempChunk = JSON.parse(JSON.stringify(chunk)); // Deep copy of chunk
+
+  for (let x = 0; x < 16; x++) {
+    for (let z = 0; z < 16; z++) {
+      for (let y = 1; y < 80; y++) {
+        const airNeighbors = countAirNeighbors(chunk, x, y, z);
+        if (chunk.getBlock(x, y, z) === 'air') {
+          if (airNeighbors <= 9) {
+            tempChunk.setBlock(x, y, z, 'stone');
+          }
+        } else {
+          if (airNeighbors >= 12) {
+            tempChunk.setBlock(x, y, z, 'air');
+          }
+        }
+      }
+    }
+  }
+
+  // Apply changes
+  for (let x = 0; x < 16; x++) {
+    for (let z = 0; z < 16; z++) {
+      for (let y = 1; y < 80; y++) {
+        chunk.setBlock(x, y, z, tempChunk.getBlock(x, y, z));
+      }
+    }
+  }
+}
+
+function countAirNeighbors(chunk, x, y, z) {
+  let count = 0;
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        if (dx === 0 && dy === 0 && dz === 0) continue;
+        if (chunk.getBlock(x + dx, y + dy, z + dz) === 'air') {
+          count++;
+        }
+      }
+    }
+  }
+  return count;
+}
