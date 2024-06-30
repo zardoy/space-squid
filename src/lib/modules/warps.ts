@@ -64,9 +64,9 @@ export const server = async function (serv: Server, options: Options) {
     // write to fs, ensure dir
     if (!await existsViaStats(warpsFolder)) {
       await fs.promises.mkdir(warpsFolder)
-      const fileNameClean = sanitizeFilename(`${warp.name}.yml`)
-      await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), `name: ${warp.name}\nworld: ${'world'}\nx: ${warp.x}\ny: ${warp.y}\nz: ${warp.z}\nyaw: ${warp.yaw}\npitch: ${warp.pitch}\nlastowner: ${warp.lastowner}`)
     }
+    const fileNameClean = sanitizeFilename(`${warp.name}.yml`)
+    await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), `name: ${warp.name}\nworld: ${'world'}\nx: ${warp.x}\ny: ${warp.y}\nz: ${warp.z}\nyaw: ${warp.yaw}\npitch: ${warp.pitch}\nlastowner: ${warp.lastowner}`)
   }
 
   serv.commands.add({
