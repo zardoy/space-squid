@@ -155,11 +155,21 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       }
     }
 
+    const window = (player.inventory || player.customWindow)
+    const formAcceptClickData = (index) => {
+      return {
+        ...clickInfo,
+        "windowId": window.id,
+        "slot": index,
+        "item": window.slots[index],
+      }
+    }
+
     // Let the inventory know of the click.
     // It's important to let it know of the click later, because it destroys
     // information we need about the inventory.
     try {
-      (player.inventory || player.customWindow).acceptClick(clickInfo, player.gameMode)
+      window.acceptClick(formAcceptClickData(clickInfo.slot), player.gameMode)
     } catch (err) {
       serv.emit('error', err)
     }
