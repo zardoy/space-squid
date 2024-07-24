@@ -1,8 +1,8 @@
 export const server = function (serv: Server, settings: Options) {
   const { plugins: externalPlugins = {} } = settings
 
-  serv.plugins = {}
-  serv.pluginCount = 0
+  serv.plugins ??= {}
+  serv.pluginCount = Object.values(serv.plugins).length
   serv.externalPluginsLoaded = false
 
   serv.addPlugin = (name, plugin, set) => {
@@ -23,37 +23,27 @@ export const server = function (serv: Server, settings: Options) {
   Object.keys(externalPlugins).forEach((p) => {
     if (externalPlugins[p].disabled) return
     try {
-      require.resolve(p) // Check if it exists, if not do catch, otherwise jump to bottom
+      module['require'].resolve(p) // Check if it exists, if not do catch, otherwise jump to bottom
     } catch (err) {
       try { // Throw error if cannot find plugin
-        require.resolve('../../plugins/' + p)
+        module['require'].resolve('../../plugins/' + p)
       } catch (err) {
         serv.err(`Failed to load plugin: cannot find plugin ${p}`)
       }
-      serv.addPlugin(p, require('../../plugins/' + p), externalPlugins[p])
+      serv.addPlugin(p, module['require']('../../plugins/' + p), externalPlugins[p])
       return
     }
-    serv.addPlugin(p, require(p), externalPlugins[p])
+    serv.addPlugin(p, module['require'](p), externalPlugins[p])
   })
 
-  Object.keys(serv.plugins).forEach((p) => {
-    const f = serv.plugins[p].server
-    if (serv.plugins[p].server) f.call(serv.plugins[p], serv, settings)
-  })
-
-  serv.on('asap', () => {
-    Object.keys(serv.plugins).map(p => serv.info(`[${serv.plugins[p].name}] Loaded ${serv.plugins[p].name}`))
+  serv.on('pluginsReady', () => {
+    serv.info(`${serv.pluginCount} plugins loaded`)
   })
 
   serv.externalPluginsLoaded = true
 }
 
 export const player = function (player: Player, serv: Server) {
-  Object.keys(serv.plugins).forEach(p => {
-    const plugin = serv.plugins[p]
-    const f = plugin.player
-    if (plugin.player) f.call(plugin, player, serv)
-  })
 }
 
 export const entity = function (entity: Entity, serv: Server) {
@@ -67,17 +57,20 @@ export const entity = function (entity: Entity, serv: Server) {
     if (typeof pluginName === 'object') pluginName = pluginName.name
     return entity.pluginData[pluginName] || null
   }
-
-  Object.keys(serv.plugins).forEach(p => {
-    const plugin = serv.plugins[p]
-    const f = plugin.entity
-    if (plugin.entity) f.call(plugin, entity, serv)
-  })
 }
+
 declare global {
   interface Server {
     /** List of all plugins. Use serv.plugins[pluginName] to get a plugin's object and data. */
-    "plugins": {}
+    "plugins": Record<string, {
+      id: number
+      name: string
+      server: any
+      player: any
+      entity: any
+      settings: any // todo?
+      enabled: boolean // todo support
+    }>
     /** @internal */
     "pluginCount": number
     /** @internal */

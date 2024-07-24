@@ -2,7 +2,7 @@ import { createServer } from 'minecraft-protocol'
 
 import { supportedVersions } from './lib/version'
 import Command from './lib/command'
-import * as modules from './lib/modules'
+import * as builtinModules from './lib/modules'
 import { EventEmitter } from 'events'
 import { Server as ProtocolServer } from 'minecraft-protocol'
 import { IndexedData } from 'minecraft-data'
@@ -49,7 +49,6 @@ class MCServer extends EventEmitter {
   pluginsReady = false
   private abortController = new AbortController()
   constructor() {
-    modules.initPlugins()
     super()
   }
 
@@ -100,7 +99,8 @@ class MCServer extends EventEmitter {
     patchServer(server)
 
     const promises: Promise<any>[] = []
-    for (const plugin of modules.builtinPlugins) {
+    server.plugins = builtinModules.builtinPlugins
+    for (const plugin of Object.values(server.plugins)) {
       promises.push(plugin.server?.(server, options))
     }
     Promise.allSettled(promises).then((values) => {

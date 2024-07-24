@@ -5,7 +5,6 @@ import * as crypto from 'crypto'
 import PrismarineItem from 'prismarine-item'
 import * as playerDat from '../playerDat'
 import * as convertInventorySlotId from '../convertInventorySlotId'
-import * as plugins from './index'
 import { skipMcPrefix } from '../utils'
 import { dimensionOverworld, getDimensionCodec } from './dimensionCodec'
 
@@ -32,7 +31,7 @@ export const server = function (serv: Server, options: Options) {
   const addPlayerShared = async (player: Player) => {
     patchClient(player._client)
 
-    for (const plugin of plugins.builtinPlugins) plugin.player?.(player, serv, options)
+    for (const plugin of Object.values(serv.plugins)) plugin.player?.(player, serv, options)
 
     serv.emit('newPlayer', player)
     player.emit('asap')

@@ -15,7 +15,7 @@
     "start": "tsc && node dist/app.js",
     "build": "tsc && node scripts/genTypes.mjs",
     "dev": "tsx watch src/app.js",
-    "watch": "tsc -w",
+    "watch": "concurrently \"tsc -w\" \"nodemon --watch dist/index.js scripts/genTypes.mjs\"",
     "make-exe": "pkg dist/app.js --targets node18-win-x64",
     "build-npm": "tsc -p tsconfig.npm.json && node scripts/genTypes.mjs",
     "prepare": "pnpm build",
@@ -71,11 +71,13 @@
     "yargs": "^17.0.1"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "expect": "^29.1.2",
     "longjohn": "^0.2.12",
     "minecraft-wrap": "^1.2.3",
     "mineflayer": "^4.0.0",
     "mocha": "^10.0.0",
+    "nodemon": "^3.1.4",
     "pkg": "^5.8.1",
     "tsx": "^4.10.1",
     "typescript": "^5.4.5",

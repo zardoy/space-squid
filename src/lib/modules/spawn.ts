@@ -2,7 +2,6 @@ import UUID from 'uuid-1345'
 import { skipMcPrefix } from '../utils'
 import { Vec3 } from 'vec3'
 
-import * as plugins from './index'
 import { CustomWorld } from './world'
 import UserError from '../user_error'
 
@@ -19,7 +18,7 @@ export const server = function (serv: Server, options: Options) {
     serv.entityMaxId++
     const entity = new Entity(serv.entityMaxId)
 
-    for (const plugin of plugins.builtinPlugins) plugin.entity?.(entity, serv, options)
+    for (const plugin of Object.values(serv.plugins)) plugin.entity?.(entity, serv, options)
 
     entity.initEntity(type, entityType, world, position)
 
