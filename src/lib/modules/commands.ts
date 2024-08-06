@@ -33,6 +33,39 @@ export const server = function (serv: Server, { version }: Options) {
   }
 
   serv.commands.add({
+    base: 'title',
+    info: 'show title',
+    usage: '/title <targets> (title|subtitle|actionBar) <title>',
+    parse(str) {
+      const match = str.match(/([A-Za-z0-9]+( [A-Za-z0-9]+)+) ^(title|subtitle|actionBar)$ \{[^}]*\}/i)
+      if (!match) return false
+      const players = str.split(/^(title|subtitle|actionBar)$/)[0]
+      const level = str.match(/^(title|subtitle|actionBar)$/)
+      const text = str.split(/^(title|subtitle|actionBar)$/)[-1]
+      if (!players || !level || !text) return false
+      return {playersNamesAndTargetValues: players, level: level[0], text: text}
+    },
+    action(data, ctx) {
+      const selectorString = ctx.player ? ctx.player.selectorString : serv.selectorString
+      const players = selectorString(data.playersNamesAndTargetValues)
+      switch (data.level) {
+        case 'title':
+          serv._writeArray("Title", {"set_title_text": data.text}, players)
+          break
+        case 'subtitle':
+          serv._writeArray("Title", {"set_title_subtitle": data.text}, players)
+          break
+        case 'actionBar':
+          serv._writeArray("Title", {"action_bar": data.text}, players)
+          break
+        default:
+          return "Something went wrong. Try again."
+      }
+      return "Title or action bar should appear"
+    }
+  })
+
+  serv.commands.add({
     base: 'ping',
     info: 'to pong!',
     usage: '/ping [number]',
