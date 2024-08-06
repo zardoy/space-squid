@@ -4,7 +4,7 @@
 
 Minecraft lightweight server written in TypeScript (JS).
 
-- Supports latest versions
+- Supports latest versions (up to ~1.20)
 - Easily customizable in every aspect
 
 ## Installation
@@ -25,17 +25,17 @@ It's recommended to also install `pm2` for process auto-restart on crashes and s
 
 ## Roadmap
 
-| Feature          | Status                                      |
-| ---------------- | ------------------------------------------- |
-| WebSocket        | Not started                                 |
-| Plugin API       | Done. Needs polishing                       |
-| World Generation | Few simple generators available. Needs more |
-| World Saving     | ✅ Doesn't support latest versions           |
-| World Loading    | ✅ Only up to 1.18                           |
-| Redstone         | Not started                                 |
-| Command Blocks   | ✅ Needs all commands implementation (50%)   |
-| Pvp              | Not started                                 |
-| Mobs             | ✅ Needs spawning, ai, a few physics fixes   |
+| Feature          | Status                                                                |
+| ---------------- | --------------------------------------------------------------------- |
+| WebSocket        | Not started                                                           |
+| Plugin API       | Done. Needs polishing                                                 |
+| World Generation | Few simple generators available. Needs more                           |
+| World Saving     | ✅ Doesn't support latest versions                                     |
+| World Loading    | ✅ Full support for all versions, but writing can broke existing saves |
+| Redstone         | Not started                                                           |
+| Command Blocks   | ✅ Needs all commands implementation (50%)                             |
+| Pvp              | Not started                                                           |
+| Mobs             | ✅ Needs spawning, ai, a few physics fixes                             |
 
 ### Alternatives
 
