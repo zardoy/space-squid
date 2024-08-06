@@ -1,5 +1,6 @@
 import path from 'path'
 import fs from 'fs'
+import { stringify } from 'yaml'
 import { parse } from 'yaml'
 import { Vec3 } from 'vec3'
 import sanitizeFilename from 'sanitize-filename'
@@ -66,7 +67,7 @@ export const server = async function (serv: Server, options: Options) {
       await fs.promises.mkdir(warpsFolder)
     }
     const fileNameClean = sanitizeFilename(`${warp.name}.yml`)
-    await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), JSON.stringify(warp))
+    await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), stringify(warp))
   }
 
   serv.commands.add({
