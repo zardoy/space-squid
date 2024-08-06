@@ -66,7 +66,7 @@ export const server = async function (serv: Server, options: Options) {
       await fs.promises.mkdir(warpsFolder)
     }
     const fileNameClean = sanitizeFilename(`${warp.name}.yml`)
-    await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), `name: ${warp.name}\nworld: ${'world'}\nx: ${warp.x}\ny: ${warp.y}\nz: ${warp.z}\nyaw: ${warp.yaw}\npitch: ${warp.pitch}\nlastowner: ${warp.lastowner}`)
+    await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), JSON.stringify(warp))
   }
 
   serv.commands.add({
