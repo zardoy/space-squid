@@ -1,7 +1,6 @@
 import path from 'path'
 import fs from 'fs'
-import { stringify } from 'yaml'
-import { parse } from 'yaml'
+import { parse, stringify } from 'yaml'
 import { Vec3 } from 'vec3'
 import sanitizeFilename from 'sanitize-filename'
 
@@ -57,8 +56,12 @@ export const server = async function (serv: Server, options: Options) {
     loadWarps(warpsFolder, serv)
   }
 
-  serv.setWarp = async (warp: WorldWarp) => {
-    if (!serv.warps.find(w => w.name === warp.name)) {
+  serv.setWarp = async (warp: WorldWarp, remove?: boolean) => {
+    const existedWarpIndex = serv.warps.findIndex(w => w.name === warp.name)
+
+    if (remove && existedWarpIndex !== -1) {
+      serv.warps.splice(existedWarpIndex, 1)
+    } else if (!remove && existedWarpIndex === -1) {
       serv.warps.push(warp)
     }
 
@@ -67,7 +70,15 @@ export const server = async function (serv: Server, options: Options) {
       await fs.promises.mkdir(warpsFolder)
     }
     const fileNameClean = sanitizeFilename(`${warp.name}.yml`)
-    await fs.promises.writeFile(path.join(warpsFolder, fileNameClean), stringify(warp))
+    const filePath = path.join(warpsFolder, fileNameClean)
+
+    if (remove) {
+      if (await existsViaStats(filePath)) {
+        await fs.promises.unlink(filePath)
+      }
+    } else {
+      await fs.promises.writeFile(filePath, stringify(warp))
+    }
   }
 
   serv.commands.add({
@@ -137,7 +148,7 @@ export const server = async function (serv: Server, options: Options) {
 declare global {
   interface Server {
     warps: WorldWarp[],
-    setWarp: (warp: WorldWarp) => Promise<void>
+    setWarp: (warp: WorldWarp, remove?: boolean) => Promise<void>
   }
 }
 
