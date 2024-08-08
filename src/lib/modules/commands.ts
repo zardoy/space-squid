@@ -39,20 +39,20 @@ export const server = function (serv: Server, { version }: Options) {
     parse(str) {
       const match = str.match(/([A-Za-z0-9]+( [A-Za-z0-9]+)+) ^(title|subtitle|actionBar)$ \{[^}]*\}/i)
       if (!match) return false
-      const players = str.split(/^(title|subtitle|actionBar)$/).slice(0, 1).split(' ')
+      const players = str.split(/^(title|subtitle|actionBar)$/)[0].split(' ')
       const level = str.match(/^(title|subtitle|actionBar)$/)
       const title = str.split(/^(title|subtitle|actionBar)$/).slice(-1)
       return {players: players, level: level, title: title}
-    }
+    },
     action(data, ctx) {
       if (data.players[0] == "@a") {
-        switch (data.level) {
+        switch (data.level as string | null) {
           case 'title':
-            serv._writeAll("Title", {"set_title_text": data.title)
+            serv._writeAll("Title", {"set_title_text": data.title})
           case 'subtitle':
-            serv._writeAll("Title", {"set_title_subtitle": data.title)
+            serv._writeAll("Title", {"set_title_subtitle": data.title})
           case 'actionBar':
-            serv._writeAll("Title", {"action_bar": data.title)
+            serv._writeAll("Title", {"action_bar": data.title})
         }
       }
     }

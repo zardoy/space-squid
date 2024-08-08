@@ -84,7 +84,7 @@ export const server = async function (serv: Server, options: Options) {
   serv.commands.add({
     base: 'warp',
     info: 'Teleport to a warp',
-    usage: '/warp [set] <name>',
+    usage: '/warp [set, remove] <name>',
     op: true,
     tab: ['warps', 'warps'],
     commandBlock: false,
@@ -93,26 +93,29 @@ export const server = async function (serv: Server, options: Options) {
       if (string.startsWith('set ')) {
         const name = string.slice(4)
         return { name, set: true }
+      } else if (string.startsWith('remove ')) {
+        const name = string.slice(7)
+        return { name, remove: true }
       }
       const warp = serv.warps.find(w => w.name === string)
       if (!warp) return false
       return { name: warp.name }
     },
-    async action ({ name, set }, { player }) {
+    async action ({ name, set, remove }, { player }) {
       if (!warpsFolder || !player) return
-      if (set) {
+      if (set || remove) {
         await serv.setWarp({
           name,
           world: player.world === serv.overworld ? 'world' : player.world === serv.netherworld ? 'nether' : 'end',
-          x: player.position.x,
-          y: player.position.y,
-          z: player.position.z,
+          x: Math.floor(player.position.x),
+          y: Math.floor(player.position.y),
+          z: Math.floor(player.position.z),
           yaw: player.yaw,
           pitch: player.pitch,
           lastowner: player.uuid
-        })
+        }, remove)
         return
-      }
+      } 
       const warp = serv.warps.find(w => w.name === name)
       if (!warp) return
       player.teleport(new Vec3(warp.x, warp.y, warp.z))
