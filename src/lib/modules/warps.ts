@@ -79,6 +79,7 @@ export const server = async function (serv: Server, options: Options) {
     } else {
       await fs.promises.writeFile(filePath, stringify(warp))
     }
+    serv.emit('warpsUpdated', serv.warps)
   }
 
   serv.commands.add({

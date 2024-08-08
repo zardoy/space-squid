@@ -1,5 +1,6 @@
 import { Client } from 'minecraft-protocol'
 import TypedEmitter from 'typed-emitter'
+import { WorldWarp } from './lib/modules/warps'
 import EventEmitter from 'events'
 import { IndexedData } from 'minecraft-data'
 
@@ -35,6 +36,7 @@ declare global {
     /** Emit seed once the world is loaded */
     seed: (seed: number) => void
     warpsLoaded: () => void
+    warpsUpdated: (warps: WorldWarp[]) => void
   }
 
   interface Server extends TypedEmitter<ServerEvents> {
