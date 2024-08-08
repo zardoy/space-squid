@@ -39,29 +39,22 @@ export const server = function (serv: Server, { version }: Options) {
     parse(str) {
       const match = str.match(/([A-Za-z0-9]+( [A-Za-z0-9]+)+) ^(title|subtitle|actionBar)$ \{[^}]*\}/i)
       if (!match) return false
-      const players = str.split(/^(title|subtitle|actionBar)$/)[0]
+      const players = str.split(/^(title|subtitle|actionBar)$/).slice(0, 1).split(' ')
       const level = str.match(/^(title|subtitle|actionBar)$/)
-      const text = str.split(/^(title|subtitle|actionBar)$/)[-1]
-      if (!players || !level || !text) return false
-      return {playersNamesAndTargetValues: players, level: level[0], text: text}
-    },
+      const title = str.split(/^(title|subtitle|actionBar)$/).slice(-1)
+      return {players: players, level: level, title: title}
+    }
     action(data, ctx) {
-      const selectorString = ctx.player ? ctx.player.selectorString : serv.selectorString
-      const players = selectorString(data.playersNamesAndTargetValues)
-      switch (data.level) {
-        case 'title':
-          serv._writeArray("Title", {"set_title_text": data.text}, players)
-          break
-        case 'subtitle':
-          serv._writeArray("Title", {"set_title_subtitle": data.text}, players)
-          break
-        case 'actionBar':
-          serv._writeArray("Title", {"action_bar": data.text}, players)
-          break
-        default:
-          return "Something went wrong. Try again."
+      if (data.players[0] == "@a") {
+        switch (data.level) {
+          case 'title':
+            serv._writeAll("Title", {"set_title_text": data.title)
+          case 'subtitle':
+            serv._writeAll("Title", {"set_title_subtitle": data.title)
+          case 'actionBar':
+            serv._writeAll("Title", {"action_bar": data.title)
+        }
       }
-      return "Title or action bar should appear"
     }
   })
 
