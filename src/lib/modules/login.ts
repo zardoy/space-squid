@@ -50,7 +50,7 @@ export const server = function (serv: Server, options: Options) {
   })
   // #endregion
 
-  serv._server.on('login', async (client) => {
+  serv._server.on('playerJoin', async (client) => {
     if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
     if (!serv.pluginsReady) {
       client.end('Server is still starting! Please wait before reconnecting.')
@@ -113,6 +113,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
   function updateInventory () {
     playerData.inventory.forEach((item) => {
+      if (!item) return
       const registry = mcData
       const itemValue: string | number = item.id.value
       const itemName = typeof itemValue === 'string' ? skipMcPrefix(itemValue) : registry.itemsArray.find(item => item.id === itemValue)?.name
