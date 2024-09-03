@@ -85,6 +85,8 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
   let playerData
 
+  player.stopChunkUpdates ??= false
+
   player.setLoadingStatus = (text) => {
     player.emit('loadingStatus', text)
   }
@@ -177,9 +179,16 @@ export const player = async function (player: Player, serv: Server, settings: Op
     }
   }
 
+  const getXYPos = (pos) => {
+    return new Vec3(pos.x, 0, pos.z)
+  }
+
   player.sendChunkWhenMove = () => {
     player.on('move', () => {
-      if (!player.sendingChunks && player.position.distanceTo(player.lastPositionChunkUpdated) > 16) { player.sendRestMap() }
+      if (player.stopChunkUpdates) return
+      if (getXYPos(player.position).distanceTo(getXYPos(player.lastPositionChunkUpdated)) > 16) {
+        player.sendRestMap()
+      }
       if (!serv.supportFeature('updateViewPosition')) {
         return
       }
@@ -378,6 +387,7 @@ declare global {
     /** @internal */
     "waitPlayerLogin": () => Promise<unknown>
     /** login */
-    "login": () => Promise<void>
+    "login": () => Promise<void>,
+    stopChunkUpdates: boolean
   }
 }

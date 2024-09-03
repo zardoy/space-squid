@@ -427,7 +427,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
     })
   }
 
-  player.sendNearbyChunks = (viewDistance, group = false) => {
+  player.sendNearbyChunks = (viewDistance, group = false, abortSignal?: AbortSignal) => {
     player.lastPositionChunkUpdated = player.position
     const playerChunkX = Math.floor(player.position.x / 16)
     const playerChunkZ = Math.floor(player.position.z / 16)
@@ -446,10 +446,14 @@ export const player = function (player: Player, serv: Server, settings: Options)
       .reduce((acc, { chunkX, chunkZ }) => {
         const p = acc
           .then(() => {
+            if (abortSignal?.aborted) return
             serv.abortSignal.throwIfAborted()
             return player.world.getColumn(chunkX, chunkZ)
           })
-          .then((column) => player.sendChunk(chunkX, chunkZ, column))
+          .then((column) => {
+            if (abortSignal?.aborted) return
+            return player.sendChunk(chunkX, chunkZ, column)
+          })
         return group ? p.then(() => sleep(5)) : p
       }, Promise.resolve())
   }
@@ -465,7 +469,9 @@ export const player = function (player: Player, serv: Server, settings: Options)
 
   player.sendRestMap = () => {
     player.sendingChunks = true
-    player.sendNearbyChunks(Math.min(player.view, settings['max-view-distance'] ?? player.view), true)
+    player.sendingChunksAbortController?.abort()
+    player.sendingChunksAbortController = new AbortController()
+    player.sendNearbyChunks(Math.min(player.view, settings['max-view-distance'] ?? player.view), true, player.sendingChunksAbortController.signal)
       .then(() => { player.sendingChunks = false })
       .catch((err) => setTimeout(() => { throw err }))
   }
@@ -578,6 +584,7 @@ declare global {
     lastPositionChunkUpdated: Vec3
     /** @internal */
     sendingChunks: boolean
+    sendingChunksAbortController?: AbortController
     /** @internal */
     world: CustomWorld
     /** @internal */
@@ -597,7 +604,7 @@ declare global {
     /** @internal */
     "sendChunk": (chunkX: any, chunkZ: any, column: any) => Promise<void>
     /** @internal */
-    "sendNearbyChunks": (viewDistance: any, group?) => Promise<any>
+    "sendNearbyChunks": (viewDistance: any, group?, abortSignal?: AbortSignal) => Promise<any>
     /** @internal */
     "sendMap": () => any
     /** @internal */
