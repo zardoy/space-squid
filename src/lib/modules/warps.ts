@@ -58,9 +58,10 @@ export const server = async function (serv: Server, options: Options) {
   }
 
   serv.setWarp = async (warp: WorldWarp) => {
-    if (!serv.warps.find(w => w.name === warp.name)) {
-      serv.warps.push(warp)
+    if (serv.warps.find(w => w.name === warp.name)) {
+      serv.warps = serv.warps.filter(w => w.name !== warp.name)
     }
+    serv.warps.push(warp)
 
     // write to fs, ensure dir
     if (!await existsViaStats(warpsFolder)) {

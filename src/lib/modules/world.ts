@@ -139,27 +139,15 @@ export const server: ServerModule = async function (serv, options) {
       .forEach(player => player.sendBlockAction(position, actionId, actionParam, blockType))
   }
 
-  serv.reloadChunks = (world, chunks) => {
-    serv.players
-      .filter(player => player.world === world)
-      .forEach(oPlayer => {
-        chunks
-          .filter(({ chunkX, chunkZ }) => oPlayer.loadedChunks[chunkX + ',' + chunkZ] !== undefined)
-          .forEach(({ chunkX, chunkZ }) => oPlayer._unloadChunk(chunkX, chunkZ))
-        oPlayer.sendRestMap()
-      })
-  }
-
   serv.chunksUsed = {}
-  serv._loadPlayerChunk = (chunkX, chunkZ, player) => {
+  serv._finishPlayerChunkLoading = (chunkX, chunkZ, player) => {
     const id = chunkX + ',' + chunkZ
+    if (player.loadedChunks[id]) return
     if (!serv.chunksUsed[id]) {
       serv.chunksUsed[id] = 0
     }
     serv.chunksUsed[id]++
-    const loaded = player.loadedChunks[id]
-    if (!loaded) player.loadedChunks[id] = 1
-    return !loaded
+    player.loadedChunks[id] = 1
   }
   serv._unloadPlayerChunk = (chunkX, chunkZ, player) => {
     const id = chunkX + ',' + chunkZ
@@ -341,6 +329,8 @@ export const player = function (player: Player, serv: Server, settings: Options)
       z: chunkZ,
       chunk: column
     }, ({ x, z, chunk }/* : {x, z, chunk: import('prismarine-chunk').PCChunk} */) => {
+      serv._finishPlayerChunkLoading(chunkX, chunkZ, player)
+
       const newLightsFormat = serv.supportFeature('newLightingDataFormat')
       const dumpedLights = chunk.dumpLight()
       const newLightsData = newLightsFormat ? { skyLight: dumpedLights.skyLight, blockLight: dumpedLights.blockLight } : undefined
@@ -442,7 +432,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
         chunkX: playerChunkX + t[0],
         chunkZ: playerChunkZ + t[1]
       }))
-      .filter(({ chunkX, chunkZ }) => serv._loadPlayerChunk(chunkX, chunkZ, player))
+      .filter(({ chunkX, chunkZ }) => !player.loadedChunks[`${chunkX},${chunkZ}`])
       .reduce((acc, { chunkX, chunkZ }) => {
         const p = acc
           .then(() => {
@@ -566,11 +556,9 @@ declare global {
     /** Sends a block action to all players of the same world. */
     "setBlockAction": (world: CustomWorld, position: Vec3, actionId: number, actionParam: any) => Promise<void>
     /** @internal */
-    "reloadChunks": (world: CustomWorld, chunks: any) => void
-    /** @internal */
     "chunksUsed": {}
     /** @internal */
-    "_loadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
+    "_finishPlayerChunkLoading": (chunkX: number, chunkZ: number, player: Player) => void
     /** @internal */
     "_unloadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
     /** @internal */
