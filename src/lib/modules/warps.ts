@@ -50,9 +50,9 @@ const loadWarps = async (warpsFolder: string, serv: Server) => {
 export const server = async function (serv: Server, options: Options) {
   serv.warps = []
 
-  const { worldFolder } = options
+  const { worldFolder, noWarpsLoad } = options
   let warpsFolder = ''
-  if (worldFolder) {
+  if (worldFolder && !noWarpsLoad) {
     warpsFolder = path.join(worldFolder, 'Warp files')
     loadWarps(warpsFolder, serv)
   }

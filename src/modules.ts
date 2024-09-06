@@ -63,6 +63,7 @@ declare global {
     motd?: string
     port?: number
     noInitialChunksSend?: boolean
+    noWarpsLoad?: boolean
     "max-players"?: number
     "online-mode"?: boolean
     logging?: boolean
