@@ -62,6 +62,7 @@ declare global {
     levelName?: string
     motd?: string
     port?: number
+    noInitialChunksSend?: boolean
     "max-players"?: number
     "online-mode"?: boolean
     logging?: boolean

@@ -335,9 +335,11 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.sendAbilities()
     sendWorldInfo()
 
-    const distance = settings['view-distance']
-    player.setLoadingStatus(`Getting initial chunks (distance = ${distance})`)
-    await player.sendMap()
+    if (!settings.noInitialChunksSend) {
+      const distance = settings['view-distance']
+      player.setLoadingStatus(`Getting initial chunks (distance = ${distance})`)
+      await player.sendMap()
+    }
     player.setLoadingStatus(null)
     player.setXp(player.xp)
     updateInventory()
