@@ -160,6 +160,8 @@ export const player = function (player: Player, serv: Server) {
   player.chat = message => {
     if (typeof message === 'string') message = serv.parseClassic(message)
     player._client.write('chat', { message: JSON.stringify(message), position: 0, sender: '0' })
+    // 1.19+
+    player._client.write('systemChat', { formattedMessage: JSON.stringify(message), position: 0, sender: '0' })
   }
 
   player.emptyChat = (count = 1) => {
@@ -171,6 +173,8 @@ export const player = function (player: Player, serv: Server) {
   player.system = message => {
     if (typeof message === 'string') message = serv.parseClassic(message)
     player._client.write('chat', { message: JSON.stringify(message), position: 2, sender: '0' })
+    // 1.19+
+    player._client.write('systemChat', { formattedMessage: JSON.stringify(message), position: 2, sender: '0' })
   }
 }
 declare global {

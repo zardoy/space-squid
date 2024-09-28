@@ -50,7 +50,7 @@ export const server = function (serv: Server, options: Options) {
   })
   // #endregion
 
-  serv._server.on('login', async (client) => {
+  serv._server.on('playerJoin', async (client) => {
     if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
     if (!serv.pluginsReady) {
       client.end('Server is still starting! Please wait before reconnecting.')
@@ -85,6 +85,8 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
   let playerData
 
+  player.stopChunkUpdates ??= false
+
   player.setLoadingStatus = (text) => {
     player.emit('loadingStatus', text)
   }
@@ -113,6 +115,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
   function updateInventory () {
     playerData.inventory.forEach((item) => {
+      if (!item) return
       const registry = mcData
       const itemValue: string | number = item.id.value
       const itemName = typeof itemValue === 'string' ? skipMcPrefix(itemValue) : registry.itemsArray.find(item => item.id === itemValue)?.name
@@ -176,9 +179,16 @@ export const player = async function (player: Player, serv: Server, settings: Op
     }
   }
 
+  const getXYPos = (pos) => {
+    return new Vec3(pos.x, 0, pos.z)
+  }
+
   player.sendChunkWhenMove = () => {
     player.on('move', () => {
-      if (!player.sendingChunks && player.position.distanceTo(player.lastPositionChunkUpdated) > 16) { player.sendRestMap() }
+      if (player.stopChunkUpdates) return
+      if (getXYPos(player.position).distanceTo(getXYPos(player.lastPositionChunkUpdated)) > 16) {
+        player.sendRestMap()
+      }
       if (!serv.supportFeature('updateViewPosition')) {
         return
       }
@@ -325,9 +335,11 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.sendAbilities()
     sendWorldInfo()
 
-    const distance = settings['view-distance']
-    player.setLoadingStatus(`Getting initial chunks (distance = ${distance})`)
-    await player.sendMap()
+    if (!settings.noInitialChunksSend) {
+      const distance = settings['view-distance']
+      player.setLoadingStatus(`Getting initial chunks (distance = ${distance})`)
+      await player.sendMap()
+    }
     player.setLoadingStatus(null)
     player.setXp(player.xp)
     updateInventory()
@@ -377,6 +389,7 @@ declare global {
     /** @internal */
     "waitPlayerLogin": () => Promise<unknown>
     /** login */
-    "login": () => Promise<void>
+    "login": () => Promise<void>,
+    stopChunkUpdates: boolean
   }
 }

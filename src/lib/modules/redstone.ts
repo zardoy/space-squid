@@ -321,9 +321,9 @@ export const server = function (serv: Server, { version }: Options) {
 
         const entity = serv.overworld.blockEntityData[key]
         if (!entity) return
-        const command = entity.value.Command.value
+        const command = serv.getCommandBlockData(block)?.Command
         if (!command) return
-        await serv.handleCommand(command, {
+        await serv.handleCommand(command.replace(/^\//, ''), {
           //@ts-ignore
           player: {
             world: world,
@@ -379,6 +379,7 @@ export const server = function (serv: Server, { version }: Options) {
       serv.onBlockInteraction(pushable, async ({ block, player }) => {
         const nearby = isPlate ? [
           // below
+          block.position.offset(0, -2, 0),
           block.position.offset(0, -1, 0),
           block.position.offset(1, -1, 0),
           block.position.offset(-1, -1, 0),

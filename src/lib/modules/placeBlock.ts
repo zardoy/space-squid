@@ -132,14 +132,9 @@ export const server = (serv: Server, { version }: Options) => {
   const commandBlocks = blocks.filter(b => b.name.endsWith('command_block')).map((b) => b.name)
   for (const block of commandBlocks) {
     serv.onBlockInteraction(block, ({ block, player }) => {
-      const pos = block.position
-      const key = `${pos.x},${pos.y},${pos.z}`
-      const entity = serv.overworld.blockEntityData[key]
-      // todo use block.entity
-      if (entity) {
-        // todo simplify
-        const command = entity.value.Command.value
-        player.chat(command)
+      const { Command } = serv.getCommandBlockData(block) ?? {}
+      if (Command) {
+        player.chat(Command)
       } else {
         player.chat('No entity data')
       }
@@ -236,6 +231,6 @@ declare global {
      *
      * The argument given to the handler is an object containing the clicked block and the player. It should return true if the block interaction occurred and the block placement should be cancelled.
      */
-    'onBlockInteraction': (name: string, handler: (data: {block: Block, player: Player}) => void) => void
+    'onBlockInteraction': (name: string, handler: (data: { block: Block, player: Player }) => void) => void
   }
 }

@@ -50,17 +50,18 @@ const loadWarps = async (warpsFolder: string, serv: Server) => {
 export const server = async function (serv: Server, options: Options) {
   serv.warps = []
 
-  const { worldFolder } = options
+  const { worldFolder, noWarpsLoad } = options
   let warpsFolder = ''
-  if (worldFolder) {
+  if (worldFolder && !noWarpsLoad) {
     warpsFolder = path.join(worldFolder, 'Warp files')
     loadWarps(warpsFolder, serv)
   }
 
   serv.setWarp = async (warp: WorldWarp) => {
-    if (!serv.warps.find(w => w.name === warp.name)) {
-      serv.warps.push(warp)
+    if (serv.warps.find(w => w.name === warp.name)) {
+      serv.warps = serv.warps.filter(w => w.name !== warp.name)
     }
+    serv.warps.push(warp)
 
     // write to fs, ensure dir
     if (!await existsViaStats(warpsFolder)) {
@@ -107,7 +108,7 @@ export const server = async function (serv: Server, options: Options) {
       player.teleport(new Vec3(warp.x, warp.y, warp.z))
       if (warp.yaw) player.yaw = warp.yaw
       if (warp.pitch) player.pitch = warp.pitch
-      player.chat(`Teleported to ${name}. Press f3+a if nothing appears on your screen.`)
+      player.chat(`Teleported to ${name}.`)
     }
   })
 

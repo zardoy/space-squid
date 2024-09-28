@@ -47,7 +47,7 @@
     "exit-hook": "^2.2.1",
     "flatmap": "^0.0.3",
     "long": "^5.1.0",
-    "minecraft-data": "^3.42.1",
+    "minecraft-data": "3.67.0",
     "minecraft-protocol": "^1.44.0",
     "mkdirp": "^2.1.3",
     "node-gzip": "^1.1.2",

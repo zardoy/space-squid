@@ -139,27 +139,15 @@ export const server: ServerModule = async function (serv, options) {
       .forEach(player => player.sendBlockAction(position, actionId, actionParam, blockType))
   }
 
-  serv.reloadChunks = (world, chunks) => {
-    serv.players
-      .filter(player => player.world === world)
-      .forEach(oPlayer => {
-        chunks
-          .filter(({ chunkX, chunkZ }) => oPlayer.loadedChunks[chunkX + ',' + chunkZ] !== undefined)
-          .forEach(({ chunkX, chunkZ }) => oPlayer._unloadChunk(chunkX, chunkZ))
-        oPlayer.sendRestMap()
-      })
-  }
-
   serv.chunksUsed = {}
-  serv._loadPlayerChunk = (chunkX, chunkZ, player) => {
+  serv._finishPlayerChunkLoading = (chunkX, chunkZ, player) => {
     const id = chunkX + ',' + chunkZ
+    if (player.loadedChunks[id]) return
     if (!serv.chunksUsed[id]) {
       serv.chunksUsed[id] = 0
     }
     serv.chunksUsed[id]++
-    const loaded = player.loadedChunks[id]
-    if (!loaded) player.loadedChunks[id] = 1
-    return !loaded
+    player.loadedChunks[id] = 1
   }
   serv._unloadPlayerChunk = (chunkX, chunkZ, player) => {
     const id = chunkX + ',' + chunkZ
@@ -341,6 +329,8 @@ export const player = function (player: Player, serv: Server, settings: Options)
       z: chunkZ,
       chunk: column
     }, ({ x, z, chunk }/* : {x, z, chunk: import('prismarine-chunk').PCChunk} */) => {
+      serv._finishPlayerChunkLoading(chunkX, chunkZ, player)
+
       const newLightsFormat = serv.supportFeature('newLightingDataFormat')
       const dumpedLights = chunk.dumpLight()
       const newLightsData = newLightsFormat ? { skyLight: dumpedLights.skyLight, blockLight: dumpedLights.blockLight } : undefined
@@ -427,7 +417,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
     })
   }
 
-  player.sendNearbyChunks = (viewDistance, group = false) => {
+  player.sendNearbyChunks = (viewDistance, group = false, abortSignal?: AbortSignal) => {
     player.lastPositionChunkUpdated = player.position
     const playerChunkX = Math.floor(player.position.x / 16)
     const playerChunkZ = Math.floor(player.position.z / 16)
@@ -442,14 +432,18 @@ export const player = function (player: Player, serv: Server, settings: Options)
         chunkX: playerChunkX + t[0],
         chunkZ: playerChunkZ + t[1]
       }))
-      .filter(({ chunkX, chunkZ }) => serv._loadPlayerChunk(chunkX, chunkZ, player))
+      .filter(({ chunkX, chunkZ }) => !player.loadedChunks[`${chunkX},${chunkZ}`])
       .reduce((acc, { chunkX, chunkZ }) => {
         const p = acc
           .then(() => {
+            if (abortSignal?.aborted) return
             serv.abortSignal.throwIfAborted()
             return player.world.getColumn(chunkX, chunkZ)
           })
-          .then((column) => player.sendChunk(chunkX, chunkZ, column))
+          .then((column) => {
+            if (abortSignal?.aborted) return
+            return player.sendChunk(chunkX, chunkZ, column)
+          })
         return group ? p.then(() => sleep(5)) : p
       }, Promise.resolve())
   }
@@ -465,7 +459,9 @@ export const player = function (player: Player, serv: Server, settings: Options)
 
   player.sendRestMap = () => {
     player.sendingChunks = true
-    player.sendNearbyChunks(Math.min(player.view, settings['max-view-distance'] ?? player.view), true)
+    player.sendingChunksAbortController?.abort()
+    player.sendingChunksAbortController = new AbortController()
+    player.sendNearbyChunks(Math.min(player.view, settings['max-view-distance'] ?? player.view), true, player.sendingChunksAbortController.signal)
       .then(() => { player.sendingChunks = false })
       .catch((err) => setTimeout(() => { throw err }))
   }
@@ -560,11 +556,9 @@ declare global {
     /** Sends a block action to all players of the same world. */
     "setBlockAction": (world: CustomWorld, position: Vec3, actionId: number, actionParam: any) => Promise<void>
     /** @internal */
-    "reloadChunks": (world: CustomWorld, chunks: any) => void
-    /** @internal */
     "chunksUsed": {}
     /** @internal */
-    "_loadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
+    "_finishPlayerChunkLoading": (chunkX: number, chunkZ: number, player: Player) => void
     /** @internal */
     "_unloadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
     /** @internal */
@@ -578,6 +572,7 @@ declare global {
     lastPositionChunkUpdated: Vec3
     /** @internal */
     sendingChunks: boolean
+    sendingChunksAbortController?: AbortController
     /** @internal */
     world: CustomWorld
     /** @internal */
@@ -597,7 +592,7 @@ declare global {
     /** @internal */
     "sendChunk": (chunkX: any, chunkZ: any, column: any) => Promise<void>
     /** @internal */
-    "sendNearbyChunks": (viewDistance: any, group?) => Promise<any>
+    "sendNearbyChunks": (viewDistance: any, group?, abortSignal?: AbortSignal) => Promise<any>
     /** @internal */
     "sendMap": () => any
     /** @internal */
