@@ -155,7 +155,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       }
     }
 
-    const window = (player.inventory || player.customWindow)
+    const window = (player.customWindow || player.inventory)
     const formAcceptClickData = (index) => {
       return {
         ...clickInfo,
@@ -176,13 +176,14 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   })
 
   player._client.on('set_creative_slot', ({ slot, item } = {}) => {
+    const window = player.customWindow || player.inventory
     if (item.blockId === -1) {
-      player.inventory.updateSlot(slot, null!)
+      window.updateSlot(slot, null!)
       return
     }
 
     const newItem = Item.fromNotch(item)
-    player.inventory.updateSlot(slot, newItem!)
+    window.updateSlot(slot, newItem!)
   })
 
   //@ts-ignore

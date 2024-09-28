@@ -11,27 +11,33 @@ export const server = (serv: Server, { version }: Options) => {
 
   serv.once('asap', () => {
     serv.onBlockInteraction(data.blocksByName.crafting_table.name, async ({ player, block }) => {
-      const window = windows.createWindow(1, 'minecraft:crafting_table', 'Crafting', 45)
+      const window = windows.createWindow(1, 'minecraft:crafting', 'Crafting')
+      for (let i = window.inventoryStart; i < window.inventoryEnd; i++) {
+        window.slots[i] = player.inventory.slots[i - window.inventoryStart + player.inventory.inventoryStart]
+      }
       player.customWindow = window
       // todo refactor to general open container gui method
       // Dynamic window ID feature
       if (player.windowId === undefined) { player.windowId = 1 } else { player.windowId = player.windowId + 1 }
       player._client.write('open_window', {
         windowId: player.windowId,
-        inventoryType: 7,
+        inventoryType: window.type,
         windowTitle: JSON.stringify('Crafting')
       })
-      // Sending container content
-      player._client.write('window_items', {
-        windowId: player.windowId,
-        stateId: 1,
-        items: [],
-        carriedItem: { present: false }
-      })
+      const sendItems = () => {
+        // Sending container content
+        player._client.write('window_items', {
+          windowId: player.windowId,
+          stateId: 1,
+          items: window.slots.map(item => Item.toNotch(item)),
+          carriedItem: { present: false }
+        })
+      }
+      sendItems()
       //@ts-ignore
       window.on('updateSlot', (oldSlot, oldItem, newItem) => {
-        if (oldSlot === 0) {
-          for (let i = 1; i < 10; i++) {
+        if (oldSlot === 0) { // crafting result slot
+          for (let i = 1; i < 10; i++) { // clear all crafting slots
             const count = window.slots[i]?.count
             if (count && count > 1) {
               const slot = window.slots[i]!
@@ -50,6 +56,7 @@ export const server = (serv: Server, { version }: Options) => {
         } else {
           window.updateSlot(0, null!)
         }
+        sendItems()
       })
     })
   })
