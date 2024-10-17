@@ -106,17 +106,17 @@ export const player = function (player: Player, serv: Server, options: Options) 
   serv.tabComplete.add('blockX', (blockInfo) => {
     if (blockInfo === null) return ['']
     const x = String(blockInfo.x)
-    return [x] || ['']
+    return [x || '']
   })
   serv.tabComplete.add('blockY', (blockInfo) => {
     if (blockInfo === null) return ['']
     const y = String(blockInfo.y)
-    return [y] || ['']
+    return [y || '']
   })
   serv.tabComplete.add('blockZ', (blockInfo) => {
     if (blockInfo === null) return ['']
     const z = String(blockInfo.z)
-    return [z] || ['']
+    return [z || '']
   })
 
   serv.tabComplete.add('item_enchantment', () => {

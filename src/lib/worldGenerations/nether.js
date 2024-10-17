@@ -1,7 +1,8 @@
 const Vec3 = require('vec3').Vec3
 const rand = require('random-seed')
 
-function generation ({ version, seed, level = 50 } = {}) {
+function generation ({ version, seed } = {}) {
+  const level = 50
   const Chunk = require('prismarine-chunk')(version)
   const mcData = require('minecraft-data')(version)
 
