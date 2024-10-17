@@ -15,6 +15,11 @@ export const server = (serv: Server, { version }: Options) => {
       for (let i = window.inventoryStart; i < window.inventoryEnd; i++) {
         window.slots[i] = player.inventory.slots[i - window.inventoryStart + player.inventory.inventoryStart]
       }
+      const updateSlotBackInInventory = (craftingSlot: number, item: Item | null) => {
+        // TODO! needs to be fixed!
+        if (craftingSlot < window.inventoryStart || craftingSlot > window.inventoryEnd) return
+        player.inventory.updateSlot(craftingSlot - window.inventoryStart + player.inventory.inventoryStart, item!)
+      }
       player.customWindow = window
       // todo refactor to general open container gui method
       // Dynamic window ID feature
@@ -34,17 +39,26 @@ export const server = (serv: Server, { version }: Options) => {
         })
       }
       sendItems()
+      let skipUpdate = false
+      const updateWindowSlot = (slot: number, item: Item | null) => {
+        skipUpdate = true
+        window.updateSlot(slot, item!)
+        updateSlotBackInInventory(slot, item)
+        skipUpdate = false
+      }
       //@ts-ignore
       window.on('updateSlot', (oldSlot, oldItem, newItem) => {
+        updateSlotBackInInventory(oldSlot, newItem)
+        if (oldItem === newItem || skipUpdate) return
         if (oldSlot === 0) { // crafting result slot
           for (let i = 1; i < 10; i++) { // clear all crafting slots
             const count = window.slots[i]?.count
             if (count && count > 1) {
               const slot = window.slots[i]!
               slot.count--
-              window.updateSlot(i, slot)
+              updateWindowSlot(i, slot)
             } else {
-              window.updateSlot(i, null!)
+              updateWindowSlot(i, null!)
             }
           }
         }
@@ -52,9 +66,9 @@ export const server = (serv: Server, { version }: Options) => {
         const craftingSlots = window.slots.slice(1, 10)
         const result = getResultingRecipe(data, craftingSlots, 3)
         if (result) {
-          window.updateSlot(0, result)
+          updateWindowSlot(0, result)
         } else {
-          window.updateSlot(0, null!)
+          updateWindowSlot(0, null!)
         }
         sendItems()
       })
