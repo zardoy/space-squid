@@ -49,7 +49,7 @@ export const server = function (serv: Server, { version }: Options) {
       }
       const target = str[2]?.trim()
       const gamemodesReverse = Object.assign({}, ...Object.entries(gamemodes).map(([k, v]) => ({ [v]: k })))
-      const gamemode = parseInt(str[1], 10) || gamemodes[str[1]]
+      const gamemode = gamemodes[str[1]] || parseInt(str[1], 10)
       const mode = !isNaN(parseInt(str[1], 10)) ? gamemodesReverse[parseInt(str[1], 10)] : str[1]
       const plyrs = serv.getPlayers(target ?? '@s', ctx.player)
       if (ctx.player) {
