@@ -10,7 +10,7 @@ export const server = (serv: Server, { version }: Options) => {
   const data = serv.mcData
 
   serv.once('asap', () => {
-    serv.onBlockInteraction(data.blocksByName.crafting_table.name, async ({ player, block }) => {
+    serv.onBlockInteraction(data.blocksByName.crafting_table.name, ({ player, block }) => {
       const window = windows.createWindow(1, 'minecraft:crafting', 'Crafting')
       for (let i = window.inventoryStart; i < window.inventoryEnd; i++) {
         window.slots[i] = player.inventory.slots[i - window.inventoryStart + player.inventory.inventoryStart]
@@ -72,6 +72,7 @@ export const server = (serv: Server, { version }: Options) => {
         }
         sendItems()
       })
+      return true
     })
   })
 }

@@ -402,6 +402,7 @@ export const server = function (serv: Server, { version }: Options) {
             source: block
           })
         }
+        return true
       })
     }
   })

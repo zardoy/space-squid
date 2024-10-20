@@ -153,14 +153,25 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     block.position = referencePosition
     //@ts-ignore TODO
     block.direction = direction
-    if (await serv.interactWithBlock({ block, player })) return
+    const directionVector = block.boundingBox === 'empty' ? new Vec3(0, 0, 0) : directionToVector[direction]
+    const placedPosition = referencePosition.plus(directionVector)
+    if (!player.crouching && (await serv.interactWithBlock({ block, player }))) {
+      // cancel optimistic placement
+      void player.world.getBlock(placedPosition).then((block) => {
+        // todo need to fix entity data?
+        player._client.write('block_change', {
+          location: placedPosition,
+          type: block.type,
+          metadata: block.metadata
+        })
+      })
+      return
+    }
     if (player.gameMode >= 2) return
 
     const heldItem = player.inventory.slots[36 + player.heldItemSlot]
     if (!heldItem || direction === -1 || heldItem.type === -1) return
 
-    const directionVector = block.boundingBox === 'empty' ? new Vec3(0, 0, 0) : directionToVector[direction]
-    const placedPosition = referencePosition.plus(directionVector)
     if (placedPosition.equals(player.position.floored())) return
     const dx = player.position.x - (placedPosition.x + 0.5)
     const dz = player.position.z - (placedPosition.z + 0.5)
@@ -226,11 +237,11 @@ declare global {
      */
     'onItemPlace': (name: any, handler: any, warn?: boolean) => void
     /** @internal */
-    'interactWithBlock': (data: any) => Promise<any>
+    'interactWithBlock': (data: any) => Promise<boolean>
     /** Register a handler that will be called when a player interact with a block of type `name`.
      *
      * The argument given to the handler is an object containing the clicked block and the player. It should return true if the block interaction occurred and the block placement should be cancelled.
      */
-    'onBlockInteraction': (name: string, handler: (data: { block: Block, player: Player }) => void) => void
+    'onBlockInteraction': (name: string, handler: (data: { block: Block, player: Player }) => boolean | Promise<boolean>) => void
   }
 }
