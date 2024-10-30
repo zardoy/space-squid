@@ -1,4 +1,4 @@
-import colors from 'colors'
+import chalk from 'chalk'
 import UserError from '../user_error'
 import { Vec3 } from 'vec3'
 import { Ctx } from '../command'
@@ -36,27 +36,27 @@ export const server = function (serv: Server, { version }: Options) {
     base: 'title',
     info: 'show title',
     usage: '/title <targets> (title|subtitle|actionBar) <title>',
-    parse(str) {
+    parse (str) {
       const match = str.match(/([A-Za-z0-9]+( [A-Za-z0-9]+)+) ^(title|subtitle|actionBar)$ \{[^}]*\}/i)
       if (!match) return false
       const players = str.split(/^(title|subtitle|actionBar)$/)[0]
       const level = str.match(/^(title|subtitle|actionBar)$/)
       const text = str.split(/^(title|subtitle|actionBar)$/)[-1]
       if (!players || !level || !text) return false
-      return {playersNamesAndTargetValues: players, level: level[0], text: text}
+      return { playersNamesAndTargetValues: players, level: level[0], text: text }
     },
-    action(data, ctx) {
+    action (data, ctx) {
       const selectorString = ctx.player ? ctx.player.selectorString : serv.selectorString
       const players = selectorString(data.playersNamesAndTargetValues)
       switch (data.level) {
         case 'title':
-          serv._writeArray("Title", {"set_title_text": data.text}, players)
+          serv._writeArray("Title", { "set_title_text": data.text }, players)
           break
         case 'subtitle':
-          serv._writeArray("Title", {"set_title_subtitle": data.text}, players)
+          serv._writeArray("Title", { "set_title_subtitle": data.text }, players)
           break
         case 'actionBar':
-          serv._writeArray("Title", {"action_bar": data.text}, players)
+          serv._writeArray("Title", { "action_bar": data.text }, players)
           break
         default:
           return "Something went wrong. Try again."
@@ -165,7 +165,7 @@ export const server = function (serv: Server, { version }: Options) {
           else serv.info(baseCmd.base + ' -' + ((baseCmd.params && baseCmd.params.info && ' ' + baseCmd.params.info) || '=-=-=-=-=-=-=-=-'))
         } else {
           if (ctx.player) ctx.player.chat('&2--=[ &fHelp&2, page &f' + (page + 1) + ' &2of &f' + totalPages + ' &2]=--')
-          else serv.info(colors.green('--=[ ') + colors.white('Help') + colors.green(', page ') + colors.white(String(page + 1)) + colors.green(' of ') + colors.white(String(totalPages)) + colors.green(' ]=--'))
+          else serv.info(chalk.green('--=[ ') + chalk.white('Help') + chalk.green(', page ') + chalk.white(String(page + 1)) + chalk.green(' of ') + chalk.white(String(totalPages)) + chalk.green(' ]=--'))
         }
         for (let i = PAGE_LENGTH * page; i < Math.min(PAGE_LENGTH * (page + 1), found.length); i++) {
           if (found[i] === search) continue
@@ -173,7 +173,7 @@ export const server = function (serv: Server, { version }: Options) {
           const usage = (cmd.params && cmd.params.usage) || cmd.base
           const info = (cmd.params && cmd.params.info) || 'No info'
           if (ctx.player) ctx.player.chat(usage + ': ' + info + ' ' + (cmd.params.onlyPlayer ? ('| &aPlayer only') : (cmd.params.onlyConsole ? ('| &cConsole only') : '')))
-          else serv.info(colors.yellow(usage) + ': ' + info + ' ' + (cmd.params.onlyPlayer ? (colors.bgRed(colors.black('Player only'))) : (cmd.params.onlyConsole ? colors.bgGreen(colors.black('Console only')) : '')))
+          else serv.info(chalk.yellow(usage) + ': ' + info + ' ' + (cmd.params.onlyPlayer ? (chalk.bgRed(chalk.black('Player only'))) : (cmd.params.onlyConsole ? chalk.bgGreen(chalk.black('Console only')) : '')))
         }
       }
     }

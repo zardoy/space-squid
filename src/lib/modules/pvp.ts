@@ -1,6 +1,6 @@
 import { Vec3 } from 'vec3'
 
-import colors from 'colors'
+import chalk from 'chalk'
 import UserError from '../user_error'
 
 export const player = function (player: Player, serv: Server) {
@@ -73,13 +73,13 @@ export const server = function (serv: Server) {
       if (sel !== '') {
         if (serv.getPlayer(sel) !== null) {
           serv.getPlayer(sel).kill()
-          serv.info(`Killed ${colors.bold(sel)}`)
+          serv.info(`Killed ${chalk.bold(sel)}`)
         } else {
           const arr = serv.selectorString(sel)
           if (arr.length === 0) throw new UserError('Could not find player')
           arr.forEach(entity => {
             entity.kill()
-            serv.info(`Killed ${colors.bold(entity.type === 'player' ? (entity as Player).username : entity.name ?? '<unknown>')}`)
+            serv.info(`Killed ${chalk.bold(entity.type === 'player' ? (entity as Player).username : entity.name ?? '<unknown>')}`)
           })
         }
       } else {
@@ -88,7 +88,7 @@ export const server = function (serv: Server) {
       }
     }
   })
-  
+
   serv.commands.add({
     base: 'damage',
     info: 'Applies damage to the specified entities',

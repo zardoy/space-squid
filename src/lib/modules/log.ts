@@ -1,7 +1,7 @@
 import fs from 'fs'
 
 import path from 'path'
-import colors from 'colors'
+import chalk from 'chalk'
 
 const timeStarted = Math.floor(Date.now() / 1000).toString()
 
@@ -65,15 +65,15 @@ export const server = function (serv: Server, settings: Options) {
   }
 
   serv.info = message => {
-    serv.log('[' + colors.green('INFO') + ']: ' + message)
+    serv.log('[' + chalk.green('INFO') + ']: ' + message)
   }
 
   serv.err = message => {
-    serv.log('[' + colors.red('ERROR') + ']: ' + message)
+    serv.log('[' + chalk.red('ERROR') + ']: ' + message)
   }
 
   serv.warn = message => {
-    serv.log('[' + colors.yellow('WARN') + ']: ' + message)
+    serv.log('[' + chalk.yellow('WARN') + ']: ' + message)
   }
 
   if (isInNode) {
