@@ -1,12 +1,8 @@
 import itemBlockRenames from './itemBlockRenames.json'
+import { versionToNumber } from './utils'
 
 // postflatenning
 // todo regen 1.13 the flatenning data
-
-const versionToNumber = (ver: string) => {
-  const [x, y = '0', z = '0'] = ver.split('.')
-  return +`${x.padStart(2, '0')}${(parseInt(y).toString().padStart(2, '0'))}${parseInt(z).toString().padStart(2, '0')}`
-}
 
 // const allRenamesMapFromLatest = Object.fromEntries(
 //   ['blocks', 'items'].map(x =>

@@ -1,3 +1,5 @@
+import { versionToNumber } from '../../utils'
+
 export const server = function (serv: Server) {
   serv.broadcast = (message, { whitelist = serv.players, blacklist = [], system = false }: any = {}) => {
     if (whitelist.type === 'player') whitelist = [whitelist]
@@ -127,7 +129,7 @@ export const server = function (serv: Server) {
   }
 }
 
-export const player = function (player: Player, serv: Server) {
+export const player = function (player: Player, serv: Server, settings: Options) {
   const chatHandler = ({ message }: { message: string }) => {
     if (message[0] === '/') {
       player.behavior('command', { command: message.slice(1) }, ({ command }) => player.handleCommand(command))
@@ -157,11 +159,17 @@ export const player = function (player: Player, serv: Server) {
     chatHandler({ message: `/${command}` })
   })
 
-  player.chat = message => {
+  const sendChat = (message, isSystem) => {
     if (typeof message === 'string') message = serv.parseClassic(message)
-    player._client.write('chat', { message: JSON.stringify(message), position: 0, sender: '0' })
-    // 1.19+
-    player._client.write('systemChat', { formattedMessage: JSON.stringify(message), position: 0, sender: '0' })
+    if (versionToNumber(settings.version) >= versionToNumber('1.19')) {
+      player._client.write('systemChat', { message: JSON.stringify(message), position: isSystem ? 2 : 0, sender: '0' })
+    } else {
+      player._client.write('chat', { message: JSON.stringify(message), position: isSystem ? 2 : 0, sender: '0' })
+    }
+  }
+
+  player.chat = message => {
+    sendChat(message, false)
   }
 
   player.emptyChat = (count = 1) => {
@@ -171,10 +179,7 @@ export const player = function (player: Player, serv: Server) {
   }
 
   player.system = message => {
-    if (typeof message === 'string') message = serv.parseClassic(message)
-    player._client.write('chat', { message: JSON.stringify(message), position: 2, sender: '0' })
-    // 1.19+
-    player._client.write('systemChat', { formattedMessage: JSON.stringify(message), position: 2, sender: '0' })
+    sendChat(message, true)
   }
 }
 declare global {
