@@ -162,7 +162,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
   const sendChat = (message, isSystem) => {
     if (typeof message === 'string') message = serv.parseClassic(message)
     if (versionToNumber(settings.version) >= versionToNumber('1.19')) {
-      player._client.write('systemChat', { message: JSON.stringify(message), position: isSystem ? 2 : 0, sender: '0' })
+      player._client.write('systemChat', { formattedMessage: JSON.stringify(message), position: isSystem ? 2 : 0, sender: '0' })
     } else {
       player._client.write('chat', { message: JSON.stringify(message), position: isSystem ? 2 : 0, sender: '0' })
     }
