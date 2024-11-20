@@ -1,10 +1,10 @@
 import UserError from './user_error'
 
-export type Ctx<P extends boolean> = P extends true ? {
+export type Ctx<P extends boolean> = (P extends true ? {
   player: Player
 } : {
   player?: Player
-}
+})
 
 type NonFalsey<T> = T extends false ? never : NonNullable<T>
 

@@ -12,7 +12,10 @@ export const server = function (serv: Server) {
   serv.time ??= 0
 
   serv.on('tick', (delta, count) => {
-    if (!serv.doDaylightCycle) return
+    // TODO
+    // const disabledByGamerule = 'doDayLightCycle doDayLightcycle DayNightCycle'
+    const disabledByGamerule = 'doDayLightCycle'.split(' ').some(x => serv.levelData?.GameRules[x] === 'false') || !serv.gamerules.doDayLightCycle
+    if (!serv.doDaylightCycle || disabledByGamerule) return
     if (count % 20 === 0) {
       serv.behavior('changeTime', {
         old: serv.time,

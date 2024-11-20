@@ -7,7 +7,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   player.handleCommand = async (str) => {
     try {
       const res = await serv.commands.use(str, { player }, player.op)
-      if (res) player.chat(serv.color.red + res)
+      if (res) player.chat(serv.color.green + res)
     } catch (err) {
       if (err.userError) player.chat(serv.color.red + 'Error: ' + err.message)
       else setTimeout(() => { throw err }, 0)

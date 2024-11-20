@@ -26,7 +26,7 @@ export const numberToLongArray = (num: bigint | number): [number, number] => {
   return [high, low]
 }
 
-export async function writeLevelDat (path: string, value: LevelDatWrite & { time?: number }, oldLevelRaw?) {
+export async function writeLevelDat (path: string, value: LevelDatWrite & { time?: number } & { GameRules }, oldLevelRaw?) {
   const nbt = {
     type: 'compound',
     name: '',
@@ -35,6 +35,18 @@ export async function writeLevelDat (path: string, value: LevelDatWrite & { time
         type: 'compound',
         value: {
           ...oldLevelRaw?.value?.Data?.value,
+          GameRules: {
+            type: 'compound',
+            value: {
+              ...oldLevelRaw?.value?.Data?.value.GameRules?.value,
+              ...Object.fromEntries(Object.entries(value.GameRules ?? {}).map(([key, val]) => {
+                return [key, {
+                  type: 'string',
+                  value: val ? 'true' : 'false'
+                }]
+              })),
+            }
+          },
           Version: {
             type: 'compound',
             value: {

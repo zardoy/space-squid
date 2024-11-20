@@ -183,11 +183,7 @@ export const server: ServerModule = async function (serv, options) {
       const world = ctx.player?.world ?? serv.overworld
       // todo need concept of command output
       const message = `Seed: ${world.seed}`
-      if (ctx.player) {
-        ctx.player.chat(message)
-      } else {
-        console.log(message)
-      }
+      return message
     },
   })
 
@@ -285,7 +281,8 @@ const levelDatWriter = (serv: Server, options: Options) => {
       generatorName: serv.levelData?.generatorName ?? serv.overworld.generatorName === 'superflat' ? 'flat' : serv.overworld.generatorName === 'diamond_square' ? 'default' : 'customized',
       LevelName: serv.levelData?.LevelName ?? options.levelName!, // todo fix typing
       allowCommands: serv.levelData?.allowCommands ?? 1,
-      time: serv.time
+      time: serv.time,
+      GameRules: serv.gamerules,
     })
   }
 }
@@ -539,7 +536,7 @@ declare global {
     /** Global spawn and respawn point for every player */
     spawnPoint?: Vec3
     /** Parsed level.dat of the loaded world (only if worldFolder is specificed) */
-    levelData?: LevelDatFull
+    levelData?: LevelDatFull & { GameRules?}
     worlds: Record<string, CustomWorld>
     /** Contains the overworld world. This is where the default spawn point is */
     "overworld": CustomWorld
