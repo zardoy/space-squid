@@ -7,7 +7,9 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   player.handleCommand = async (str) => {
     try {
       const res = await serv.commands.use(str, { player }, player.op)
-      if (res) player.chat(serv.color.green + res)
+      const success = typeof res === 'string' ? res : (res && 'success' in res ? res.success : '')
+      if (success) player.chat(serv.color.green + success)
+      else if (res && typeof res === 'object' && 'error' in res) player.chat(serv.color.red + res.error)
     } catch (err) {
       if (err.userError) player.chat(serv.color.red + 'Error: ' + err.message)
       else setTimeout(() => { throw err }, 0)
@@ -23,9 +25,10 @@ export const entity = function (entity: Entity, serv: Server) {
 export const server = function (serv: Server, { version }: Options) {
   serv.handleCommand = async (str, ctx, op) => {
     try {
-      const res = await serv.commands.use(str, ctx, op)
-      if (res) serv.info(res)
-      return res
+      const res = await serv.commands.use(str, ctx ?? {}, op)
+      const success = typeof res === 'string' ? res : (res && 'success' in res ? res.success : '')
+      if (success) serv.info(success)
+      return typeof res === 'string' ? res : (res && 'success' in res ? res.success : res?.error)
     } catch (err) {
       if (err.userError) serv.err(err.message)
       else setTimeout(() => { throw err }, 0)

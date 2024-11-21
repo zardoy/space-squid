@@ -536,7 +536,7 @@ declare global {
     /** Global spawn and respawn point for every player */
     spawnPoint?: Vec3
     /** Parsed level.dat of the loaded world (only if worldFolder is specificed) */
-    levelData?: LevelDatFull & { GameRules?}
+    levelData?: Partial<LevelDatFull>
     worlds: Record<string, CustomWorld>
     /** Contains the overworld world. This is where the default spawn point is */
     "overworld": CustomWorld

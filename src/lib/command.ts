@@ -48,7 +48,7 @@ class Command {
     return undefined
   }
 
-  async use (command, ctx: Ctx<false> = {}, op = true) {
+  async use (command: string, ctx: Ctx<false>, op = true) {
     const resultsFound = this.find(command)
     let parsedResponse
     if (resultsFound) {
@@ -69,10 +69,20 @@ class Command {
           parsedResponse = passedArgs.match(customArgsParser)
         }
       }
-      let output
-      if (parsedResponse) output = await wantedCommand.params.action(parsedResponse, ctx)
-      else output = await wantedCommand.params.action(resultsFound[1], ctx) // just give back the passed arg
-      if (output) return '' + output
+      try {
+        let output
+        if (parsedResponse) output = await wantedCommand.params.action(parsedResponse, ctx)
+        else output = await wantedCommand.params.action(resultsFound[1], ctx) // just give back the passed arg
+        if (output) return {
+          success: output
+        }
+      } catch (err) {
+        console.error(`Error in command from ${ctx.player?.username || 'server'} "${command}":`)
+        console.error(err)
+        return {
+          error: `Internal server error: ${err.message}`
+        }
+      }
     } else {
       if (ctx.player) return 'Command not found'
       else throw new UserError('Command not found')
