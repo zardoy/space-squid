@@ -48,7 +48,6 @@ declare global {
     _client: Client
   }
   interface Options {
-    pluginsFolder: boolean
     version: string
     /**
      * @deprecated will be reworked in the future
@@ -71,6 +70,7 @@ declare global {
     gameMode?: number
     difficulty?: number
     worldFolder?: string | false
+    pluginsFolder?: boolean
     generation?: {
       name: string
       options: {
