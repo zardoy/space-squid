@@ -48,6 +48,7 @@ declare global {
     _client: Client
   }
   interface Options {
+    pluginsFolder: boolean
     version: string
     /**
      * @deprecated will be reworked in the future
