@@ -45,6 +45,10 @@ export function createMCServer (options: InputOptions): FullServer {
 
 export { supportedVersions }
 
+const coreRequiredModules = [
+  'world'
+]
+
 class MCServer extends EventEmitter {
   pluginsReady = false
   private abortController = new AbortController()
