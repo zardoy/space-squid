@@ -441,7 +441,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
             if (abortSignal?.aborted) return
             return player.sendChunk(chunkX, chunkZ, column)
           })
-        return group ? p.then(() => sleep(1000 / (globalThis.limit ?? 200))) : p
+        return group ? p.then(() => sleep(1000 / (globalThis.limit ?? 100))) : p
       }, Promise.resolve())
   }
 

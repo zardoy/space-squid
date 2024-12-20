@@ -20,4 +20,5 @@ module.exports = {
     }
 }
 `
-fs.writeFileSync('./dist/lib/modules/index.js', modulesFileJs, 'utf8')
+const writePath = process.argv.includes('--source') ? './src/lib/modules/index.ts' : './dist/lib/modules/index.js'
+fs.writeFileSync(writePath, modulesFileJs, 'utf8')

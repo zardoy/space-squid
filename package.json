@@ -27,6 +27,7 @@
     "test-essential": "echo todo",
     "test-all": "echo todo",
     "test": "echo TODO",
+    "gen-source-index": "node scripts/genTypes.mjs --source",
     "pretest": "echo TODO-soon"
   },
   "keywords": [
