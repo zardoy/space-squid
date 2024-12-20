@@ -2,9 +2,6 @@
   "name": "@zardoy/flying-squid",
   "description": "A minecraft server written in TS",
   "version": "0.0.0-dev",
-  "main": "dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": "dist/app.js",
   "release": {
     "sharedActionsOverride": {
       "updateHomepage": false,
@@ -18,7 +15,7 @@
     "watch": "concurrently \"tsc -w\" \"nodemon --watch dist/index.js scripts/genTypes.mjs\"",
     "make-exe": "pkg dist/app.js --targets node18-win-x64",
     "build-npm": "tsc -p tsconfig.npm.json && node scripts/genTypes.mjs",
-    "prepare": "pnpm build",
+    "prepare-disabled": "pnpm build",
     "lint": "eslint src/**",
     "fix": "eslint src/** --fix",
     "mocha_test": "mocha --reporter spec --timeout 3000 --exit",
