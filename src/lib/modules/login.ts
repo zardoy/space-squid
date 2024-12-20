@@ -148,6 +148,17 @@ export const player = async function (player: Player, serv: Server, settings: Op
     const dimensionCodec = getDimensionCodec(MAX_HEIGHT, serv.supportFeature('dimensionDataIsAvailable'), settings.version)
     // const dimensionCodec = serv.mcData.loginPacket.dimensionCodec
 
+    const worldState = (serv.mcData.loginPacket as any).worldState
+    if (worldState) {
+      worldState.gamemode = {
+        0: 'survival',
+        1: 'creative',
+        2: 'adventure',
+        3: 'spectator'
+      }[player.gameMode]
+      worldState.previousGamemode = player.prevGameMode
+    }
+
     player._client.write('login', {
       ...serv.mcData.loginPacket, // for new fields
       entityId: player.id,
