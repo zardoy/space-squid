@@ -9,5 +9,9 @@ distTest
 world/*
 !world/.gitkeep
 package-lock.json
-worlds*
+world*/*
 native/
+out*
+*.jar
+*.tar
+.DS_Store

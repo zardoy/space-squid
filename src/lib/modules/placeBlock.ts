@@ -1,6 +1,14 @@
 import { Block } from 'prismarine-block'
 import { Vec3 } from 'vec3'
 
+function invalidAction (player: Player, reason: string, kick = true) {
+  if (kick) {
+    player.kick(`${reason}`)
+  } else {
+    player.chat(`Suspicious activity detected: ${reason}, please stop.`)
+  }
+}
+
 const materialToSound = {
   undefined: 'stone',
   rock: 'stone',
@@ -155,6 +163,26 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     block.direction = direction
     const directionVector = block.boundingBox === 'empty' ? new Vec3(0, 0, 0) : directionToVector[direction]
     const placedPosition = referencePosition.plus(directionVector)
+
+    // Anti-cheat: Check if block is within reach distance
+    if (player.position.distanceTo(placedPosition) > 7) {
+      invalidAction(player, 'Block placement out of reach')
+      return
+    }
+
+    // Anti-cheat: Check if player is trying to place block inside themselves
+    const playerPos = player.position.floored()
+    if (placedPosition.equals(playerPos) || placedPosition.equals(playerPos.offset(0, 1, 0))) {
+      invalidAction(player, 'Cannot place block inside player', false)
+      return
+    }
+
+    // Anti-cheat: Check if direction is valid
+    if (direction < 0 || direction > 5) {
+      invalidAction(player, 'Invalid block placement direction', false)
+      return
+    }
+
     if (!player.crouching && (await serv.interactWithBlock({ block, player }))) {
       // cancel optimistic placement
       void player.world.getBlock(placedPosition).then((block) => {

@@ -1,0 +1,89 @@
+name: Vercel Deploy Next
+env:
+  SSH_HOST: ${{ secrets.SSH_HOST }}
+  SSH_USER: root
+  SSH_PASS: ${{ secrets.SSH_PASS }}
+on:
+  push:
+    branches:
+      - next
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Global Dependencies
+        run: npm install --global vercel pnpm@9.0.4
+      - name: Create config.local.json
+        run: echo '${{ vars.CONFIG }}' > config.local.json
+      - name: Build Docker image
+        run: docker build -t server:latest --build-arg DOWNLOAD_SOUNDS=true --build-arg DISABLE_SERVICE_WORKER=true .
+      - name: Save Docker image to tar
+        run: docker save server:latest -o server.tar
+      - name: Verify Docker image tar
+        run: |
+          ls -l server.tar
+          chmod +r server.tar
+      - name: Upload Docker image to Droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          password: ${{ env.SSH_PASS }}
+          port: 22
+          source: "./server.tar"
+          target: "/root/server.tar"
+      - name: Deploy to Droplet
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: root
+          password: ${{ secrets.SSH_PASS }}
+          script: |
+            set -e
+
+            if ! command -v docker &> /dev/null
+            then
+              echo "Docker not found, installing..."
+              apt-get update
+              apt-get install -y docker.io
+              systemctl start docker
+              systemctl enable docker
+            else
+              echo "Docker is already installed"
+            fi
+
+            echo "Loading Docker image..."
+            docker load -i /root/server.tar/server.tar
+
+            echo "Stopping existing container (if any)..."
+            docker stop server || true
+
+            echo "Removing existing 'server-previous' container (if any)..."
+            docker rm server-previous || true
+
+            echo "Renaming current 'server' container to 'server-previous'..."
+            docker rename server server-previous || true
+
+            echo "Pruning dangling images..."
+            docker image prune -f
+
+            echo "Removing old images except 'latest' and 'previous'..."
+            docker images server --format "{{.Repository}}:{{.Tag}}" | grep -v ":latest$" | grep -v ":previous$" | xargs -r docker rmi -f || true
+
+            echo "Running the new container..."
+            docker run -d \
+              -p 25565:25565 \
+              --name server \
+              -e PORT=25565 \
+              -v /home/server/world:/app/world \
+              --cpus=1 \
+              --memory=718m \
+              --memory-swap=128m \
+              server:latest
+            # --restart always \
+
+            echo "Deployment completed successfully."

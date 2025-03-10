@@ -1,5 +1,15 @@
 import { Vec3 } from 'vec3'
 
+function invalidAction (player: Player, reason: string) {
+  // player._client.write('chat', {
+  //   message: JSON.stringify({ text: `Invalid action: ${reason}`, color: 'red' }),
+  //   position: 1,
+  //   sender: '00000000-0000-0000-0000-000000000000'
+  // })
+  // Could add additional penalties here like kick or temporary ban
+  player.kick(`${reason}`)
+}
+
 export const player = function (player: Player, serv: Server, { version }: Options) {
   const mcData = serv.mcData
   function cancelDig ({ position, block }) {
@@ -137,14 +147,19 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     clearInterval(animationInterval)
     const diggingTime = Date.now() - startDiggingTime
     let stop = false
-    if (expectedDiggingTime - diggingTime < 100) {
-      stop = player.behavior('forceCancelDig', {
-        stop: true,
-        start: startDiggingTime,
-        time: diggingTime
-        //@ts-ignore todo
-      }).stop
+
+    // Anti-cheat: Check if digging was completed too quickly
+    if (diggingTime < expectedDiggingTime * 0.9) { // Allow 10% tolerance
+      invalidAction(player, 'Digging too fast')
+      stop = true
     }
+
+    // Anti-cheat: Check if block is within reach distance
+    if (player.position.distanceTo(location) > 7) {
+      invalidAction(player, 'Block out of reach')
+      stop = true
+    }
+
     if (!stop) {
       const drops = [] as any[]
       const dropBase = {

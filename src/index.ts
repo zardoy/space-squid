@@ -5,7 +5,7 @@ import Command from './lib/command'
 import * as builtinModules from './lib/modules'
 import { EventEmitter } from 'events'
 import { Server as ProtocolServer } from 'minecraft-protocol'
-import { IndexedData } from 'minecraft-data'
+import MinecraftData, { IndexedData } from 'minecraft-data'
 import './types' // include Server declarations from all modules
 import './modules'
 
@@ -65,6 +65,8 @@ class MCServer extends EventEmitter {
     ]
     const mcData = require('minecraft-data')(options.version)
     server.mcData = mcData
+    const dataPatched = MinecraftData('1.16')
+    server.mcData.loginPacket ??= dataPatched.loginPacket
     if (mcData === null) throw new Error(`Version ${options.version} is not supported as it doesn't have the data.`)
     const version = mcData.version
     if (!supportedVersions.some(v => v.includes(version.majorVersion))) {

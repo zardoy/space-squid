@@ -1,8 +1,16 @@
-FROM node:18-slim
+FROM node:23-alpine
 
-WORKDIR /app
-# COPY package.json scripts src ./
-# todo shouldn't copy non-existent our outdated dist
-COPY package.json dist
+# WORKDIR /app
+# RUN apk add --no-cache git
+# RUN npm i -g pnpm
+# RUN SHELL=sh pnpm setup
+# COPY . /app
+# RUN pnpm install
+# VOLUME /app/world
+# EXPOSE 25565
+# RUN pnpm build
+# RUN pnpm tsx bundle.ts
 
-ENTRYPOINT node dist/app.js -c /config
+ENTRYPOINT node -e "setInterval(() => console.log('hello'), 1000)"
+
+# ENTRYPOINT node out.js

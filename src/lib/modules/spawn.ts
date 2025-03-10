@@ -477,3 +477,33 @@ declare global {
     "attach": (attachedEntity: any, leash?: boolean) => void
   }
 }
+
+declare global {
+  interface Server {
+    /** List of all plugins. Use serv.plugins[pluginName] to get a plugin's object and data. */
+    "plugins": Record<string, {
+      id: number
+      name: string
+      server: any
+      player: any
+      entity: any
+      settings: any // todo?
+      enabled: boolean // todo support
+    }>
+    /** @internal */
+    // "pluginCount": number
+    // /** @internal */
+    // "externalPluginsLoaded": boolean
+    // /** @internal */
+    // "addPlugin": (name: any, plugin: any, set: any) => void
+  }
+  interface Entity {
+    /** @internal */
+    'pluginData': {}
+    /** Gets object that stores data, personalized per plugin. Returns null if plugin does not exist.
+     *
+     * Shortcut for: entity.pluginData[pluginName];
+     */
+    // 'getData': (pluginName: any) => any
+  }
+}

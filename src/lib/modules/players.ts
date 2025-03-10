@@ -23,7 +23,7 @@ export const server = function (serv: Server, { version }: Options) {
     aliases: ['/gm'],
     info: 'to change game mode',
     usage: '/gamemode <mode> [player]',
-    op: true,
+    // op: true,
     parse (str, ctx) {
       const paramsSplit = str.split(' ')
       if (paramsSplit[0] === '') {
@@ -47,7 +47,8 @@ export const server = function (serv: Server, { version }: Options) {
         adventure: 2,
         spectator: 3
       }
-      const target = str[2]?.trim()
+      // const target = str[2]?.trim()
+      const target = '@s'
       const gamemodesReverse = Object.assign({}, ...Object.entries(gamemodes).map(([k, v]) => ({ [v]: k })))
       const gamemode = gamemodes[str[1]] || parseInt(str[1], 10)
       const mode = !isNaN(parseInt(str[1], 10)) ? gamemodesReverse[parseInt(str[1], 10)] : str[1]

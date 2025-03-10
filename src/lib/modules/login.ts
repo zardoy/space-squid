@@ -371,6 +371,12 @@ export const player = async function (player: Player, serv: Server, settings: Op
     if (playerData.new) { // otherwise we skip unnecessary fs operation
       player.save()
     }
+
+    player.chat('WARNING: The main server is currently down, you are connected to the backup server.')
+    player.chat('The world is in the FROZEN preview state and changes will not be saved on the main server.')
+    player.chat('Welcome to SPACE SQUID TypeScript Minecraft server clone')
+    player.chat('You can hide the chat in the settings of the client: Interface -> Chat Opacity (set to 0)')
+    // player.chat(`Please behave. Your IP: ${player._client.socket?.remoteAddress}`)
   }
 
 

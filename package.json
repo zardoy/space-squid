@@ -40,8 +40,8 @@
   },
   "dependencies": {
     "@tootallnate/once": "2.0.0",
-    "change-case": "^4.1.2",
     "chalk": "^5.3.0",
+    "change-case": "^4.1.2",
     "diamond-square": "github:zardoy/diamond-square",
     "emit-then": "^2.0.0",
     "exit-hook": "^2.2.1",
@@ -53,12 +53,12 @@
     "node-gzip": "^1.1.2",
     "node-rsa": "^1.1.1",
     "prismarine-chunk": "^1.35.0",
-    "prismarine-entity": "^2.3.1",
-    "prismarine-item": "^1.14.0",
-    "prismarine-nbt": "^2.2.1",
+    "prismarine-entity": "^2.5.0",
+    "prismarine-item": "^1.16.0",
+    "prismarine-nbt": "^2.7.0",
     "prismarine-provider-anvil": "github:zardoy/prismarine-provider-anvil#everything",
-    "prismarine-windows": "^2.8.0",
-    "prismarine-world": "^3.6.2",
+    "prismarine-windows": "^2.9.0",
+    "prismarine-world": "^3.6.3",
     "rambda": "^9.2.0",
     "random-seed": "^0.3.0",
     "range": "^0.0.3",
@@ -67,6 +67,7 @@
     "typed-emitter": "1.4.0",
     "uuid-1345": "^1.0.1",
     "vec3": "^0.1.8",
+    "ws": "^8.18.1",
     "yaml": "^2.4.1",
     "yargs": "^17.0.1"
   },
@@ -79,13 +80,19 @@
     "mocha": "^10.0.0",
     "nodemon": "^3.1.4",
     "pkg": "^5.8.1",
-    "tsx": "^4.10.1",
+    "tsx": "^4.19.3",
     "typescript": "^5.6.3",
     "vitest": "^0.34.6"
   },
   "pnpm": {
     "overrides": {
+      "prismarine-provider-anvil": "github:zardoy/prismarine-provider-anvil#everything",
+      "prismarine-chunk": "github:zardoy/prismarine-chunk#master",
       "protodef": "npm:@zardoy/protodef"
-    }
-  }
+    },
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "packageManager": "pnpm@10.5.2+sha512.da9dc28cd3ff40d0592188235ab25d3202add8a207afbedc682220e4a0029ffbff4562102b9e6e46b4e3f9e8bd53e6d05de48544b0c57d4b0179e22c76d1199b"
 }

@@ -64,7 +64,7 @@ export const server = function (serv: Server, { version }: Options) {
         default:
           return "Something went wrong. Try again."
       }
-      return "Title or action bar should appear"
+      return "Please dont annoy other players with titles ;)"
     }
   })
 
@@ -96,6 +96,10 @@ export const server = function (serv: Server, { version }: Options) {
 
   serv.commands.add({
     base: 'version',
+    aliases: [
+      '/about',
+      '/info',
+    ],
     info: 'to get version of the server',
     usage: '/version',
     action () {
@@ -116,7 +120,7 @@ export const server = function (serv: Server, { version }: Options) {
     base: 'selector',
     info: 'Get entities id from selector like @a',
     usage: '/selector <selector>',
-    op: true,
+    // op: true,
     parse (str) {
       return str || false
     },
