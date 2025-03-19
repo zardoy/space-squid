@@ -22,7 +22,7 @@ export const server = async function (serv: Server, settings: Options) {
 
   for (const plugin of plugins) {
     // match .js but not .disabled.js
-    if (plugin.match(/\.[js,mjs]$/) && !plugin.includes('.disabled.')) {
+    if (plugin.match(/\.(js|mjs)$/) && !plugin.includes('.disabled.')) {
       const pluginName = plugin.split('.').slice(0, -1).join('.')
       const moduleContent = fs.readFileSync(path.join(settings.worldFolder, 'plugins', plugin), 'utf8')
       const module = await loadPlugin(moduleContent)
