@@ -96,6 +96,10 @@ export const server = function (serv: Server, { version }: Options) {
 
   serv.commands.add({
     base: 'version',
+    aliases: [
+      '/about',
+      '/info',
+    ],
     info: 'to get version of the server',
     usage: '/version',
     action () {

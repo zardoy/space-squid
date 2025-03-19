@@ -39,7 +39,7 @@ const loadPlugin = (moduleContent: string) => {
   const blob = new Blob([moduleContent], { type: 'application/javascript' })
   const moduleUrl = URL.createObjectURL(blob)
 
-  return import(moduleUrl).then(module => {
+  return import(/* webpackIgnore: true */ moduleUrl).then(module => {
     URL.revokeObjectURL(moduleUrl)
     return module
   })
