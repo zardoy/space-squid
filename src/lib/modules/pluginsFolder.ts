@@ -18,7 +18,7 @@ export const entity = function (entity: Entity, serv: Server) {
 export const server = async function (serv: Server, settings: Options) {
   loadedPlugins = {}
   if (!settings.pluginsFolder || !settings.worldFolder) return
-  const plugins = fs.readdirSync(path.join(settings.worldFolder, 'plugins'))
+  const plugins = await fs.promises.readdir(path.join(settings.worldFolder, 'plugins'))
 
   for (const plugin of plugins) {
     // match .js but not .disabled.js
