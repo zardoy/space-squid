@@ -23,10 +23,10 @@ export const server = function (serv: Server, settings: Options) {
   Object.keys(externalPlugins).forEach((p) => {
     if (externalPlugins[p].disabled) return
     try {
-      module['require'].resolve(p) // Check if it exists, if not do catch, otherwise jump to bottom
+      (module['require'] as any).resolve(p) // Check if it exists, if not do catch, otherwise jump to bottom
     } catch (err) {
       try { // Throw error if cannot find plugin
-        module['require'].resolve('../../plugins/' + p)
+        (module['require'] as any).resolve('../../plugins/' + p)
       } catch (err) {
         serv.err(`Failed to load plugin: cannot find plugin ${p}`)
       }
