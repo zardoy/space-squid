@@ -17,7 +17,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       if (heldItem.count === 0) player.inventory.slots[36 + player.heldItemSlot] = null
 
       // TODO: correct position & velocity + physic simulation
-      dropBlock({
+      player.behavior('survival_dug', {
         blockDropPosition: player.position,
         blockDropWorld: player.world,
         blockDropVelocity: new Vec3(0, 0, 0),
@@ -26,6 +26,8 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         blockDropCount: count,
         blockDropPickup: 500,
         blockDropDeath: 60 * 5 * 1000
+      }, async (data) => {
+        dropBlock(data)
       })
     } else if (status === 5) {
       // TODO: Shoot arrow / finish eating
