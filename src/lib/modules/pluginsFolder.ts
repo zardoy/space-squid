@@ -17,6 +17,7 @@ export const entity = function (entity: Entity, serv: Server) {
 
 export const server = async function (serv: Server, settings: Options) {
   loadedPlugins = {}
+  serv['loadedPlugins'] = loadedPlugins
   if (!settings.pluginsFolder || !settings.worldFolder) return
   let plugins: string[] = []
   try {
