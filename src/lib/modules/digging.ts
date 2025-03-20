@@ -17,7 +17,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       if (heldItem.count === 0) player.inventory.slots[36 + player.heldItemSlot] = null
 
       // TODO: correct position & velocity + physic simulation
-      player.behavior('survival_dug', {
+      player.behavior('item_drop', {
         blockDropPosition: player.position,
         blockDropWorld: player.world,
         blockDropVelocity: new Vec3(0, 0, 0),
