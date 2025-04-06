@@ -18,6 +18,7 @@ export const server = function (serv: Server) {
 
   serv.on('tick', async () => {
     for (const [id, entity] of Object.entries(serv.entities)) {
+      if (!entity.ready) continue
       const isInWaterOrLava = async () => {
         const block = await entity.world.getBlock(entity.position.offset(0, 1, 0))
         return block.name === 'water' || block.name === 'lava'

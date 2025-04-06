@@ -18,6 +18,7 @@ export const server = function (serv: Server) {
   serv.getNearbyEntities = ({ world, position, radius = 8 * 16 }) => Object.keys(serv.entities)
     .map(eId => serv.entities[eId])
     .filter(entity =>
+      entity.ready &&
       entity.world === world &&
       entity.position.distanceTo(position) <= radius
     )
@@ -34,7 +35,7 @@ export const entity = function (entity: Entity, serv: Server) {
 
   entity.getOtherPlayers = () => serv.players.filter((p) => p !== entity)
 
-  entity.getOthers = () => Object.fromEntries(Object.entries(serv.entities).filter(([id]) => id !== entity.id))
+  entity.getOthers = () => Object.fromEntries(Object.entries(serv.entities).filter(([id]) => id !== entity.id && serv.entities[id].ready))
 
   entity.getNearbyPlayers = (radius = entity.viewDistance) => entity.getNearby()
     .filter((e) => e.type === 'player' && entity.position.distanceTo(entity.position) <= radius) as Player[]

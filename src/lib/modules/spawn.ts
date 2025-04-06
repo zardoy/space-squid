@@ -18,9 +18,27 @@ export const server = function (serv: Server, options: Options) {
     serv.entityMaxId++
     const entity = new Entity(serv.entityMaxId)
 
+    // Add ready state management
+    entity.ready = false
+    let resolveReady: () => void
+    entity.onReady = new Promise<void>(resolve => {
+      resolveReady = resolve
+    })
+    entity.makeReady = () => {
+      if (!entity.ready) {
+        entity.ready = true
+        resolveReady()
+      }
+    }
+
     for (const plugin of Object.values(serv.plugins)) plugin.entity?.(entity, serv, options)
 
     entity.initEntity(type, entityType, world, position)
+
+    // For non-player entities, resolve immediately for now
+    if (type !== 'player') {
+      entity.makeReady()
+    }
 
     serv.emit('newEntity', entity)
 
@@ -465,15 +483,15 @@ declare global {
     headPitch: number
     /** @internal */
     despawnEntities: (arg0: any[]) => void
+    ready: boolean
+    onReady: Promise<void>
+    makeReady: () => void
     /** @internal */
     "initEntity": (type: any, entityType: any, world: any, position: any) => void
     /** @internal */
     "getSpawnPacket": () => { entityId: any; playerUUID: any; x: any; y: any; z: any; yaw: any; pitch: any; currentItem: number; metadata: any; objectUUID?: any; type?: any; objectData?: any; velocityX?: any; velocityY?: any; velocityZ?: any; entityUUID?: any; headPitch?: undefined } | { entityId: any; objectUUID: any; type: any; x: any; y: any; z: any; pitch: any; yaw: any; objectData: any; velocityX: any; velocityY: any; velocityZ: any; playerUUID?: any; currentItem?: any; metadata?: any; entityUUID?: any; headPitch?: undefined } | { entityId: any; entityUUID: any; type: any; x: any; y: any; z: any; yaw: any; pitch: any; headPitch: any; velocityX: any; velocityY: any; velocityZ: any; metadata: any; playerUUID?: any; currentItem?: any; objectUUID?: any; objectData?: undefined } | undefined
-    /** @internal */
     "updateAndSpawn": () => void
-    /** @internal */
     "destroy": () => void
-    /** @internal */
     "attach": (attachedEntity: any, leash?: boolean) => void
   }
 }
