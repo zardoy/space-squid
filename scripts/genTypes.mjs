@@ -29,3 +29,9 @@ module.exports = {
 `
 const writePath = patchSource ? './src/lib/modules/index.ts' : './dist/lib/modules/index.js'
 fs.writeFileSync(writePath, modulesFileJs, 'utf8')
+
+const pluginsFolderPatchFile = './dist/lib/modules/pluginsFolder.js'
+const oldPluginsFolder = fs.readFileSync(pluginsFolderPatchFile, 'utf8')
+const patchString = 'Promise.resolve(`${moduleUrl}`).then(s => __importStar(require(s)))'
+const newPluginsFolder = oldPluginsFolder.replace(patchString, 'import(/* webpackIgnore: true */ `${moduleUrl}`)')
+fs.writeFileSync(pluginsFolderPatchFile, newPluginsFolder, 'utf8')

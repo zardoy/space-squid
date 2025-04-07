@@ -96,6 +96,10 @@ export const server = function (serv: Server, { version }: Options) {
 
   serv.commands.add({
     base: 'version',
+    aliases: [
+      '/about',
+      '/info',
+    ],
     info: 'to get version of the server',
     usage: '/version',
     action () {
@@ -257,7 +261,7 @@ export const server = function (serv: Server, { version }: Options) {
     if (type === 'all') sample = serv.players
     else if (type === 'self') sample = serv.players.filter(p => p.id === selfEntityId)
     else if (type === 'random' || type === 'near') sample = serv.players.filter(p => p.health !== 0)
-    else if (type === 'entity') sample = Object.keys(serv.entities).map(k => serv.entities[k])
+    else if (type === 'entity') sample = Object.keys(serv.entities).map(k => serv.entities[k]).filter(e => e.ready)
 
     const checkOption = (val, compare) => {
       if (!val) return true

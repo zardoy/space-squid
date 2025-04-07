@@ -6,6 +6,7 @@ export const server = function (serv: Server) {
     Promise.all(
       Object.keys(serv.entities).map(async (id) => {
         const entity = serv.entities[id]
+        if (!entity.ready) return
         if (entity.deathTime && Date.now() - entity.bornTime >= entity.deathTime) {
           entity.destroy()
           return

@@ -58,6 +58,14 @@ export const server = function (serv: Server, options: Options) {
     }
     try {
       const player = serv.initEntity('player', null, serv.overworld, new Vec3(0, 0, 0))
+      Object.defineProperty(player, 'position', {
+        get () {
+          throw new Error('Position of the player is not ready yet and is going to be restored (possibly) from playerdata or from world spawn point. Update or use it after player is ready (player.onReady promise is resolved).')
+        },
+        set (value) {
+          throw new Error('Position of the player is not ready yet and is going to be restored (possibly) from playerdata or from world spawn point. Update or use it after player is ready (player.onReady promise is resolved).')
+        },
+      })
       player._client = client as any
 
       player.profileProperties = player._client.profile ? player._client.profile.properties : []
@@ -102,6 +110,8 @@ export const player = async function (player: Player, serv: Server, settings: Op
     await player.findSpawnPoint()
 
     player.setLoadingStatus('Reading player data')
+    //@ts-ignore remove position only-getter
+    delete player.position
     playerData = await playerDat.read(player.uuid, player.spawnPoint, settings.worldFolder ?? false)
     Object.keys(playerData.player).forEach(k => { player[k] = playerData.player[k] })
 
@@ -111,6 +121,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.setLoadingStatus(null)
 
     player.emit('dataLoaded')
+    player.makeReady() // Resolve ready state when data is loaded
   }
 
   function updateInventory () {
