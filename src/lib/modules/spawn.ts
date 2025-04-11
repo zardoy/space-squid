@@ -335,8 +335,13 @@ export const entity = function (entity: Entity, serv: Server) {
       entityPosition = entity.position
     }
 
-    // clamped
-    const yaw = Math.max(0, Math.min(255, Math.floor((entity.yaw % 360) * 256 / 360)))
+    // byte (1/256 "degrees") --> float (degrees)
+    function convToClient (b) {
+      let f = (b * 360 / 256)
+      if (f < 0) f += 360
+      return f
+    }
+
     if (entity.type === 'player') {
       return {
         entityId: entity.id,
@@ -344,8 +349,8 @@ export const entity = function (entity: Entity, serv: Server) {
         x: entityPosition.x,
         y: entityPosition.y,
         z: entityPosition.z,
-        yaw,
-        pitch: entity.pitch,
+        yaw: convToClient(entity.yaw),
+        pitch: convToClient(entity.pitch),
         currentItem: 0,
         metadata: entity.metadata
       }
@@ -357,8 +362,8 @@ export const entity = function (entity: Entity, serv: Server) {
         x: entityPosition.x,
         y: entityPosition.y,
         z: entityPosition.z,
-        pitch: entity.pitch,
-        yaw: entity.yaw,
+        pitch: convToClient(entity.pitch),
+        yaw: convToClient(entity.yaw),
         objectData: entity.data,
         velocityX: scaledVelocity.x,
         velocityY: scaledVelocity.y,
@@ -372,9 +377,9 @@ export const entity = function (entity: Entity, serv: Server) {
         x: entityPosition.x,
         y: entityPosition.y,
         z: entityPosition.z,
-        yaw: entity.yaw,
-        pitch: entity.pitch,
-        headPitch: entity.headPitch,
+        yaw: convToClient(entity.yaw),
+        pitch: convToClient(entity.pitch),
+        headPitch: convToClient(entity.headPitch),
         velocityX: scaledVelocity.x,
         velocityY: scaledVelocity.y,
         velocityZ: scaledVelocity.z,

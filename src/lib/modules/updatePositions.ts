@@ -2,24 +2,32 @@ import { Vec3 } from 'vec3'
 
 export const player = function (player: Player) {
   player._client.on('look', ({ yaw, pitch, onGround } = {} as never) => {
-    sendLook(yaw, pitch, onGround)
+    receivedLook(yaw, pitch, onGround)
   })
 
   // float (degrees) --> byte (1/256 "degrees")
-  function conv (f) {
+  function convFromClient (f) {
     let b = Math.floor((f % 360) * 256 / 360)
     if (b < -128) b += 256
     else if (b > 127) b -= 256
     return b
   }
-  function sendLook (yaw, pitch, onGround) {
+
+  // byte (1/256 "degrees") --> float (degrees)
+  function convToClient (b) {
+    let f = (b * 360 / 256)
+    if (f < 0) f += 360
+    return f
+  }
+
+  function receivedLook (yaw, pitch, onGround) {
     player.behavior('look', {
       yaw,
       pitch,
       onGround
     }, () => {
-      const convYaw = conv(yaw)
-      const convPitch = conv(pitch)
+      const convYaw = convFromClient(yaw)
+      const convPitch = convFromClient(pitch)
       if (convYaw === player.yaw && convPitch === player.pitch) return
       player._writeOthersNearby('entity_look', {
         entityId: player.id,
@@ -45,7 +53,7 @@ export const player = function (player: Player) {
 
   player._client.on('position_look', ({ x, y, z, onGround, yaw, pitch } = {} as never) => {
     player.sendPosition((new Vec3(x, y, z)), onGround)
-    sendLook(yaw, pitch, onGround)
+    receivedLook(yaw, pitch, onGround)
   })
 
   player.sendSelfPosition = (sendChunks = true) => {
@@ -54,8 +62,8 @@ export const player = function (player: Player) {
       x: player.position.x,
       y: player.position.y,
       z: player.position.z,
-      yaw: player.yaw,
-      pitch: player.pitch,
+      yaw: convToClient(player.yaw),
+      pitch: convToClient(player.pitch),
       flags: 0x00,
       teleportId: 1
     })
