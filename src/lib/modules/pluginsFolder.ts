@@ -19,9 +19,10 @@ export const server = async function (serv: Server, settings: Options) {
   loadedPlugins = {}
   serv['loadedPlugins'] = loadedPlugins
   if (!settings.pluginsFolder || !settings.worldFolder) return
+  const pluginsFolderPath = settings.pluginsFolderPath || path.join(settings.worldFolder, 'plugins')
   let plugins: string[] = []
   try {
-    plugins = await fs.promises.readdir(path.join(settings.worldFolder, 'plugins'))
+    plugins = await fs.promises.readdir(pluginsFolderPath)
   } catch (err) {
     serv.warn('Skipping plugins folder: cannot find plugins folder')
     return
@@ -31,7 +32,7 @@ export const server = async function (serv: Server, settings: Options) {
     // match .js but not .disabled.js
     if (plugin.match(/\.(js|mjs)$/) && !plugin.includes('.disabled.')) {
       const pluginName = plugin.split('.').slice(0, -1).join('.')
-      const moduleContent = await fs.promises.readFile(path.join(settings.worldFolder, 'plugins', plugin), 'utf8')
+      const moduleContent = await fs.promises.readFile(path.join(pluginsFolderPath, plugin), 'utf8')
       const module = await loadPlugin(moduleContent)
       loadedPlugins[pluginName] = module
       serv.info(`Loading plugin: ${pluginName}`)

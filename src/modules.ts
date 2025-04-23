@@ -71,6 +71,7 @@ declare global {
     difficulty?: number
     worldFolder?: string | false
     pluginsFolder?: boolean
+    pluginsFolderPath?: string
     generation?: {
       name: string
       options: {
