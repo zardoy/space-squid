@@ -21,7 +21,7 @@ const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
 export const server: ServerModule = async function (serv, options) {
-  const { version, worldSaveVersion: _worldSaveVersion, worldFolder, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
+  const { version, worldSaveVersion: _worldSaveVersion, worldFolder, noWorldRegion, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
   generation.options.worldHeight = serv.supportFeature('tallWorld') ? 384 : 256
   generation.options.minY = serv.supportFeature('tallWorld') ? -64 : 0
   levelDatWriter(serv, options)
@@ -34,7 +34,7 @@ export const server: ServerModule = async function (serv, options) {
   const newSeed = serv.seed ?? (generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31)))
   let seed
   let regionFolder
-  if (worldFolder) {
+  if (worldFolder && !noWorldRegion) {
     regionFolder = worldFolder + '/region'
     try {
       await fsStat(regionFolder)

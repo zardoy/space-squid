@@ -70,6 +70,7 @@ declare global {
     gameMode?: number
     difficulty?: number
     worldFolder?: string | false
+    noWorldRegion?: boolean
     pluginsFolder?: boolean
     pluginsFolderPath?: string
     generation?: {
