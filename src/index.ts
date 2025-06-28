@@ -103,9 +103,16 @@ class MCServer extends EventEmitter {
     for (const plugin of Object.values(server.plugins)) {
       promises.push(plugin.server?.(server, options))
     }
+    const requiredModules = ['commands', 'blocks', 'world', 'login', 'settings', 'players']
     Promise.allSettled(promises).then((values) => {
-      for (const rejected of values.filter(value => value.status === 'rejected')) {
-        server._server.emit('error', (rejected as any).reason)
+      for (const rejected of values.map((value, index) => ({ value, index })).filter(value => value.value.status === 'rejected')) {
+        const moduleName = Object.keys(server.plugins)[rejected.index]
+        if (requiredModules.includes(moduleName)) {
+          const err = new Error(`Module ${moduleName} is required for the server to work. Error: ${(rejected.value as any).reason}`)
+          err.stack = (rejected.value as any).reason.stack
+          throw err
+        }
+        server._server.emit('error', (rejected.value as any).reason, moduleName)
       }
       // handle successful results of promises
       for (const value of values.filter(value => value.status === 'fulfilled')) {

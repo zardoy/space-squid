@@ -18,19 +18,19 @@ const playerDefaults = {
 
 /**
  * @param {string} uuid
- * @param {Vec3} spawnPoint
+ * @param {() => Promise<Vec3>} getSpawnPoint
  * @param {string | false} worldFolder
  */
-async function read (uuid, spawnPoint, worldFolder) {
-  const newPlayerData = () => {
+async function read (uuid, getSpawnPoint, worldFolder) {
+  const newPlayerData = async () => {
     return {
-      player: { ...playerDefaults, ...{ position: spawnPoint.clone() } },
+      player: { ...playerDefaults, ...{ position: (await getSpawnPoint()).clone() } },
       inventory: [],
       new: true
     }
   }
 
-  if (!worldFolder) return newPlayerData()
+  if (!worldFolder) return await newPlayerData()
 
   try {
     const playerDataFile = await promises.readFile(`${worldFolder}/playerdata/${uuid}.dat`)
@@ -43,6 +43,7 @@ async function read (uuid, spawnPoint, worldFolder) {
         gameMode: playerData.playerGameType.value,
         xp: playerData.XpTotal.value,
         heldItemSlot: playerData.SelectedItemSlot.value,
+        dimension: playerData.Dimension.value,
         position: new Vec3(playerData.Pos.value.value[0], playerData.Pos.value.value[1], playerData.Pos.value.value[2]),
         yaw: playerData.Rotation.value.value[0],
         pitch: playerData.Rotation.value.value[1],
@@ -119,6 +120,7 @@ async function save (player, worldFolder, snakeCase, theFlattening) {
     newUncompressedData.value.playerGameType.value = player.gameMode
     newUncompressedData.value.XpTotal.value = player.xp
     newUncompressedData.value.SelectedItemSlot.value = player.heldItemSlot
+    newUncompressedData.value.Dimension.value = player.dimension ?? 0
     newUncompressedData.value.Pos.value.value = [player.position.x, player.position.y, player.position.z]
     newUncompressedData.value.Rotation.value.value = [player.yaw, player.pitch]
     newUncompressedData.value.OnGround.value = Number(player.onGround)

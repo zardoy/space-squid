@@ -21,7 +21,47 @@ const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
 export const server: ServerModule = async function (serv, options) {
-  const { version, worldSaveVersion: _worldSaveVersion, worldFolder, noWorldRegion, generation = { name: 'diamond_square', options: { worldHeight: 80 } } } = options
+  const { version, worldSaveVersion: _worldSaveVersion, worldFolder, noWorldRegion, generation: _generation } = options
+  let generation = _generation ?? { name: 'diamond_square', options: {} }
+
+  if (generation.name === 'flat') {
+    generation.name = 'superflat'
+  }
+  if (generation.name === 'default') {
+    generation.name = 'diamond_square'
+  }
+
+  // Detect world type from level.dat
+  if (worldFolder && !noWorldRegion) {
+    try {
+      const levelData = await level.readLevel(worldFolder + '/level.dat')
+      serv.levelData = levelData
+      if (levelData.WorldGenSettings) {
+        for (const [key, value] of Object.entries(levelData.WorldGenSettings.dimensions)) {
+          if (key.slice('minecraft:') === 'overworld') {
+            if (value.generator.type === 'flat') {
+              generation.name = 'superflat'
+            }
+            break
+          }
+        }
+      }
+      if (levelData.generatorName) {
+        if (levelData.generatorName === 'flat') {
+          generation.name = 'superflat'
+        } else if (generations[levelData.generatorName]) {
+          generation.name = levelData.generatorName
+        } else {
+          console.warn(`Unsupported world chunks generator type: ${levelData.generatorName}`)
+          generation.name = 'diamond_square'
+        }
+      }
+    } catch (err) {
+      // If level.dat read fails, use default generation
+    }
+  }
+
+  generation.options ??= {}
   generation.options.worldHeight = serv.supportFeature('tallWorld') ? 384 : 256
   generation.options.minY = serv.supportFeature('tallWorld') ? -64 : 0
   levelDatWriter(serv, options)
@@ -43,21 +83,19 @@ export const server: ServerModule = async function (serv, options) {
     }
 
     try {
-      const levelData = await level.readLevel(worldFolder + '/level.dat')
-      // serv.levelDataRaw = ... TODO!
-      serv.levelData = levelData
       // destruct SpawnY, SpawnX, SpawnZ
-      const { SpawnY, SpawnX, SpawnZ } = levelData
+      const { SpawnY, SpawnX, SpawnZ } = serv.levelData ?? {}
       if ([SpawnY, SpawnX, SpawnZ].every(x => x !== undefined)) {
-        serv.spawnPoint ??= new Vec3(SpawnX, SpawnY, SpawnZ)
+        serv.spawnPoint ??= new Vec3(SpawnX!, SpawnY!, SpawnZ!)
       }
-      seed = levelData.RandomSeed[0]
-      if (serv.levelData.Version !== undefined && serv.levelData.Version.Name !== worldSaveVersion) {
-        console.warn(`World save version mismatch: you select: ${serv.levelData.Version.Name} actual stored: ${worldSaveVersion}`)
+      seed = serv.levelData?.RandomSeed?.[0] ?? newSeed
+      if (serv.levelData?.Version?.Name !== worldSaveVersion) {
+        console.warn(`World save version mismatch: you select: ${serv.levelData?.Version?.Name} actual stored: ${worldSaveVersion}`)
       }
-      if (!serv.time) serv.time = longArrayToNumber(levelData.DayTime)
+      if (!serv.time && serv.levelData?.DayTime) serv.time = longArrayToNumber(serv.levelData?.DayTime)
       const parseBool = (x, defValue) => x ? x === 'false' : defValue
-      serv.doDaylightCycle = parseBool(serv.levelData.GameRules?.doDaylightCycle, serv.doDaylightCycle)
+      // RESTORE GAMERULES
+      serv.doDaylightCycle = parseBool(serv.levelData?.GameRules?.doDaylightCycle, serv.doDaylightCycle)
     } catch (err) {
       seed = newSeed
       setTimeout(() => {
@@ -73,11 +111,19 @@ export const server: ServerModule = async function (serv, options) {
     getRenamedData
   }
   serv.emit('seed', generationOptions.seed)
+
+  const patchWorld = (world: World) => {
+    world['min_y'] = generation.options.minY
+    world['height'] = generation.options.worldHeight
+  }
+
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
   serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = serv.seed = generationOptions.seed
   serv.overworld.generatorName = generation.name
+  patchWorld(serv.overworld)
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
+  patchWorld(serv.netherworld)
   serv.netherworld.seed = generationOptions.seed
   serv.netherworld.generatorName = 'nether'
   // serv.endworld = new World(generations["end"]({}));
@@ -263,6 +309,12 @@ export const server: ServerModule = async function (serv, options) {
     },
   })
 
+  if (!worldFolder) {
+    serv.writeLevelDat()
+  }
+
+  console.log('worlds init done')
+
   return () => {
     for (const world of Object.values(serv.worlds)) {
       // world.throwOnReadWrite = true
@@ -275,15 +327,35 @@ const levelDatWriter = (serv: Server, options: Options) => {
   serv.writeLevelDat = async () => {
     const { worldFolder } = options
     if (!worldFolder) return
-    await writeLevelDat(worldFolder + '/level.dat', {
+    const getGeneratorName = (world: string) => {
+      const original = serv.worlds[world].generatorName
+      if (original === 'superflat') return 'flat'
+      if (original === 'diamond_square') return 'default'
+      if (original === 'customized') return 'customized'
+      return original
+    }
+
+    const newLevelDat = {
       RandomSeed: serv.levelData?.RandomSeed ?? [serv.seed, 0],
       Version: serv.levelData?.Version ?? { Name: options.version },
-      generatorName: serv.levelData?.generatorName ?? serv.overworld.generatorName === 'superflat' ? 'flat' : serv.overworld.generatorName === 'diamond_square' ? 'default' : 'customized',
+      generatorName: serv.levelData?.generatorName ?? getGeneratorName('overworld'),
+      // WorldGenSettings: {
+      //   dimensions: {
+      //     'minecraft:overworld': {
+      //       generator: { type: getGeneratorName('overworld') }
+      //     }
+      //   }
+      // },
       LevelName: serv.levelData?.LevelName ?? options.levelName!, // todo fix typing
       allowCommands: serv.levelData?.allowCommands ?? 1,
       time: serv.time,
       GameRules: serv.gamerules,
-    })
+    }
+    await writeLevelDat(worldFolder + '/level.dat', newLevelDat)
+    serv.levelData = {
+      ...serv.levelData,
+      ...newLevelDat
+    } as any
   }
 }
 

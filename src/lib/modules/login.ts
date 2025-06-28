@@ -107,13 +107,22 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.uuid = player._client.uuid
 
     player.setLoadingStatus('Findig spawn point')
-    await player.findSpawnPoint()
 
     player.setLoadingStatus('Reading player data')
     //@ts-ignore remove position only-getter
     delete player.position
-    playerData = await playerDat.read(player.uuid, player.spawnPoint, settings.worldFolder ?? false)
+    playerData = await playerDat.read(player.uuid, async () => {
+      // when data does not exist
+      player.world = serv.overworld
+      await player.findSpawnPoint()
+      return player.spawnPoint
+    }, settings.worldFolder ?? false)
     Object.keys(playerData.player).forEach(k => { player[k] = playerData.player[k] })
+    await player.findSpawnPoint()
+
+    // Set world based on saved dimension data, fallback to overworld
+    const savedDimension = (playerData?.player?.Dimension?.value ?? 'overworld').replace('minecraft:', '')
+    player.world = (savedDimension === 'the_nether' || savedDimension === 'nether') ? serv.netherworld : (serv.worlds[savedDimension] ?? serv.overworld)
 
     serv.players.push(player)
     serv.uuidToPlayer[player.uuid] = player

@@ -15,7 +15,10 @@ export const player = function (player: Player, serv: Server) {
       player.behavior('requestRespawn', {}, () => {
         player._client.write('respawn', {
           previousGameMode: player.prevGameMode,
-          dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : 0,
+          dimension: serv.supportFeature('dimensionIsAWorld') ? {
+            min_y: player.world['min_y'] ?? 0,
+            height: player.world['height'] ?? 256,
+          } : serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : 0,
           worldName: serv.dimensionNames[0],
           difficulty: serv.difficulty,
           hashedSeed: serv.hashedSeed,

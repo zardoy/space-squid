@@ -38,7 +38,9 @@ if (isInNode) {
 export const server = function (serv: Server, settings: Options) {
   _servers.push(serv)
 
-  serv.on('error', error => serv.err('Server: ' + error.stack))
+  serv.on('error', (error, pluginName) => {
+    serv.err('Server: ' + error.stack + (pluginName ? ' (plugin: ' + pluginName + ')' : ''))
+  })
   serv.on('clientError', (client, error) => {
     if (error.message.includes('ECONNABORTED')) return
     serv.err('Client ' + client.socket?.remoteAddress + ':' + client.socket.remotePort + ' : ' + error.stack)

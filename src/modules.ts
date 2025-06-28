@@ -20,7 +20,7 @@ declare global {
   }
 
   interface ServerEvents {
-    error: (error: Error) => void
+    error: (error: Error, pluginName?: string) => void
     listening: (port: number) => void
     pluginsReady: () => void
     /** This event is emitted once all plugins are initialized. Use this event for working with properties / methods of other plugins. */
@@ -42,6 +42,7 @@ declare global {
   }
   // Omit is to allow inheritance of Entity
   interface Player extends Omit<Entity, keyof TypedEmitter<{}>>, TypedEmitter<PlayerEvents> {
+    dimension: string | number
     _client: Client
   }
   interface Entity extends EventEmitter {

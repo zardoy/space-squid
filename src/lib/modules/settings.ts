@@ -35,6 +35,12 @@ export const server = function (serv: Server, settings: Options) {
 
   serv.getSpawnPoint = async (world) => {
     if (serv.spawnPoint) return serv.spawnPoint
+
+    // For empty worlds, always spawn at the stone block
+    if (world.generatorName === 'empty') {
+      return new Vec3(0, 65, 0)
+    }
+
     return findSpawnZone(world, new Vec3(randomInt(0, 30), 81, randomInt(0, 30)))
   }
 }
