@@ -16,8 +16,70 @@ export const player = function (player: Player, serv: Server) {
         player._client.write('respawn', {
           previousGameMode: player.prevGameMode,
           dimension: serv.supportFeature('dimensionIsAWorld') ? {
-            min_y: player.world['min_y'] ?? 0,
-            height: player.world['height'] ?? 256,
+            type: 'compound',
+            name: '',
+            value: {
+              name: {
+                type: 'string',
+                value: 'minecraft:overworld'
+              },
+              bed_works: {
+                type: 'byte',
+                value: 1
+              },
+              shrunk: {
+                type: 'byte',
+                value: 0
+              },
+              piglin_safe: {
+                type: 'byte',
+                value: 0
+              },
+              has_ceiling: {
+                type: 'byte',
+                value: 0
+              },
+              has_skylight: {
+                type: 'byte',
+                value: 1
+              },
+              infiniburn: {
+                type: 'string',
+                value: 'minecraft:infiniburn_overworld'
+              },
+              ultrawarm: {
+                type: 'byte',
+                value: 0
+              },
+              ambient_light: {
+                type: 'float',
+                value: 0
+              },
+              logical_height: {
+                type: 'int',
+                value: player.world['height'] ?? 256
+              },
+              min_y: {
+                type: 'int',
+                value: player.world['min_y'] ?? 0
+              },
+              height: {
+                type: 'int',
+                value: player.world['height'] ?? 256
+              },
+              has_raids: {
+                type: 'byte',
+                value: 1
+              },
+              natural: {
+                type: 'byte',
+                value: 1
+              },
+              respawn_anchor_works: {
+                type: 'byte',
+                value: 0
+              }
+            }
           } : serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : 0,
           worldName: serv.dimensionNames[0],
           difficulty: serv.difficulty,
