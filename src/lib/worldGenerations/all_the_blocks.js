@@ -2,7 +2,7 @@ const Vec3 = require('vec3').Vec3
 
 function generation ({ version }) {
   const Chunk = require('prismarine-chunk')(version)
-  const blocks = require('minecraft-data')(version).blocks
+  const blocksCount = Object.keys(require('minecraft-data')(version).blocksByStateId).length
 
   function generateSimpleChunk () {
     const chunk = new Chunk()
@@ -12,8 +12,8 @@ function generation ({ version }) {
       for (let z = 0; z < 16; z++) {
         let y
         for (y = 47; y <= 50; y++) {
-          chunk.setBlockType(new Vec3(x, y, z), i)
-          i = (i + 1) % Object.keys(blocks).length
+          chunk.setBlockStateId(new Vec3(x, y, z), i)
+          i = (i + 1) % blocksCount
         }
         for (y = 0; y < 256; y++) {
           chunk.setSkyLight(new Vec3(x, y, z), 15)
