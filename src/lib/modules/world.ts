@@ -120,7 +120,9 @@ export const server: ServerModule = async function (serv, options) {
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
   const originalGenerator = generationModule(generationOptions)
   serv.overworldOriginalGenerator = originalGenerator
-  serv.overworld = new World(serv.overworldGeneratorOverride ?? originalGenerator, regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
+  serv.overworld = new World((chunkX, chunkZ) => {
+    return serv.overworldGeneratorOverride ? serv.overworldGeneratorOverride(chunkX, chunkZ) : originalGenerator(chunkX, chunkZ)
+  }, regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = serv.seed = generationOptions.seed
   serv.overworld.generatorName = generation.name
   patchWorld(serv.overworld)
