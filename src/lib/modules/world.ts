@@ -118,7 +118,9 @@ export const server: ServerModule = async function (serv, options) {
   }
 
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
-  serv.overworld = new World(generationModule(generationOptions), regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
+  const originalGenerator = generationModule(generationOptions)
+  serv.overworldOriginalGenerator = originalGenerator
+  serv.overworld = new World(serv.overworldGeneratorOverride ?? originalGenerator, regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = serv.seed = generationOptions.seed
   serv.overworld.generatorName = generation.name
   patchWorld(serv.overworld)
@@ -635,6 +637,10 @@ declare global {
     /** Alias to serv.overworld.seed */
     seed: number,
     writeLevelDat: () => Promise<void>
+
+    /* For plugins accessing the original generator, returns chunk */
+    "overworldOriginalGenerator": (chunkX: number, chunkZ: number) => any
+    "overworldGeneratorOverride"?: (chunkX: number, chunkZ: number) => any
   }
   interface Player {
     /** @internal */
