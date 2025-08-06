@@ -1,5 +1,17 @@
 import { versionToNumber } from '../../utils'
 
+export interface ScoreboardLine {
+  name: string
+  value: number
+}
+
+export interface Objective {
+  name: string
+  displayText: string
+  scores: Map<string, number>
+  _oldLines?: ScoreboardLine[]
+}
+
 export const server = function (serv: Server, options: Options) {
   serv['testScoreboard'] = () => {
     // Create scoreboard
@@ -22,8 +34,8 @@ export const server = function (serv: Server, options: Options) {
     serv.updateScoreboard(objective, lines)
   }
 
-  serv.createSidebarScoreboard = (name: string, displayText: string) => {
-    const objective = {
+  serv.createSidebarScoreboard = (name: string, displayText: string): Objective => {
+    const objective: Objective = {
       name,
       displayText,
       scores: new Map<string, number>()
@@ -54,38 +66,50 @@ export const server = function (serv: Server, options: Options) {
     return objective
   }
 
-  serv.updateScoreboard = (objective: any, lines: Array<{ name: string, value: number }>) => {
-    // Clear old scores
-    objective.scores.forEach((_, key) => {
-      serv._writeAll('scoreboard_score', {
-        itemName: key,
-        action: 1, // Remove
-        scoreName: objective.name,
-        value: 0
-      })
-    })
-    objective.scores.clear()
+  serv.updateScoreboard = (objective: Objective, newLines: ScoreboardLine[]) => {
+    const oldLines = objective._oldLines || []
+    const oldLineMap = new Map(oldLines.map(line => [line.name, line.value]))
+    const newLineMap = new Map(newLines.map(line => [line.name, line.value]))
 
-    // Add new scores
-    lines.forEach(({ name, value }) => {
-      objective.scores.set(name, value)
-      serv._writeAll('scoreboard_score', {
-        itemName: name,
-        action: 0, // Create/update
-        scoreName: objective.name,
-        value
-      })
+    // Remove lines that no longer exist
+    oldLines.forEach(({ name, value }) => {
+      if (!newLineMap.has(name)) {
+        serv._writeAll('scoreboard_score', {
+          itemName: name,
+          action: 1, // Remove
+          scoreName: objective.name,
+          value: 0
+        })
+      }
     })
+
+    // Add or update lines
+    newLines.forEach(({ name, value }) => {
+      const oldValue = oldLineMap.get(name)
+      // Only send update if line is new or value changed
+      if (oldValue === undefined || oldValue !== value) {
+        serv._writeAll('scoreboard_score', {
+          itemName: name,
+          action: 0, // Create/update
+          scoreName: objective.name,
+          value
+        })
+      }
+    })
+
+    // Update the scores map and store old lines for next comparison
+    objective.scores = newLineMap
+    objective._oldLines = [...newLines]
   }
 
-  serv.displayScoreboard = (objective: any) => {
+  serv.displayScoreboard = (objective: Objective) => {
     serv._writeAll('scoreboard_display_objective', {
       position: 1, // sidebar
       name: objective.name
     })
   }
 
-  serv.removeScoreboard = (objective: any) => {
+  serv.removeScoreboard = (objective: Objective) => {
     serv._writeAll('scoreboard_objective', {
       name: objective.name,
       action: 1 // Remove
@@ -95,9 +119,9 @@ export const server = function (serv: Server, options: Options) {
 
 declare global {
   interface Server {
-    createSidebarScoreboard: (name: string, displayText: string) => any
-    updateScoreboard: (objective: any, lines: Array<{ name: string, value: number }>) => void
-    displayScoreboard: (objective: any) => void
-    removeScoreboard: (objective: any) => void
+    createSidebarScoreboard: (name: string, displayText: string) => Objective
+    updateScoreboard: (objective: Objective, lines: ScoreboardLine[]) => void
+    displayScoreboard: (objective: Objective) => void
+    removeScoreboard: (objective: Objective) => void
   }
 }
