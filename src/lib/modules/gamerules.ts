@@ -41,7 +41,7 @@ export const server = function (serv: Server, options: Options) {
       if (!rule) {
         return `Available these gamerules: ${Object.entries(gameRules).map(([key, desc]) => `${key}: ${desc}`).join(', ')}`
       }
-      if (!knownGameRules.includes(rule)) ctx.player?.chat(serv.color.yellow + `Warning: gamerule ${rule} is not known`)
+      if (!knownGameRules.includes(rule)) ctx.player?.chat(serv.chatColor.yellow + `Warning: gamerule ${rule} is not known`)
       if (newVal) {
         serv.gamerules[rule] = newVal === 'false' ? false : true
         return `Set ${rule} to ${serv.gamerules[rule]}`

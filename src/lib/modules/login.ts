@@ -296,7 +296,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   function announceJoin () {
-    serv.broadcast(serv.color.yellow + player.username + ' joined the game.')
+    serv.broadcast(serv.chatColor.yellow + player.username + ' joined the game.')
     player.emit('connected')
   }
 

@@ -20,7 +20,7 @@ export const player = function (player: Player, serv: Server, { worldFolder }: O
   player._client.on('end', async (endReason) => {
     if (player && player.username) {
       player._unloadAllChunks()
-      serv.broadcast(serv.color.yellow + player.username + ' left the game.')
+      serv.broadcast(serv.chatColor.yellow + player.username + ' left the game.')
       player._writeOthers('player_info', {
         action: 4,
         data: [{

@@ -58,7 +58,7 @@ export const server = function (serv: Server, options: Options) {
       }
       serv.updateBossBar(bossBar, {
         health,
-        title: `§4§lBoss Battle §7(${Math.round(health * 100)}%)`
+        title: `${serv.color.red}${serv.color.bold}Boss Battle ${serv.color.gray}(${Math.round(health * 100)}%)`
       })
     }, 1000)
   }

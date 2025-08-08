@@ -8,10 +8,10 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     try {
       const res = await serv.commands.use(str, { player }, player.op)
       const success = typeof res === 'string' ? res : (res && 'success' in res ? res.success : '')
-      if (success) player.chat(serv.color.green + success)
-      else if (res && typeof res === 'object' && 'error' in res) player.chat(serv.color.red + res.error)
+      if (success) player.chat(serv.chatColor.green + success)
+      else if (res && typeof res === 'object' && 'error' in res) player.chat(serv.chatColor.red + res.error)
     } catch (err) {
-      if (err.userError) player.chat(serv.color.red + 'Error: ' + err.message)
+      if (err.userError) player.chat(serv.chatColor.red + 'Error: ' + err.message)
       else setTimeout(() => { throw err }, 0)
     }
   }

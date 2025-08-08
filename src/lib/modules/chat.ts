@@ -12,7 +12,7 @@ export const server = function (serv: Server) {
     })
   }
 
-  serv.color = {
+  serv.chatColor = {
     black: '&0',
     dark_blue: '&1',
     dark_green: '&2',
@@ -22,9 +22,7 @@ export const server = function (serv: Server) {
     dark_purple: '&5',
     gold: '&6',
     gray: '&7',
-    grey: '&7',
     dark_gray: '&8',
-    dark_grey: '&8',
     blue: '&9',
     green: '&a',
     aqua: '&b',
@@ -43,6 +41,37 @@ export const server = function (serv: Server) {
     italic: '&o',
     italics: '&o',
     reset: '&r'
+  }
+
+  serv.color = {
+    black: '§0',
+    dark_blue: '§1',
+    dark_green: '§2',
+    dark_cyan: '§3',
+    dark_red: '§4',
+    purple: '§5',
+    dark_purple: '§5',
+    gold: '§6',
+    gray: '§7',
+    dark_gray: '§8',
+    blue: '§9',
+    green: '§a',
+    aqua: '§b',
+    cyan: '§b',
+    red: '§c',
+    pink: '§d',
+    light_purple: '§d',
+    yellow: '§e',
+    white: '§f',
+    random: '§k',
+    obfuscated: '§k',
+    bold: '§l',
+    strikethrough: '§m',
+    underlined: '§n',
+    underline: '§n',
+    italic: '§o',
+    italics: '§o',
+    reset: '§r'
   }
 
   serv.parseClassic = (message) => {
@@ -186,8 +215,7 @@ declare global {
   interface Server {
     /** Broadcasts `message` to all the players with the optional `color`. */
     "broadcast": (message: any, opt?: { whitelist?: any; blacklist?: any[]; system?: boolean }) => void
-    /** @internal */
-    "color": {
+    "chatColor": {
       black: string
       dark_blue: string
       dark_green: string
@@ -197,9 +225,7 @@ declare global {
       dark_purple: string
       gold: string
       gray: string
-      grey: string
       dark_gray: string
-      dark_grey: string
       blue: string
       green: string
       aqua: string
@@ -219,6 +245,7 @@ declare global {
       italics: string
       reset: string
     }
+    "color": Server['chatColor']
     /** @internal */
     "parseClassic": (message: string) => any
   }
