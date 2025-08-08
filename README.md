@@ -45,3 +45,37 @@ It's recommended to also install `pm2` for process auto-restart on crashes and s
 1. Install dependencies: `npm install` or `pnpm install`
 2. Run `npm run dev`, `npm run start` for without watch or `npm run watch` for watch mode (for prismarine-web-client)
 2.1. If using [Bun](https://bun.sh) (experimental) instead: `bun --watch src/app.js` or `bun --hot src/app.js` (preview)
+
+## Examples
+
+### Basic
+
+```ts
+import { createMCServer } from 'flying-squid'
+
+const serv = createMCServer({
+  port: 25565,
+  version: '1.18.2',
+  motd: 'A basic flying squid server',
+  maxPlayers: 10,
+  logging: true,
+  onlineMode: false,
+  worldFolder: './world',
+})
+
+serv.on('listening', (port) => {
+  console.log(`Server is listening on port ${port}`)
+})
+
+```
+
+### Resource Pack with Express
+
+`pnpm add express`
+
+```ts
+import { serveWithExpress } from 'flying-squid/dist/lib/resourcePackServer'
+
+const resourcePack = await serveWithExpress('./resource-pack.zip')
+serv.setResourcePack(resourcePack)
+```
