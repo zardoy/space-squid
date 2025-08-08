@@ -2,7 +2,8 @@ export const server = function (serv: Server, settings: Options) {
   const { plugins: externalPlugins = {} } = settings
 
   serv.modules ??= {}
-  serv.pluginCount = Object.values(serv.modules).length
+  serv.plugins ??= {}
+  serv.pluginCount = Object.values(serv.modules).length + Object.values(serv.plugins).length
   serv.externalPluginsLoaded = false
 
   serv.addPlugin = (name, plugin, set) => {
