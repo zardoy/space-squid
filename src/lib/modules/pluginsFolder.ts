@@ -1,23 +1,25 @@
 import path from 'path'
 import fs from 'fs'
 
-let loadedPlugins: Record<string, any> = {}
+let loadedFolderPlugins: Record<string, any> = {}
 
 export const player = function (player: Player, serv: Server) {
-  for (const plugin of Object.values(loadedPlugins)) {
+  for (const plugin of Object.values(loadedFolderPlugins)) {
+    if (!plugin.player) continue
     plugin.player.call(plugin, player, serv)
   }
 }
 
 export const entity = function (entity: Entity, serv: Server) {
-  for (const plugin of Object.values(loadedPlugins)) {
+  for (const plugin of Object.values(loadedFolderPlugins)) {
+    if (!plugin.entity) continue
     plugin.entity.call(plugin, entity, serv)
   }
 }
 
 export const server = async function (serv: Server, settings: Options) {
-  loadedPlugins = {}
-  serv['loadedPlugins'] = loadedPlugins
+  loadedFolderPlugins = {}
+  serv['loadedPlugins'] = loadedFolderPlugins
   if (!settings.pluginsFolder || !settings.worldFolder) return
   const pluginsFolderPath = settings.pluginsFolderPath || path.join(settings.worldFolder, 'plugins')
   let plugins: string[] = []
@@ -34,7 +36,7 @@ export const server = async function (serv: Server, settings: Options) {
       const pluginName = plugin.split('.').slice(0, -1).join('.')
       const moduleContent = await fs.promises.readFile(path.join(pluginsFolderPath, plugin), 'utf8')
       const module = await loadPlugin(moduleContent)
-      loadedPlugins[pluginName] = module
+      loadedFolderPlugins[pluginName] = module
       serv.info(`Loading plugin: ${pluginName}`)
       module.server.call(module, serv, settings)
     }

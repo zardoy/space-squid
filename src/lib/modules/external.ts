@@ -1,8 +1,8 @@
 export const server = function (serv: Server, settings: Options) {
   const { plugins: externalPlugins = {} } = settings
 
-  serv.plugins ??= {}
-  serv.pluginCount = Object.values(serv.plugins).length
+  serv.modules ??= {}
+  serv.pluginCount = Object.values(serv.modules).length
   serv.externalPluginsLoaded = false
 
   serv.addPlugin = (name, plugin, set) => {
@@ -22,17 +22,6 @@ export const server = function (serv: Server, settings: Options) {
 
   Object.keys(externalPlugins).forEach((p) => {
     if (externalPlugins[p].disabled) return
-    try {
-      (module['require'] as any).resolve(p) // Check if it exists, if not do catch, otherwise jump to bottom
-    } catch (err) {
-      try { // Throw error if cannot find plugin
-        (module['require'] as any).resolve('../../plugins/' + p)
-      } catch (err) {
-        serv.err(`Failed to load plugin: cannot find plugin ${p}`)
-      }
-      serv.addPlugin(p, module['require']('../../plugins/' + p), externalPlugins[p])
-      return
-    }
     serv.addPlugin(p, module['require'](p), externalPlugins[p])
   })
 
@@ -49,7 +38,7 @@ export const player = function (player: Player, serv: Server) {
 export const entity = function (entity: Entity, serv: Server) {
   entity.pluginData = {}
 
-  Object.keys(serv.plugins).forEach(p => {
+  Object.keys(serv.modules).forEach(p => {
     entity.pluginData[p] = {}
   })
 
@@ -59,24 +48,26 @@ export const entity = function (entity: Entity, serv: Server) {
   }
 }
 
+export type Plugin = {
+  id: number
+  name: string
+  server: any
+  player?: any
+  entity?: any
+  settings: any // todo?
+  enabled: boolean // todo support
+}
+
 declare global {
   interface Server {
-    /** List of all plugins. Use serv.plugins[pluginName] to get a plugin's object and data. */
-    "plugins": Record<string, {
-      id: number
-      name: string
-      server: any
-      player: any
-      entity: any
-      settings: any // todo?
-      enabled: boolean // todo support
-    }>
+    /** List of all built-in plugins. */
+    "modules": Record<string, Plugin>
+    plugins: Record<string, Plugin>
+    "addPlugin": (name: string, plugin: Plugin, options?: any) => void
     /** @internal */
     "pluginCount": number
     /** @internal */
     "externalPluginsLoaded": boolean
-    /** @internal */
-    "addPlugin": (name: any, plugin: any, set: any) => void
   }
   interface Entity {
     /** @internal */

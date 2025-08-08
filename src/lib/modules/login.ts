@@ -31,7 +31,7 @@ export const server = function (serv: Server, options: Options) {
   const addPlayerShared = async (player: Player) => {
     patchClient(player._client)
 
-    for (const plugin of Object.values(serv.plugins)) plugin.player?.(player, serv, options)
+    for (const plugin of Object.values({ ...serv.modules, ...serv.plugins })) plugin.player?.(player, serv, options)
 
     serv.emit('newPlayer', player)
     player.emit('asap')

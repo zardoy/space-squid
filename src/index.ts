@@ -99,14 +99,14 @@ class MCServer extends EventEmitter {
     patchServer(server)
 
     const promises: Promise<any>[] = []
-    server.plugins = builtinModules.builtinPlugins
-    for (const plugin of Object.values(server.plugins)) {
+    server.modules = builtinModules.builtinPlugins
+    for (const plugin of Object.values(server.modules)) {
       promises.push(plugin.server?.(server, options))
     }
     const requiredModules = ['commands', 'blocks', 'world', 'login', 'settings', 'players']
     Promise.allSettled(promises).then((values) => {
       for (const rejected of values.map((value, index) => ({ value, index })).filter(value => value.value.status === 'rejected')) {
-        const moduleName = Object.keys(server.plugins)[rejected.index]
+        const moduleName = Object.keys(server.modules)[rejected.index]
         if (requiredModules.includes(moduleName)) {
           const err = new Error(`Module ${moduleName} is required for the server to work. Error: ${(rejected.value as any).reason}`)
           err.stack = (rejected.value as any).reason.stack

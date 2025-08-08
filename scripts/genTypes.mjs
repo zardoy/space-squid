@@ -27,3 +27,8 @@ const oldPluginsFolder = fs.readFileSync(pluginsFolderPatchFile, 'utf8')
 const patchString = 'Promise.resolve(`${moduleUrl}`).then(s => __importStar(require(s)))'
 const newPluginsFolder = oldPluginsFolder.replace(patchString, 'import(/* webpackIgnore: true */ `${moduleUrl}`)')
 fs.writeFileSync(pluginsFolderPatchFile, newPluginsFolder, 'utf8')
+
+// patch dist/index.js to remove require('longjohn')
+const indexJs = fs.readFileSync('./dist/index.js', 'utf8')
+const indexJsPatch = indexJs.replace("require('longjohn');", '')
+fs.writeFileSync('./dist/index.js', indexJsPatch, 'utf8')

@@ -31,7 +31,7 @@ export const server = function (serv: Server, options: Options) {
       }
     }
 
-    for (const plugin of Object.values(serv.plugins)) plugin.entity?.(entity, serv, options)
+    for (const plugin of Object.values({ ...serv.modules, ...serv.plugins })) plugin.entity?.(entity, serv, options)
 
     entity.initEntity(type, entityType, world, position)
 
