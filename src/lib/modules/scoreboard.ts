@@ -12,7 +12,87 @@ export interface Objective {
   _oldLines?: ScoreboardLine[]
 }
 
+const SCOREBOARD_ACTIONS = {
+  CREATE: 0,
+  REMOVE: 1
+}
+
+const SCOREBOARD_POSITIONS = {
+  LIST: 0,
+  SIDEBAR: 1,
+  BELOW_NAME: 2
+}
+
 export const server = function (serv: Server, options: Options) {
+  // Store objectives in server
+  serv.objectives ??= {}
+
+  const sendObjectivePacket = (objective: Objective, action: number, players?: any[]) => {
+    const formattedText = versionToNumber(options.version) >= versionToNumber('1.13')
+      ? JSON.stringify({ text: objective.displayText })
+      : objective.displayText
+
+    const packet = {
+      name: objective.name,
+      action,
+      displayText: formattedText
+    }
+
+    if (players) {
+      serv._writeArray('scoreboard_objective', packet, players)
+    } else {
+      serv._writeAll('scoreboard_objective', packet)
+    }
+  }
+
+  const sendScorePacket = (itemName: string, action: number, scoreName: string, value: number, players?: any[]) => {
+    const packet = {
+      itemName,
+      action,
+      scoreName,
+      value
+    }
+
+    if (players) {
+      serv._writeArray('scoreboard_score', packet, players)
+    } else {
+      serv._writeAll('scoreboard_score', packet)
+    }
+  }
+
+  const sendDisplayPacket = (position: number, name: string, players?: any[]) => {
+    const packet = {
+      position,
+      name
+    }
+
+    if (players) {
+      serv._writeArray('scoreboard_display_objective', packet, players)
+    } else {
+      serv._writeAll('scoreboard_display_objective', packet)
+    }
+  }
+
+  // Send objectives to new players
+  serv.on('newPlayer', (player) => {
+    Object.values(serv.objectives).forEach((objective) => {
+      // Create objective
+      sendObjectivePacket(objective, SCOREBOARD_ACTIONS.CREATE, [player])
+
+      // Set display if it's a sidebar objective
+      if (objective.name in serv.sidebarObjectives) {
+        sendDisplayPacket(SCOREBOARD_POSITIONS.SIDEBAR, objective.name, [player])
+      }
+
+      // Set scores
+      if (objective._oldLines) {
+        objective._oldLines.forEach(line => {
+          sendScorePacket(line.name, 0, objective.name, line.value, [player])
+        })
+      }
+    })
+  })
+
   serv['testScoreboard'] = () => {
     // Create scoreboard
     const objective = serv.createSidebarScoreboard('test', '§6§lSome Demo')
@@ -41,27 +121,15 @@ export const server = function (serv: Server, options: Options) {
       scores: new Map<string, number>()
     }
 
-    // For 1.13+ use JSON chat format, for older versions use plain text
-    const formattedText = versionToNumber(options.version) >= versionToNumber('1.13') ? JSON.stringify({ text: displayText }) : displayText
+    // Store objective
+    serv.objectives[name] = objective
+    serv.sidebarObjectives[name] = true
 
-    // First remove if exists
-    serv._writeAll('scoreboard_objective', {
-      name,
-      action: 1 // Remove
-    })
-
-    // Then create
-    serv._writeAll('scoreboard_objective', {
-      name,
-      displayText: formattedText,
-      action: 0 // Create
-    })
+    // Create objective for all players
+    sendObjectivePacket(objective, SCOREBOARD_ACTIONS.CREATE)
 
     // Display in sidebar
-    serv._writeAll('scoreboard_display_objective', {
-      position: 1, // 1 = sidebar
-      name
-    })
+    sendDisplayPacket(SCOREBOARD_POSITIONS.SIDEBAR, name)
 
     return objective
   }
@@ -74,12 +142,7 @@ export const server = function (serv: Server, options: Options) {
     // Remove lines that no longer exist
     oldLines.forEach(({ name, value }) => {
       if (!newLineMap.has(name)) {
-        serv._writeAll('scoreboard_score', {
-          itemName: name,
-          action: 1, // Remove
-          scoreName: objective.name,
-          value: 0
-        })
+        sendScorePacket(name, 1, objective.name, 0) // Remove
       }
     })
 
@@ -88,12 +151,7 @@ export const server = function (serv: Server, options: Options) {
       const oldValue = oldLineMap.get(name)
       // Only send update if line is new or value changed
       if (oldValue === undefined || oldValue !== value) {
-        serv._writeAll('scoreboard_score', {
-          itemName: name,
-          action: 0, // Create/update
-          scoreName: objective.name,
-          value
-        })
+        sendScorePacket(name, 0, objective.name, value) // Create/update
       }
     })
 
@@ -103,22 +161,20 @@ export const server = function (serv: Server, options: Options) {
   }
 
   serv.displayScoreboard = (objective: Objective) => {
-    serv._writeAll('scoreboard_display_objective', {
-      position: 1, // sidebar
-      name: objective.name
-    })
+    sendDisplayPacket(SCOREBOARD_POSITIONS.SIDEBAR, objective.name)
   }
 
   serv.removeScoreboard = (objective: Objective) => {
-    serv._writeAll('scoreboard_objective', {
-      name: objective.name,
-      action: 1 // Remove
-    })
+    sendObjectivePacket(objective, SCOREBOARD_ACTIONS.REMOVE)
+    delete serv.objectives[objective.name]
+    delete serv.sidebarObjectives[objective.name]
   }
 }
 
 declare global {
   interface Server {
+    objectives: Record<string, Objective>
+    sidebarObjectives: Record<string, boolean>
     createSidebarScoreboard: (name: string, displayText: string) => Objective
     updateScoreboard: (objective: Objective, lines: ScoreboardLine[]) => void
     displayScoreboard: (objective: Objective) => void

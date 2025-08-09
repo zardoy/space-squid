@@ -7,7 +7,6 @@ export interface BossBar {
   color: BossBarColor
   dividers: BossBarDividers
   flags: BossBarFlags
-  players?: Player[]
 }
 
 export enum BossBarColor {
@@ -35,12 +34,54 @@ export enum BossBarFlags {
   CREATE_FOG = 4
 }
 
+const BOSS_BAR_ACTIONS = {
+  ADD: 0,
+  REMOVE: 1,
+  UPDATE_HEALTH: 2,
+  UPDATE_TITLE: 3,
+  UPDATE_STYLE: 4,
+  UPDATE_FLAGS: 5
+}
+
 export const server = function (serv: Server, options: Options) {
-  serv['testBossBar'] = () => {
+  // Store boss bars in server
+  serv.bossBars = {}
+
+  const sendBossBarPacket = (bossBar: BossBar, action: number, players?: any[], additionalData: any = {}) => {
+    const formattedTitle = versionToNumber(options.version) >= versionToNumber('1.13')
+      ? JSON.stringify({ text: bossBar.title })
+      : bossBar.title
+
+    const packet = {
+      entityUUID: bossBar.uuid,
+      action,
+      title: formattedTitle,
+      health: bossBar.health,
+      color: bossBar.color,
+      dividers: bossBar.dividers,
+      flags: bossBar.flags,
+      ...additionalData
+    }
+
+    if (players) {
+      serv._writeArray('boss_bar', packet, players)
+    } else {
+      serv._writeAll('boss_bar', packet)
+    }
+  }
+
+  // Send boss bars to new players
+  serv.on('newPlayer', (player) => {
+    Object.values(serv.bossBars).forEach((bossBar) => {
+      sendBossBarPacket(bossBar, BOSS_BAR_ACTIONS.ADD, [player])
+    })
+  })
+
+  serv['testBossbar'] = () => {
     // Create test boss bar
     const bossBar = serv.createBossBar(
-      'test',
-      `${serv.color.red}${serv.color.bold}Boss Battle`,
+      undefined,
+      '§4§lBoss Battle',
       1.0,
       BossBarColor.RED,
       BossBarDividers.NOTCHES_10,
@@ -58,7 +99,7 @@ export const server = function (serv: Server, options: Options) {
       }
       serv.updateBossBar(bossBar, {
         health,
-        title: `${serv.color.red}${serv.color.bold}Boss Battle ${serv.color.gray}(${Math.round(health * 100)}%)`
+        title: `§4§lBoss Battle §7(${Math.round(health * 100)}%)`
       })
     }, 1000)
   }
@@ -69,36 +110,25 @@ export const server = function (serv: Server, options: Options) {
     health: number = 1.0,
     color: BossBarColor = BossBarColor.BLUE,
     dividers: BossBarDividers = BossBarDividers.NOTCHES_10,
-    flags: BossBarFlags = BossBarFlags.NONE,
-    players?: Player[]
+    flags: BossBarFlags = BossBarFlags.NONE
   ): BossBar => {
     const randomUuid = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    const finalUuid = uuid ?? randomUuid()
 
     const bossBar: BossBar = {
-      uuid: uuid ?? randomUuid(),
+      uuid: finalUuid,
       title,
       health,
       color,
       dividers,
-      flags,
-      players
+      flags
     }
 
-    // For 1.13+ use JSON chat format, for older versions use plain text
-    const formattedTitle = versionToNumber(options.version) >= versionToNumber('1.13')
-      ? JSON.stringify({ text: title })
-      : title
+    // Store boss bar
+    serv.bossBars[finalUuid] = bossBar
 
-    // Create boss bar
-    serv._writeArray('boss_bar', {
-      entityUUID: bossBar.uuid,
-      action: 0, // Add
-      title: formattedTitle,
-      health,
-      color,
-      dividers,
-      flags
-    }, players ?? serv.players)
+    // Create boss bar for all players
+    sendBossBarPacket(bossBar, 0)
 
     return bossBar
   }
@@ -106,66 +136,50 @@ export const server = function (serv: Server, options: Options) {
   serv.updateBossBar = (bossBar: BossBar, updates: Partial<BossBar>) => {
     // Update local state
     Object.assign(bossBar, updates)
+    Object.assign(serv.bossBars[bossBar.uuid], updates)
 
-    // For 1.13+ use JSON chat format, for older versions use plain text
-    const formattedTitle = updates.title && versionToNumber(options.version) >= versionToNumber('1.13')
-      ? JSON.stringify({ text: updates.title })
-      : updates.title
-
-    const players = bossBar.players ?? serv.players
+    const players = serv.players
 
     if (updates.title) {
-      serv._writeArray('boss_bar', {
-        entityUUID: bossBar.uuid,
-        action: 3, // Update title
-        title: formattedTitle
-      }, players)
+      sendBossBarPacket(bossBar, BOSS_BAR_ACTIONS.UPDATE_TITLE, players, {
+        title: versionToNumber(options.version) >= versionToNumber('1.13')
+          ? JSON.stringify({ text: updates.title })
+          : updates.title
+      })
     }
 
     if (updates.health !== undefined) {
-      serv._writeArray('boss_bar', {
-        entityUUID: bossBar.uuid,
-        action: 2, // Update health
-        health: updates.health
-      }, players)
+      sendBossBarPacket(bossBar, BOSS_BAR_ACTIONS.UPDATE_HEALTH, players, { health: updates.health })
     }
 
     if (updates.color !== undefined || updates.dividers !== undefined) {
-      serv._writeArray('boss_bar', {
-        entityUUID: bossBar.uuid,
-        action: 4, // Update style
+      sendBossBarPacket(bossBar, BOSS_BAR_ACTIONS.UPDATE_STYLE, players, {
         color: updates.color ?? bossBar.color,
         dividers: updates.dividers ?? bossBar.dividers
-      }, players)
+      })
     }
 
     if (updates.flags !== undefined) {
-      serv._writeArray('boss_bar', {
-        entityUUID: bossBar.uuid,
-        action: 5, // Update flags
-        flags: updates.flags
-      }, players)
+      sendBossBarPacket(bossBar, BOSS_BAR_ACTIONS.UPDATE_FLAGS, players, { flags: updates.flags })
     }
   }
 
   serv.removeBossBar = (bossBar: BossBar) => {
-    serv._writeArray('boss_bar', {
-      entityUUID: bossBar.uuid,
-      action: 1 // Remove
-    }, bossBar.players ?? serv.players)
+    sendBossBarPacket(bossBar, BOSS_BAR_ACTIONS.REMOVE)
+    delete serv.bossBars[bossBar.uuid]
   }
 }
 
 declare global {
   interface Server {
+    bossBars: Record<string, BossBar>
     createBossBar: (
       uuid: string | undefined,
       title: string,
       health?: number,
       color?: BossBarColor,
       dividers?: BossBarDividers,
-      flags?: BossBarFlags,
-      players?: Player[]
+      flags?: BossBarFlags
     ) => BossBar
     updateBossBar: (bossBar: BossBar, updates: Partial<BossBar>) => void
     removeBossBar: (bossBar: BossBar) => void
