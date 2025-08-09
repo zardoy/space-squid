@@ -12,8 +12,9 @@
     }
   },
   "scripts": {
-    "start": "tsc && node dist/app.js",
+    "start": "pnpm build && node dist/app.js",
     "build": "tsc && node scripts/genTypes.mjs",
+    "build-new": "tsx build.ts",
     "dev": "tsx watch src/app.js",
     "watch": "concurrently \"tsc -w\" \"nodemon --watch dist/index.js scripts/genTypes.mjs\"",
     "make-exe": "pkg dist/app.js --targets node18-win-x64",

@@ -26,6 +26,7 @@ const SCOREBOARD_POSITIONS = {
 export const server = function (serv: Server, options: Options) {
   // Store objectives in server
   serv.objectives ??= {}
+  serv.sidebarObjectives ??= {}
 
   const sendObjectivePacket = (objective: Objective, action: number, players?: any[]) => {
     const formattedText = versionToNumber(options.version) >= versionToNumber('1.13')
