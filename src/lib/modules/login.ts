@@ -341,7 +341,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   player.waitPlayerLogin = () => {
-    const events = ['flying', 'look']
+    const events = ['flying', 'look', 'position_look', 'position']
     return new Promise<void>(function (resolve) {
       const listener = () => {
         events.map(event => player._client.removeListener(event, listener))

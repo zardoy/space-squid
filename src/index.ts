@@ -162,6 +162,7 @@ class MCServer extends EventEmitter {
 }
 
 const patchServerSocket = (socket: any, server: Server) => {
+  if (!socket) return
   const oldConnection = socket._events.connection as (clientSocket: any) => void
 
   socket._events.connection = (clientSocket) => {
