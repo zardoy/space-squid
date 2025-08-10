@@ -81,6 +81,7 @@ class MCServer extends EventEmitter {
     // pass version, motd, port, max-players, online-mode
     const oldServer = options.oldServerData
     server._server = oldServer?._server ?? createServer(options)
+    patchServerSocket(server._server['socketServer'], server)
     if (oldServer) {
       server.players = oldServer.players!
       for (const [key, value] of Object.entries(oldServer.oldData)) {
@@ -158,6 +159,75 @@ class MCServer extends EventEmitter {
     })
     server.emit('asap')
   }
+}
+
+const patchServerSocket = (socket: any, server: Server) => {
+  const oldConnection = socket._events.connection as (clientSocket: any) => void
+
+  socket._events.connection = (clientSocket) => {
+    let buffer = Buffer.alloc(0)
+    let handled = false
+
+    // Listen for initial data to determine protocol
+    clientSocket.once('data', (data) => {
+      if (handled) return
+      handled = true
+      buffer = Buffer.concat([buffer, data])
+
+      // Check if it's an HTTP request
+      if (buffer.toString().match(/^(GET|POST|HEAD|OPTIONS)/)) {
+        handleHttp(clientSocket, buffer)
+      } else {
+        // Pass to original Minecraft handler with initial data
+        clientSocket.unshift(buffer)
+        oldConnection(clientSocket)
+      }
+    })
+
+    // Handle timeout and errors
+    clientSocket.on('error', (error) => {
+      if (!handled) {
+        handled = true
+        socket.emit('error', error)
+      }
+    })
+
+    clientSocket.on('timeout', () => {
+      clientSocket.end()
+    })
+  }
+
+  function handleHttp (clientSocket, buffer) {
+    // Create server info response
+    const response = {
+      version: {
+        name: server.mcData.version.minecraftVersion,
+        protocol: server.mcData.version.version
+      },
+      players: {
+        online: server.players?.length || 0
+      },
+      // description: {
+      //   text: server.motd || 'A Minecraft Server'
+      // },
+      // favicon: server.favicon || undefined
+    }
+
+    // Send HTTP response
+    const httpResponse = [
+      'HTTP/1.1 200 OK',
+      'Content-Type: application/json; charset=utf-8',
+      'Connection: close',
+      'Access-Control-Allow-Origin: *',
+      `Content-Length: ${Buffer.byteLength(JSON.stringify(response))}`,
+      '',
+      JSON.stringify(response)
+    ].join('\r\n')
+
+    clientSocket.end(httpResponse)
+  }
+
+  return socket
 }
 
 type Cleanup = () => void
