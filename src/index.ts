@@ -1,4 +1,5 @@
 import { createServer } from 'minecraft-protocol'
+import { WebSocket, WebSocketServer } from 'ws'
 
 import { supportedVersions } from './lib/version'
 import Command from './lib/command'
@@ -9,6 +10,10 @@ import { IndexedData } from 'minecraft-data'
 import './types' // include Server declarations from all modules
 import './modules'
 import { TimerManager } from './lib/utils/timerManager'
+import { IncomingMessage, createServer as createHttpServer } from 'http'
+import { Socket } from 'net'
+
+const PRODUCT_NAME = 'Space Squid vx.x.x'
 
 // #region RUNTIME PREPARE
 if (typeof process !== 'undefined' && !process.browser && process.platform !== 'browser' && parseInt(process.versions.node.split('.')[0]) < 18) {
@@ -162,7 +167,47 @@ class MCServer extends EventEmitter {
 }
 
 const patchServerSocket = (socket: any, server: Server) => {
+  if (!socket) return socket
   const oldConnection = socket._events.connection as (clientSocket: any) => void
+  const wsServer = new WebSocketServer({
+    noServer: true,
+    perMessageDeflate: false, // Disable compression to avoid RSV1 issues
+    maxPayload: 1024 * 1024 * 50 // 50MB max payload
+  })
+  const httpServer = createHttpServer()
+
+  // Handle WebSocket connections
+  // wsServer.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  //   // Create a duplex stream from the WebSocket
+  //   const stream = WebSocket.createWebSocketStream(ws, {
+  //     decodeStrings: false,
+  //     encoding: undefined,
+  //   })
+
+  //   // Add TCP socket properties that Minecraft protocol expects
+  //   stream['remoteAddress'] = req.socket.remoteAddress
+  //   stream['remotePort'] = req.socket.remotePort
+  //   stream['remoteFamily'] = req.socket.remoteFamily
+
+  //   // Add required socket methods
+  //   stream['setKeepAlive'] = () => { }
+  //   stream['setNoDelay'] = () => { }
+  //   stream['setTimeout'] = () => { }
+
+  //   // Handle errors
+  //   ws.on('error', (err) => {
+  //     stream.destroy(err)
+  //   })
+
+  //   // Handle close
+  //   ws.on('close', () => {
+  //     stream.destroy()
+  //   })
+
+  //   console.log('PASSING TO OLD CONNECTION')
+  //   // Handle as Minecraft connection
+  //   // oldConnection(stream)
+  // })
 
   socket._events.connection = (clientSocket) => {
     let buffer = Buffer.alloc(0)
@@ -174,11 +219,17 @@ const patchServerSocket = (socket: any, server: Server) => {
       handled = true
       buffer = Buffer.concat([buffer, data])
 
-      // Check if it's an HTTP request
-      if (buffer.toString().match(/^(GET|POST|HEAD|OPTIONS)/)) {
-        handleHttp(clientSocket, buffer)
+      const firstLine = buffer.toString().split('\n')[0]
+
+      if (firstLine.match(/^(GET|POST|HEAD|OPTIONS)/)) {
+        // Check if it's a WebSocket upgrade request
+        if (buffer.toString().toLowerCase().includes('upgrade: websocket')) {
+          handleWebSocket(clientSocket, buffer)
+        } else {
+          handleHttp(clientSocket, buffer)
+        }
       } else {
-        // Pass to original Minecraft handler with initial data
+        // Regular Minecraft TCP connection
         clientSocket.unshift(buffer)
         oldConnection(clientSocket)
       }
@@ -197,7 +248,56 @@ const patchServerSocket = (socket: any, server: Server) => {
     })
   }
 
-  function handleHttp (clientSocket, buffer) {
+  function handleWebSocket (clientSocket: Socket, buffer: Buffer) {
+    const req = new IncomingMessage(clientSocket)
+    const bufferString = buffer.toString()
+    const [headers, ...rest] = bufferString.split('\r\n')
+    const [method, path, protocol] = headers.split(' ')
+
+    req.method = method
+    req.url = path
+    req.headers = {}
+
+    // Parse headers from buffer
+    rest.forEach(line => {
+      if (line) {
+        const [key, ...value] = line.split(': ')
+        if (key) req.headers[key.toLowerCase()] = value.join(': ')
+      }
+    })
+
+    // Verify WebSocket version and key
+    if (req.headers['sec-websocket-version'] !== '13') {
+      const response = [
+        'HTTP/1.1 400 Bad Request',
+        'Connection: close',
+        '',
+        'WebSocket version not supported'
+      ].join('\r\n')
+      clientSocket.end(response)
+      return
+    }
+
+    // Emit upgrade event to handle WebSocket
+    httpServer.emit('upgrade', req, clientSocket, buffer)
+  }
+
+  // Handle upgrade requests
+  httpServer.on('upgrade', (request, socket, head) => {
+    // Verify origin if needed
+    // const origin = request.headers.origin
+    // if (origin !== allowed_origin) {
+    //   socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
+    //   socket.destroy()
+    //   return
+    // }
+
+    wsServer.handleUpgrade(request, socket, head, (ws) => {
+      wsServer.emit('connection', ws, request)
+    })
+  })
+
+  function handleHttp (clientSocket: any, buffer: Buffer) {
     // Create server info response
     const response = {
       version: {
@@ -205,12 +305,10 @@ const patchServerSocket = (socket: any, server: Server) => {
         protocol: server.mcData.version.version
       },
       players: {
-        online: server.players?.length || 0
+        max: server._server.maxPlayers,
+        online: server.players?.length || 0,
       },
-      // description: {
-      //   text: server.motd || 'A Minecraft Server'
-      // },
-      // favicon: server.favicon || undefined
+      description: server._server.motd || PRODUCT_NAME,
     }
 
     // Send HTTP response
@@ -229,6 +327,8 @@ const patchServerSocket = (socket: any, server: Server) => {
 
   return socket
 }
+
+// Keep the rest of the file as is...
 
 type Cleanup = () => void
 type MaybePromise<T> = T | Promise<T>
