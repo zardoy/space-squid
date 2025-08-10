@@ -41,7 +41,11 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     } else {
       let pos = new Vec3(location.x, location.y, location.z)
 
-      const directionVector = directionToVector[face]
+      let directionVector = directionToVector[face]
+      if (!directionVector) {
+        console.warn(`Unknown face ${face} of ${directionToVector.length} for player ${player.username}`)
+        directionVector = new Vec3(0, 0, 0)
+      }
       const facedPos = pos.plus(directionVector)
 
       const facedBlock = await player.world.getBlock(facedPos)

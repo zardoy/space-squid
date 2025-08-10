@@ -42,7 +42,7 @@ export const server = function (serv: Server) {
       const inWaterOrLava = await isInWaterOrLava()
 
       if (isPlayer(entity)) {
-        if (!isInSurvival(entity) || entity['flying']) {
+        if (!isInSurvival(entity) || entity['flying'] || !entity.enableFallDamage) {
           delete highestPosEntitiesMap[id]
           continue
         }
@@ -72,4 +72,14 @@ export const server = function (serv: Server) {
       }
     }
   })
+}
+
+export const player = function (player: Player, serv: Server) {
+  player.enableFallDamage ??= true
+}
+
+declare global {
+  interface Player {
+    enableFallDamage: boolean
+  }
 }
