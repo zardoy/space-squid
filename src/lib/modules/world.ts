@@ -121,7 +121,7 @@ export const server: ServerModule = async function (serv, options) {
   const originalGenerator = generationModule(generationOptions)
   serv.overworldOriginalGenerator = originalGenerator
   serv.overworld = new World((chunkX, chunkZ) => {
-    return serv.overworldGeneratorOverride ? serv.overworldGeneratorOverride(chunkX, chunkZ) : originalGenerator(chunkX, chunkZ)
+    return serv.overworldGeneratorOverride ? serv.overworldGeneratorOverride(chunkX, chunkZ, generationOptions) : originalGenerator(chunkX, chunkZ, generationOptions)
   }, regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = serv.seed = generationOptions.seed
   serv.overworld.generatorName = generation.name
@@ -373,8 +373,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
   })
 
   player.save = async () => {
-    if (!settings.worldFolder) return
-    return await playerDat.save(player, settings.worldFolder, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'))
+    return await playerDat.save(player, settings.worldFolder || undefined, serv.supportFeature('attributeSnakeCase'), serv.supportFeature('theFlattening'), settings.useInMemoryStorage ?? true)
   }
 
   player._unloadChunk = (chunkX, chunkZ) => {
@@ -642,7 +641,7 @@ declare global {
 
     /* For plugins accessing the original generator, returns chunk */
     "overworldOriginalGenerator": (chunkX: number, chunkZ: number) => any
-    "overworldGeneratorOverride"?: (chunkX: number, chunkZ: number) => any
+    "overworldGeneratorOverride"?: (chunkX: number, chunkZ: number, generationOptions: any) => any
   }
   interface Player {
     /** @internal */

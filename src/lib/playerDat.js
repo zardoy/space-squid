@@ -8,6 +8,9 @@ import { gzip } from 'node-gzip'
 import { promisify } from 'util'
 import { toNBT } from './convertInventorySlotId'
 
+// In-memory storage for player data when worldFolder is falsey
+const inMemoryStorage = new Map()
+
 const nbtParse = promisify(parse)
 
 const playerDefaults = {
@@ -20,8 +23,9 @@ const playerDefaults = {
  * @param {string} uuid
  * @param {() => Promise<Vec3>} getSpawnPoint
  * @param {string | false} worldFolder
+ * @param {boolean} useInMemoryStorage
  */
-async function read (uuid, getSpawnPoint, worldFolder) {
+async function read (uuid, getSpawnPoint, worldFolder, useInMemoryStorage) {
   const newPlayerData = async () => {
     return {
       player: { ...playerDefaults, ...{ position: (await getSpawnPoint()).clone() } },
@@ -30,7 +34,16 @@ async function read (uuid, getSpawnPoint, worldFolder) {
     }
   }
 
-  if (!worldFolder) return await newPlayerData()
+  if (!worldFolder) {
+    const storedData = inMemoryStorage.get(uuid)
+    if (storedData) {
+      return {
+        ...storedData,
+        new: false
+      }
+    }
+    return await newPlayerData()
+  }
 
   try {
     const playerDataFile = await promises.readFile(`${worldFolder}/playerdata/${uuid}.dat`)
@@ -103,9 +116,29 @@ function playerInventoryToNBT (playerInventory, theFlattening) {
  * @param {string | undefined} worldFolder
  * @param {boolean} snakeCase
  * @param {boolean} theFlattening
+ * @param {boolean} useInMemoryStorage
  */
-async function save (player, worldFolder, snakeCase, theFlattening) {
+async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryStorage) {
   if (worldFolder === undefined) {
+    if (useInMemoryStorage) {
+      const playerData = {
+        player: {
+          health: player.health,
+          food: player.food,
+          gameMode: player.gameMode,
+          xp: player.xp,
+          heldItemSlot: player.heldItemSlot,
+          dimension: player.dimension ?? 0,
+          position: player.position,
+          yaw: player.yaw,
+          pitch: player.pitch,
+          onGround: player.onGround,
+          flying: player.flying ?? 0
+        },
+        inventory: playerInventoryToNBT(player.inventory, theFlattening)
+      }
+      inMemoryStorage.set(player.uuid, playerData)
+    }
     return
   }
 

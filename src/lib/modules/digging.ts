@@ -1,4 +1,5 @@
 import { Vec3 } from 'vec3'
+import { Block } from 'prismarine-block'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
   const mcData = serv.mcData
@@ -68,23 +69,25 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     }
   })
 
-  function diggingTime (pos) {
+  function diggingTime () {
     // assume holding nothing and usual conditions
+    const customBreakTime = player.customGetBreakTime(currentlyDugBlock)
+    if (customBreakTime !== undefined) return customBreakTime * 1000
     return currentlyDugBlock.digTime(null, false, false, false)
   }
 
-  let currentlyDugBlock
-  let startDiggingTime
-  let animationInterval
-  let expectedDiggingTime
-  let lastDestroyState
-  let currentAnimationId
-  function startDigging (location) {
+  let currentlyDugBlock: Block
+  let startDiggingTime: number
+  let animationInterval: NodeJS.Timeout
+  let expectedDiggingTime: number
+  let lastDestroyState: number
+  let currentAnimationId: number
+  function startDigging (location: Vec3) {
     serv.entityMaxId++
     currentAnimationId = serv.entityMaxId
-    expectedDiggingTime = diggingTime(location)
+    expectedDiggingTime = diggingTime()
     lastDestroyState = 0
-    startDiggingTime = new Date()
+    startDiggingTime = Date.now()
     updateAnimation()
     animationInterval = player.setInterval(updateAnimation, 100)
     function updateAnimation () {
@@ -139,7 +142,9 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     clearInterval(animationInterval)
     const diggingTime = Date.now() - startDiggingTime
     let stop = false
-    if (expectedDiggingTime - diggingTime < 100) {
+    // const MAX_DIG_DISTANCE = 7
+    const MAX_DIG_DISTANCE = 8
+    if (expectedDiggingTime - diggingTime < 100 && player.position.distanceTo(location) > MAX_DIG_DISTANCE) {
       stop = player.behavior('forceCancelDig', {
         stop: true,
         start: startDiggingTime,
@@ -160,7 +165,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         drops.push({
           ...dropBase,
           blockDropVelocity: new Vec3(Math.random() * 4 - 2, Math.random() * 2 + 2, Math.random() * 4 - 2),
-          blockDropId: serv.supportFeature('theFlattening') ? currentlyDugBlock.drops[0] : currentlyDugBlock.type
+          blockDropId: serv.supportFeature('theFlattening') ? currentlyDugBlock.drops?.[0] : currentlyDugBlock.type
         })
       } else {
         const heldItem = player.inventory.slots[36 + player.heldItemSlot]

@@ -80,7 +80,17 @@ class MCServer extends EventEmitter {
     server.commands = new Command({})
     // pass version, motd, port, max-players, online-mode
     const oldServer = options.oldServerData
-    server._server = oldServer?._server ?? createServer(options)
+    server._server = oldServer?._server ?? createServer({
+      ...options,
+      beforeLogin (client) {
+        const existingPlayer = Object.values(server._server.clients)
+          .find(c => c.username.toLowerCase() === client.username.toLowerCase())
+        if (existingPlayer) {
+          client.end('A player with this username is already connected')
+          return false
+        }
+      },
+    })
     patchServerSocket(server._server['socketServer'], server)
     if (oldServer) {
       server.players = oldServer.players!

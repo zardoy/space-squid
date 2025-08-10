@@ -7,6 +7,7 @@ import * as playerDat from '../playerDat'
 import * as convertInventorySlotId from '../convertInventorySlotId'
 import { skipMcPrefix } from '../utils'
 import { dimensionOverworld, getDimensionCodec } from './dimensionCodec'
+import { Client } from 'minecraft-protocol'
 
 export const server = function (serv: Server, options: Options) {
   serv.players ??= []
@@ -45,6 +46,7 @@ export const server = function (serv: Server, options: Options) {
   }
 
   const addPlayerShared = async (player: Player) => {
+    player.serv = serv
     patchClient(player._client)
 
     for (const plugin of Object.values({ ...serv.modules, ...serv.plugins })) plugin.player?.(player, serv, options)
@@ -66,7 +68,7 @@ export const server = function (serv: Server, options: Options) {
   })
   // #endregion
 
-  serv._server.on('playerJoin', async (client) => {
+  const playerJoined = async (client: Client) => {
     if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
     if (!serv.pluginsReady) {
       client.end('Server is still starting! Please wait before reconnecting.')
@@ -92,7 +94,13 @@ export const server = function (serv: Server, options: Options) {
     } catch (err) {
       setTimeout(() => { throw err }, 0)
     }
-  })
+  }
+
+  if (serv.supportFeature('hasConfigurationState')) {
+    serv._server.on('playerJoin', playerJoined)
+  } else {
+    serv._server.on('login', playerJoined)
+  }
 
   serv.hashedSeed = [0, 0]
   serv.on('seed', (seed) => {
@@ -132,7 +140,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       player.world = serv.overworld
       await player.findSpawnPoint()
       return player.spawnPoint
-    }, settings.worldFolder ?? false)
+    }, settings.worldFolder ?? false, settings.useInMemoryStorage ?? true)
     Object.keys(playerData.player).forEach(k => { player[k] = playerData.player[k] })
     await player.findSpawnPoint()
 
@@ -462,5 +470,11 @@ declare global {
     /** login */
     "login": () => Promise<void>
     stopChunkUpdates: boolean
+    serv: Server
+  }
+
+  interface Options {
+    /** Whether to use in-memory storage when worldFolder is falsey. Defaults to true. */
+    useInMemoryStorage?: boolean
   }
 }
