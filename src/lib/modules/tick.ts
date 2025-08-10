@@ -5,7 +5,7 @@ export const server = function (serv: Server) {
   serv.setTickInterval = ticksPerSecond => {
     serv.stopTickInterval()
 
-    serv.tickInterval = setInterval(() => {
+    serv.tickInterval = serv.setInterval(() => {
       serv.tickCount++
       const t = Date.now()
       let time = (t - serv.lastTickTime) / 1000

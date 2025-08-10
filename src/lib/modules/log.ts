@@ -42,7 +42,7 @@ export const server = function (serv: Server, settings: Options) {
     serv.err('Server: ' + error.stack + (pluginName ? ' (plugin: ' + pluginName + ')' : ''))
   })
   serv.on('clientError', (client, error) => {
-    if (error.message.includes('ECONNABORTED')) return
+    if (error.message.includes('ECONNABORTED') || error.message.includes('ECONNRESET')) return
     serv.err('Client ' + client.socket?.remoteAddress + ':' + client.socket.remotePort + ' : ' + error.stack)
   })
   serv.on('listening', port => serv.info('Server listening on port ' + port))

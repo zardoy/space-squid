@@ -84,7 +84,7 @@ export const player = function (player: Player) {
     // const walkingSpeed = 0.2 * (1 + (player.effects[1] !== null ? (player.effects[1].amplifier + 1) : 0) * 0.2)
     const flyingSpeed = 0.05000000074505806 // todo calculate instead
     const walkingSpeed = 0.10000000149011612 // todo use actual abilities from level.dat
-    player._client.write('abilities', {
+    player.writePacket('abilities', {
       flags: f,
       walkingSpeed,
       flyingSpeed

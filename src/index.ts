@@ -8,6 +8,7 @@ import { Server as ProtocolServer } from 'minecraft-protocol'
 import { IndexedData } from 'minecraft-data'
 import './types' // include Server declarations from all modules
 import './modules'
+import { TimerManager } from './lib/utils/timerManager'
 
 // #region RUNTIME PREPARE
 if (typeof process !== 'undefined' && !process.browser && process.platform !== 'browser' && parseInt(process.versions.node.split('.')[0]) < 18) {
@@ -48,6 +49,7 @@ export { supportedVersions }
 class MCServer extends EventEmitter {
   pluginsReady = false
   private abortController = new AbortController()
+
   constructor() {
     super()
   }
@@ -99,11 +101,31 @@ class MCServer extends EventEmitter {
     patchServer(server)
 
     const promises: Promise<any>[] = []
+    const coreModules = ['utils', 'communication', 'tick', 'commands', 'settings']
     server.modules = builtinModules.builtinPlugins
+
+    // Sort modules so core modules are first in specified order
+    const sortedModules = {}
+    // Add core modules first
+    for (const moduleName of coreModules) {
+      if (server.modules[moduleName]) {
+        sortedModules[moduleName] = server.modules[moduleName]
+        server.modules[moduleName].name = moduleName
+      }
+    }
+    // Add remaining modules
+    for (const [name, module] of Object.entries(server.modules)) {
+      if (!coreModules.includes(name)) {
+        sortedModules[name] = module
+        server.modules[name].name = name
+      }
+    }
+    server.modules = sortedModules
+
     for (const plugin of Object.values(server.modules)) {
       promises.push(plugin.server?.(server, options))
     }
-    const requiredModules = ['commands', 'blocks', 'world', 'login', 'settings', 'players']
+    const requiredModules = [...coreModules, 'blocks', 'world', 'login', 'players']
     Promise.allSettled(promises).then((values) => {
       for (const rejected of values.map((value, index) => ({ value, index })).filter(value => value.value.status === 'rejected')) {
         const moduleName = Object.keys(server.modules)[rejected.index]

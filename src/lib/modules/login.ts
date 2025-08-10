@@ -12,6 +12,22 @@ export const server = function (serv: Server, options: Options) {
   serv.players ??= []
   serv.uuidToPlayer = {}
 
+  const startLatencyInterval = () => {
+    serv.setInterval(() => {
+      serv.bridge.player_info({
+        action: {
+          update_latency: true,
+        },
+        data: serv.players.map(player => ({
+          uuid: player.uuid,
+          latency: player._client.latency,
+        }))
+      })
+    }, 5000)
+  }
+
+  startLatencyInterval()
+
   serv._server.on('connection', client => {
     client.on('error', error => {
       serv.emit('clientError', client, error)
@@ -250,10 +266,11 @@ export const player = async function (player: Player, serv: Server, settings: Op
       reason: 3,
       gameMode: player.gameMode
     })
-    serv._writeAll('player_info', {
-      action: 1,
+    serv.bridge.player_info({
+      action: {
+        update_game_mode: true,
+      },
       data: [{
-        UUID: player.uuid,
         uuid: player.uuid,
         gamemode: player.gameMode
       }]
@@ -262,37 +279,60 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   function fillTabList () {
-    player._writeOthers('player_info', {
-      action: 0,
+    serv.bridge.player_info({
+      action: {
+        add_player: true,
+        initialize_chat: true,
+        update_listed: true,
+        update_latency: true,
+        update_display_name: true,
+        update_hat: true,
+        update_list_order: true,
+        update_game_mode: true,
+      },
       data: [{
-        UUID: player.uuid,
         uuid: player.uuid,
-        name: player.username,
-        properties: player.profileProperties,
+        player: {
+          name: player.username,
+          properties: player.profileProperties,
+        },
         gamemode: player.gameMode,
-        ping: player._client.latency
+        latency: player._client.latency,
+        displayName: undefined,
+        chatSession: undefined,
+        listed: 1,
+        listPriority: 0,
+        showHat: false,
       }]
     })
 
-    player._client.write('player_info', {
-      action: 0,
+    player.bridge.player_info({
+      action: {
+        add_player: true,
+        initialize_chat: true,
+        update_game_mode: true,
+        update_listed: true,
+        update_latency: true,
+        update_display_name: true,
+        update_hat: true,
+        update_list_order: true
+      },
       data: serv.players.map((otherPlayer) => ({
-        UUID: otherPlayer.uuid,
         uuid: otherPlayer.uuid,
-        name: otherPlayer.username,
-        properties: otherPlayer.profileProperties,
+        player: {
+          name: otherPlayer.username,
+          properties: otherPlayer.profileProperties,
+        },
         gamemode: otherPlayer.gameMode,
-        ping: otherPlayer._client.latency
+        latency: otherPlayer._client.latency,
+        displayName: undefined,
+        chatSession: undefined,
+        listed: 1,
+        listPriority: 0,
+        showHat: false,
       }))
     })
-    setInterval(() => player._client.write('player_info', {
-      action: 2,
-      data: serv.players.map(otherPlayer => ({
-        UUID: otherPlayer.uuid,
-        uuid: otherPlayer.uuid,
-        ping: otherPlayer._client.latency
-      }))
-    }), 5000)
+
   }
 
   function announceJoin () {
@@ -420,7 +460,7 @@ declare global {
     /** @internal */
     "waitPlayerLogin": () => Promise<unknown>
     /** login */
-    "login": () => Promise<void>,
+    "login": () => Promise<void>
     stopChunkUpdates: boolean
   }
 }

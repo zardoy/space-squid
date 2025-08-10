@@ -14,12 +14,12 @@ export const server = function (serv: Server) {
   serv.on('tick', (delta, count) => {
     // TODO
     // const disabledByGamerule = 'doDayLightCycle doDayLightcycle DayNightCycle'
-    const disabledByGamerule = !serv.gamerules.doDaylightCycle
-    if (!serv.doDaylightCycle || disabledByGamerule) return
+    const disabledByGamerule = !serv.gamerules.doDaylightCycle && serv.gamerules.doDaylightCycle !== undefined
+    const changeTime = serv.doDaylightCycle && !disabledByGamerule
     if (count % 20 === 0) {
       serv.behavior('changeTime', {
         old: serv.time,
-        newTime: serv.time + 20
+        newTime: serv.time + (changeTime ? 20 : 0)
       }, ({ newTime }) => {
         serv.setTime(newTime % 24000) // Vanilla only does it every second
       })

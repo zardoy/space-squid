@@ -86,7 +86,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     lastDestroyState = 0
     startDiggingTime = new Date()
     updateAnimation()
-    animationInterval = setInterval(updateAnimation, 100)
+    animationInterval = player.setInterval(updateAnimation, 100)
     function updateAnimation () {
       const currentDiggingTime = Date.now() - startDiggingTime
       let newDestroyState = Math.floor(9 * currentDiggingTime / expectedDiggingTime)

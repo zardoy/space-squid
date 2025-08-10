@@ -4,6 +4,7 @@ import { Vec3 } from 'vec3'
 
 import { CustomWorld } from './world'
 import UserError from '../user_error'
+import { TimerManager } from '../utils/timerManager'
 
 export const server = function (serv: Server, options: Options) {
   const version = options.version
@@ -29,6 +30,16 @@ export const server = function (serv: Server, options: Options) {
         entity.ready = true
         resolveReady()
       }
+    }
+
+    // Add timer manager
+    entity.timerManager = new TimerManager()
+    serv.cleanupFunctions.push(() => entity.timerManager.cleanup())
+    entity.setInterval = (callback: () => void, ms: number) => {
+      return entity.timerManager.setInterval(callback, ms)
+    }
+    entity.setTimeout = (callback: () => void, ms: number) => {
+      return entity.timerManager.setTimeout(callback, ms)
     }
 
     for (const plugin of Object.values({ ...serv.modules, ...serv.plugins })) plugin.entity?.(entity, serv, options)
@@ -498,5 +509,9 @@ declare global {
     "updateAndSpawn": () => void
     "destroy": () => void
     "attach": (attachedEntity: any, leash?: boolean) => void
+    setInterval (callback: () => void, ms: number): NodeJS.Timeout
+    setTimeout (callback: () => void, ms: number): NodeJS.Timeout
+    clearInterval (interval: NodeJS.Timeout): void
+    clearTimeout (timeout: NodeJS.Timeout): void
   }
 }
