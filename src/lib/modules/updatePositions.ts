@@ -109,7 +109,7 @@ export const entity = function (entity: Entity, serv: Server) {
 
       const diff = position.minus(entity.knownPosition)
 
-      let maxDelta
+      let maxDelta = 0
       if (serv.supportFeature('fixedPointDelta')) {
         maxDelta = 3
       } else if (serv.supportFeature('fixedPointDelta128')) {

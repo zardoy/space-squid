@@ -82,14 +82,21 @@ class MCServer extends EventEmitter {
     const oldServer = options.oldServerData
     server._server = oldServer?._server ?? createServer({
       ...options,
-      beforeLogin (client) {
-        const existingPlayer = Object.values(server._server.clients)
-          .find(c => c.username.toLowerCase() === client.username.toLowerCase())
-        if (existingPlayer) {
-          client.end('A player with this username is already connected')
-          return false
+    })
+    server._server.on('connection', (client) => {
+      const loginOld = client['_events'].login_start
+      if (typeof loginOld === 'function') {
+        client['_events'].login_start = (packet) => {
+          const username = packet.username.toLowerCase()
+          const existingPlayer = Object.values(server._server.clients)
+            .find(c => c.username?.toLowerCase?.() === username)
+          if (existingPlayer) {
+            client.end('A player with this username is already connected')
+          } else {
+            loginOld(packet)
+          }
         }
-      },
+      }
     })
     patchServerSocket(server._server['socketServer'], server)
     if (oldServer) {
