@@ -38,6 +38,7 @@ export const server = function (serv: Server, { version }: Options) {
   serv.commands.add({
     base: 'title',
     info: 'show title',
+    op: true,
     usage: '/title <targets> (title|subtitle|actionBar) <title>',
     parse (str) {
       const match = str.match(/([A-Za-z0-9]+( [A-Za-z0-9]+)+) ^(title|subtitle|actionBar)$ \{[^}]*\}/i)
@@ -75,7 +76,7 @@ export const server = function (serv: Server, { version }: Options) {
     action (params, ctx) {
       const num = params[0] * 1 + 1
 
-      let str = 'pong'
+      let str = 'Pong'
       if (!isNaN(num)) str += ' [' + num + ']'
 
       if (ctx.player) ctx.player.chat(str + '!')
@@ -112,7 +113,7 @@ export const server = function (serv: Server, { version }: Options) {
     info: 'to bug report',
     usage: '/bug',
     action () {
-      return 'Report bugs or issues here: https://github.com/PrismarineJS/flying-squid/issues'
+      return 'Report bugs or issues here: https://github.com/zardoy/flying-squid/issues'
     }
   })
 
@@ -216,7 +217,7 @@ export const server = function (serv: Server, { version }: Options) {
     base: 'me',
     info: 'Displays a message about yourself',
     usage: '/me <message>',
-    op: false,
+    op: true,
     parse (params) {
       return params || false
     },

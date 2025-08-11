@@ -105,22 +105,23 @@ export const server = function (serv: Server, { version }: Options) {
 
   serv.commands.add({
     base: 'fill',
+    op: true,
     info: 'Fills a region with a specific block',
     usage: '/fill <from> <to> <block>', // todo impl destroy|hollow|keep|outline|replace filter
-    parse(string, ctx) {
+    parse (string, ctx) {
       return string.split(' ')
     },
-    action([_sX, _sY, _sZ, _tX, _tY, _tZ, blockArg], ctx) {
+    action ([_sX, _sY, _sZ, _tX, _tY, _tZ, blockArg], ctx) {
       const [sX, sY, sZ, tX, tY, tZ] = [_sX, _sY, _sZ, _tX, _tY, _tZ].map(x => +x)
-       const block = [] // todo resolve block
-       for (let x = Math.min(sX, tX); x <= Math.max(sX, tX); x++) {
-         for (let y = Math.min(sY, tY); y <= Math.max(sY, tY); y++) {
-           for (let z = Math.min(sZ, tZ); z <= Math.max(sZ, tZ); z++) {
+      const block = [] // todo resolve block
+      for (let x = Math.min(sX, tX); x <= Math.max(sX, tX); x++) {
+        for (let y = Math.min(sY, tY); y <= Math.max(sY, tY); y++) {
+          for (let z = Math.min(sZ, tZ); z <= Math.max(sZ, tZ); z++) {
             // todo
             ctx.player!.setBlock(new Vec3(x, y, z), block)
-           }
-         }
-       }
+          }
+        }
+      }
     },
   })
 
@@ -140,12 +141,13 @@ export const server = function (serv: Server, { version }: Options) {
   serv.commands.add({
     base: 'testforblock',
     info: '',
+    op: true,
     usage: '/testforblock',
     tab: ['blockX', 'blockY', 'blockZ', 'block'],
-    parse(string, ctx) {
+    parse (string, ctx) {
       return string.split(' ')
     },
-    action([blockX, blockY, blockZ, block, blockStates], ctx) {
+    action ([blockX, blockY, blockZ, block, blockStates], ctx) {
       const pos = new Vec3(+blockX, +blockY, +blockZ) // todo relative eg testforblock ~ ~-1 ~ jukebox
       const worldBlock = ctx.player!.world.getBlock(pos)
       return !!worldBlock
