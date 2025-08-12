@@ -10,6 +10,7 @@ export interface PlayerStatsStore {
   meta?: {
     firstLoginMs?: number
     lastLoginMs?: number
+    username?: string
   }
 }
 
@@ -109,11 +110,9 @@ export const server = function (serv: Server, options: Options) {
     await Promise.all(uuids.map((uuid) => serv.savePlayerDataToDisk(uuid)))
   }
 
-  // Flush periodically and on shutdown
-  const interval = serv.setInterval(async () => {
-    await serv.saveAllPlayerDataToDisk()
-  }, 30_000)
-  serv.cleanupFunctions.push(() => clearInterval(interval))
+  serv.cleanupFunctions.push(() => {
+    serv.saveAllPlayerDataToDisk()
+  })
 }
 
 export const player = function (player: Player, serv: Server, options: Options) {
@@ -131,6 +130,7 @@ export const player = function (player: Player, serv: Server, options: Options) 
     player.db.meta ??= {}
     if (!player.db.meta.firstLoginMs) player.db.meta.firstLoginMs = now
     player.db.meta.lastLoginMs = now
+    player.db.meta.username = player.username
     await serv.savePlayerDataToDisk(player.uuid)
   })
 
