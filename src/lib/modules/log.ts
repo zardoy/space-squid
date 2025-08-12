@@ -38,6 +38,11 @@ if (isInNode) {
 export const server = function (serv: Server, settings: Options) {
   _servers.push(serv)
 
+  // Keep a rolling buffer of recent logs and errors for debug HTTP endpoints
+  serv._logBuffer ??= []
+  serv._errorBuffer ??= []
+  const MAX_BUFFER_LINES = 1500
+
   serv.on('error', (error, pluginName) => {
     serv.err('Server: ' + error.stack + (pluginName ? ' (plugin: ' + pluginName + ')' : ''))
   })
@@ -67,15 +72,27 @@ export const server = function (serv: Server, settings: Options) {
   }
 
   serv.info = message => {
-    serv.log('[' + chalk.green('INFO') + ']: ' + message)
+    const line = '[' + chalk.green('INFO') + ']: ' + message
+    serv._logBuffer!.push(line.replace(/\x1B\[[0-9;]*m/g, ''))
+    if (serv._logBuffer!.length > MAX_BUFFER_LINES) serv._logBuffer!.shift()
+    serv.log(line)
   }
 
   serv.err = message => {
-    serv.log('[' + chalk.red('ERROR') + ']: ' + message)
+    const line = '[' + chalk.red('ERROR') + ']: ' + message
+    const plain = line.replace(/\x1B\[[0-9;]*m/g, '')
+    serv._logBuffer!.push(plain)
+    serv._errorBuffer!.push(plain)
+    if (serv._logBuffer!.length > MAX_BUFFER_LINES) serv._logBuffer!.shift()
+    if (serv._errorBuffer!.length > MAX_BUFFER_LINES) serv._errorBuffer!.shift()
+    serv.log(line)
   }
 
   serv.warn = message => {
-    serv.log('[' + chalk.yellow('WARN') + ']: ' + message)
+    const line = '[' + chalk.yellow('WARN') + ']: ' + message
+    serv._logBuffer!.push(line.replace(/\x1B\[[0-9;]*m/g, ''))
+    if (serv._logBuffer!.length > MAX_BUFFER_LINES) serv._logBuffer!.shift()
+    serv.log(line)
   }
 
   if (isInNode) {

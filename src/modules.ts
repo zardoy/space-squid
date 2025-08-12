@@ -1,13 +1,15 @@
 import { Client } from 'minecraft-protocol'
 import TypedEmitter from 'typed-emitter'
 import EventEmitter from 'events'
-import { IndexedData } from 'minecraft-data'
+import { IndexedData, Block as MinecraftDataBlock } from 'minecraft-data'
+import { Block as PrismarineBlock } from 'prismarine-block'
 
 // all is coherent and stays in the same place
 declare global {
   interface PlayerEvents {
     asap: () => void
     loadingStatus: (status: string) => void
+    blockPlaced: (block: MinecraftDataBlock) => void
     connected: () => void
     spawned: () => void
     disconnected: (reason?: string) => void
@@ -17,6 +19,7 @@ declare global {
     modpe: (data: string) => void
     /** Emitted when the player's data is loaded from playerdata folder and can be patched if needed (but will be saved back to playerdata folder if patched) */
     dataLoaded: () => void
+    databaseLoaded: () => void
   }
 
   interface ServerEvents {

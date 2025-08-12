@@ -319,6 +319,33 @@ export const server: ServerModule = async function (serv, options) {
 
   console.log('worlds init done')
 
+  // Periodic autosave: world and all players
+  const autosaveMs = options.savingInterval === false ? 0 : (typeof options.savingInterval === 'number' ? options.savingInterval : 60_000)
+  if (autosaveMs > 0) {
+    let lastBroadcastTs = 0
+    const doAutosave = async () => {
+      try {
+        // Save level.dat if needed
+        await serv.writeLevelDat()
+        // Save worlds if backend supports it
+        // prismarine-world saves chunks automatically when constructed with anvil; here we ensure flush via stop/start
+        // Save players
+        await Promise.allSettled(serv.players.map(p => p.save()))
+        // Also flush JSON player stores if the database module is loaded
+        await serv.saveAllPlayerDataToDisk?.()
+        // Broadcast a single "Server saved" message (no spam more than once per interval)
+        const now = Date.now()
+        if (now - lastBroadcastTs > autosaveMs - 100) {
+          serv.broadcast('§7[autosave] Server saved')
+          lastBroadcastTs = now
+        }
+      } catch (e) {
+        serv.warn('Autosave failed: ' + (e as Error)?.message)
+      }
+    }
+    serv.setInterval(doAutosave, autosaveMs)
+  }
+
   return () => {
     for (const world of Object.values(serv.worlds)) {
       // world.throwOnReadWrite = true

@@ -135,20 +135,29 @@ export const server = function (serv: Server, options: Options) {
     return objective
   }
 
-  serv.updateScoreboard = (objective: Objective, newLines: ScoreboardLine[]) => {
+  /**
+   * Update a scoreboard objective. Accepts either an array of `{ name, value }` or an array of strings.
+   * When strings are provided, values are automatically assigned from -1 and decreasing.
+   */
+  serv.updateScoreboard = (objective: Objective, newLines: ScoreboardLine[] | string[]) => {
+    // Normalize lines: if strings are provided, convert them to ScoreboardLine with descending negative scores starting at -1
+    const normalizedLines: ScoreboardLine[] = Array.isArray(newLines) && typeof newLines[0] === 'string'
+      ? (newLines as string[]).map((name, index) => ({ name, value: -1 - index }))
+      : (newLines as ScoreboardLine[])
+
     const oldLines = objective._oldLines || []
     const oldLineMap = new Map(oldLines.map(line => [line.name, line.value]))
-    const newLineMap = new Map(newLines.map(line => [line.name, line.value]))
+    const newLineMap = new Map(normalizedLines.map(line => [line.name, line.value]))
 
     // Remove lines that no longer exist
-    oldLines.forEach(({ name, value }) => {
+    oldLines.forEach(({ name }) => {
       if (!newLineMap.has(name)) {
         sendScorePacket(name, 1, objective.name, 0) // Remove
       }
     })
 
     // Add or update lines
-    newLines.forEach(({ name, value }) => {
+    normalizedLines.forEach(({ name, value }) => {
       const oldValue = oldLineMap.get(name)
       // Only send update if line is new or value changed
       if (oldValue === undefined || oldValue !== value) {
@@ -158,7 +167,7 @@ export const server = function (serv: Server, options: Options) {
 
     // Update the scores map and store old lines for next comparison
     objective.scores = newLineMap
-    objective._oldLines = [...newLines]
+    objective._oldLines = [...normalizedLines]
   }
 
   serv.displayScoreboard = (objective: Objective) => {
@@ -177,7 +186,7 @@ declare global {
     objectives: Record<string, Objective>
     sidebarObjectives: Record<string, boolean>
     createSidebarScoreboard: (name: string, displayText: string) => Objective
-    updateScoreboard: (objective: Objective, lines: ScoreboardLine[]) => void
+    updateScoreboard: (objective: Objective, lines: ScoreboardLine[] | string[]) => void
     displayScoreboard: (objective: Objective) => void
     removeScoreboard: (objective: Objective) => void
   }

@@ -202,6 +202,8 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
     if (!blocks[id]) return
 
+    player.emit('blockPlaced', blocks[id])
+
     const sound = 'dig.' + (materialToSound[blocks[id].material ?? ''] || 'stone')
     serv.playSound(sound, player.world, placedPosition.offset(0.5, 0.5, 0.5), {
       pitch: 0.8

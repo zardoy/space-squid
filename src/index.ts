@@ -216,33 +216,100 @@ const patchServerSocket = (socket: any, server: Server) => {
   }
 
   function handleHttp (clientSocket, buffer) {
-    // Create server info response
-    const response = {
-      version: {
-        name: server.mcData.version.minecraftVersion,
-        protocol: server.mcData.version.version
-      },
-      players: {
-        online: server.players?.length || 0
-      },
-      // description: {
-      //   text: server.motd || 'A Minecraft Server'
-      // },
-      // favicon: server.favicon || undefined
+    try {
+      const head = buffer.toString()
+      const requestLine = head.split('\r\n')[0] || ''
+      const [method = 'GET', rawPath = '/'] = requestLine.split(' ')
+      const pathOnly = rawPath.split('?')[0]
+
+      // If an endpoint handler exists, delegate
+      const handler = (server as any).endpointsHandlers?.[pathOnly]
+      if (typeof handler === 'function') {
+        // Minimal req/res shims
+        const resHeaders: Record<string, string> = {
+          'Connection': 'close',
+          'Access-Control-Allow-Origin': '*'
+        }
+        let statusCode = 200
+        const res = {
+          writeHead: (code: number, headers?: Record<string, string>) => {
+            statusCode = code
+            if (headers) Object.assign(resHeaders, headers)
+          },
+          setHeader: (name: string, value: string) => {
+            resHeaders[name] = value
+          },
+          end: (body: any) => {
+            const payload = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body ?? '')
+            if (resHeaders['Content-Length'] === undefined) {
+              resHeaders['Content-Length'] = String(Buffer.byteLength(payload))
+            }
+            const lines = [
+              `HTTP/1.1 ${statusCode} ${statusCode === 200 ? 'OK' : ''}`,
+              ...Object.entries(resHeaders).map(([k, v]) => `${k}: ${v}`),
+              '',
+              ''
+            ]
+            clientSocket.write(lines.join('\r\n'))
+            clientSocket.end(payload)
+          }
+        }
+        const req = { method, url: rawPath, headers: {} } as any
+        try {
+          handler(req, res)
+        } catch (e) {
+          const payload = 'Internal Server Error\n'
+          const response = [
+            'HTTP/1.1 500 Internal Server Error',
+            'Content-Type: text/plain; charset=utf-8',
+            'Connection: close',
+            'Access-Control-Allow-Origin: *',
+            `Content-Length: ${Buffer.byteLength(payload)}`,
+            '',
+            payload
+          ].join('\r\n')
+          clientSocket.end(response)
+        }
+        return
+      }
+
+      // Default JSON status response
+      const response = {
+        version: {
+          name: server.mcData.version.minecraftVersion,
+          protocol: server.mcData.version.version
+        },
+        players: {
+          online: server.players?.length || 0
+        },
+        description: server._server.motdMsg ?? { text: server._server.motd },
+        favicon: server._server.favicon ?? null,
+      }
+
+      const httpResponse = [
+        'HTTP/1.1 200 OK',
+        'Content-Type: application/json; charset=utf-8',
+        'Connection: close',
+        'Access-Control-Allow-Origin: *',
+        `Content-Length: ${Buffer.byteLength(JSON.stringify(response))}`,
+        '',
+        JSON.stringify(response)
+      ].join('\r\n')
+
+      clientSocket.end(httpResponse)
+    } catch (e) {
+      const payload = 'Bad Request\n'
+      const httpResponse = [
+        'HTTP/1.1 400 Bad Request',
+        'Content-Type: text/plain; charset=utf-8',
+        'Connection: close',
+        'Access-Control-Allow-Origin: *',
+        `Content-Length: ${Buffer.byteLength(payload)}`,
+        '',
+        payload
+      ].join('\r\n')
+      clientSocket.end(httpResponse)
     }
-
-    // Send HTTP response
-    const httpResponse = [
-      'HTTP/1.1 200 OK',
-      'Content-Type: application/json; charset=utf-8',
-      'Connection: close',
-      'Access-Control-Allow-Origin: *',
-      `Content-Length: ${Buffer.byteLength(JSON.stringify(response))}`,
-      '',
-      JSON.stringify(response)
-    ].join('\r\n')
-
-    clientSocket.end(httpResponse)
   }
 
   return socket
