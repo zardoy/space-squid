@@ -3,7 +3,7 @@ export const player = async function (player: Player, serv: Server) {
     serv.warn('-------------------------------')
     serv.warn('Please report this flying-squid! This is bug (mabye)')
     serv.warn('Unhandled rejection warning!')
-    serv.warn('Error: ' + promise)
+    serv.warn('Error: ' + (promise.stack ?? promise))
     serv.warn('Report this error here: https://github.com/PrismarineJS/flying-squid/issues')
     serv.warn('-------------------------------')
     serv.emit('unhandledRejectionWarning')
@@ -13,7 +13,7 @@ export const player = async function (player: Player, serv: Server) {
     serv.err('-------------------------------')
     serv.err('Please report this flying-squid! This is bug (mabye)')
     serv.err('Something went wrong!')
-    serv.err('Error: ' + err.stack)
+    serv.err('Error: ' + (err.stack ?? err))
     serv.err('Report this error here: https://github.com/PrismarineJS/flying-squid/issues')
     serv.err('-------------------------------')
     serv.emit('crash')
@@ -23,6 +23,4 @@ export const player = async function (player: Player, serv: Server) {
 
   process.on('unhandledRejection', (promise) => { unhandledRejection(promise) })
   process.on('uncaughtException', err => { uncaughtException(err) })
-}
-declare global {
 }

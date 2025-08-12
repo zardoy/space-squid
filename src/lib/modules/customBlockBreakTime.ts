@@ -1,4 +1,5 @@
 import { Block } from 'prismarine-block'
+
 // related to custom channels, everything starts with 'custom'
 
 const CHANNEL_NAME = 'minecraft-web-client:block-interactions-customization'
@@ -70,7 +71,9 @@ export const player = async (player: Player, serv: Server) => {
   )
 
   // Send initial configuration if it exists
-  sendBreakTimeConfig(player, serv)
+  player.on('login', () => {
+    sendBreakTimeConfig(player, serv)
+  })
 }
 
 export type BreakTimeConfig = {

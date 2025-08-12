@@ -77,7 +77,9 @@ export const player = async (player: Player, serv: Server) => {
   )
 
   // Send current server waypoints on join
-  sendAllWaypoints(player, serv)
+  player.on('login', () => {
+    sendAllWaypoints(player, serv)
+  })
 }
 
 export type Waypoint = {

@@ -57,41 +57,44 @@ export const server = function (serv: Server, settings: Options) {
 
   const logFile = path.join('logs', timeStarted + '.log')
 
-  serv.log = message => {
+  serv.log = (message, isError = false) => {
     readline?.cursorTo(process.stdout, 0)
     let date = new Date()
     let formattedDate = `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()} ${date.getFullYear()}, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
-    message = formattedDate + ' ' + message // todo use intl
-    message = serv.formatMessage?.(message) ?? message
-    if (!message) return
-    if (!settings.noConsoleOutput) console.log(message)
+    // Prefix timestamp first
+    let fullMessage = formattedDate + ' ' + message // todo use intl
+    // Allow user-defined formatting to modify the full line
+    fullMessage = serv.formatMessage?.(fullMessage) ?? fullMessage
+    if (!fullMessage) return
+
+    // Push to buffers (plain text, with timestamp)
+    const plain = fullMessage.replace(/\x1B\[[0-9;]*m/g, '')
+    serv._logBuffer!.push(plain)
+    if (serv._logBuffer!.length > MAX_BUFFER_LINES) serv._logBuffer!.shift()
+    if (isError) {
+      serv._errorBuffer!.push(plain)
+      if (serv._errorBuffer!.length > MAX_BUFFER_LINES) serv._errorBuffer!.shift()
+    }
+
+    if (!settings.noConsoleOutput) console.log(fullMessage)
     if (!settings.logging) return
-    fs.appendFile(logFile, message + '\n', (err) => {
+    fs.appendFile(logFile, plain + '\n', (err) => {
       if (err) console.log(err)
     })
   }
 
   serv.info = message => {
     const line = '[' + chalk.green('INFO') + ']: ' + message
-    serv._logBuffer!.push(line.replace(/\x1B\[[0-9;]*m/g, ''))
-    if (serv._logBuffer!.length > MAX_BUFFER_LINES) serv._logBuffer!.shift()
     serv.log(line)
   }
 
   serv.err = message => {
     const line = '[' + chalk.red('ERROR') + ']: ' + message
-    const plain = line.replace(/\x1B\[[0-9;]*m/g, '')
-    serv._logBuffer!.push(plain)
-    serv._errorBuffer!.push(plain)
-    if (serv._logBuffer!.length > MAX_BUFFER_LINES) serv._logBuffer!.shift()
-    if (serv._errorBuffer!.length > MAX_BUFFER_LINES) serv._errorBuffer!.shift()
-    serv.log(line)
+    serv.log(line, true)
   }
 
   serv.warn = message => {
     const line = '[' + chalk.yellow('WARN') + ']: ' + message
-    serv._logBuffer!.push(line.replace(/\x1B\[[0-9;]*m/g, ''))
-    if (serv._logBuffer!.length > MAX_BUFFER_LINES) serv._logBuffer!.shift()
     serv.log(line)
   }
 
@@ -151,7 +154,7 @@ declare global {
     /** You can override this function so you can process the message before sending it to the console. */
     formatMessage (message: any): any
     /** Logs a `message` */
-    "log": (message: any) => void
+    "log": (message: any, isError?: boolean) => void
     /** Logs a `message` as info */
     "info": (message: any) => void
     /** Logs a `message` as error */

@@ -226,6 +226,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       isDebug: false,
       isFlat: settings.generation?.name === 'superflat'
     })
+    player.emit('login')
     if (serv.supportFeature('difficultySentSeparately')) {
       player._client.write('difficulty', {
         difficulty: serv.difficulty,
