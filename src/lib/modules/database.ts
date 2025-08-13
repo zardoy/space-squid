@@ -175,4 +175,6 @@ declare global {
     isFresh: boolean
     _sessionStartMs: number
   }
+
+  interface ServerDatabase { }
 }

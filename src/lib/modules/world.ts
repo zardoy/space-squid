@@ -321,7 +321,7 @@ export const server: ServerModule = async function (serv, options) {
 
   // Periodic autosave: world and all players
   const autosaveMs = options.savingInterval === false ? 0 : (typeof options.savingInterval === 'number' ? options.savingInterval : 60_000)
-  if (autosaveMs > 0) {
+  if (autosaveMs > 0 && options.worldFolder) {
     let lastBroadcastTs = 0
     const doAutosave = async () => {
       try {
@@ -335,7 +335,7 @@ export const server: ServerModule = async function (serv, options) {
         await serv.saveAllPlayerDataToDisk?.()
         // Broadcast a single "Server saved" message (no spam more than once per interval)
         const now = Date.now()
-        if (now - lastBroadcastTs > autosaveMs - 100) {
+        if (now - lastBroadcastTs > autosaveMs - 10_000 && serv.broadcastSaved !== false) {
           serv.broadcast('§7[autosave] Server saved')
           lastBroadcastTs = now
         }
@@ -665,6 +665,7 @@ declare global {
     /** Alias to serv.overworld.seed */
     seed: number,
     writeLevelDat: () => Promise<void>
+    broadcastSaved?: boolean
 
     /* For plugins accessing the original generator, returns chunk */
     "overworldOriginalGenerator": (chunkX: number, chunkZ: number) => any

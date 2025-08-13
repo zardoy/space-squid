@@ -142,6 +142,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     }
   }
 
+  const blockDropVelocity = new Vec3(Math.random() * 4 - 2, Math.random() * 2 + 2, Math.random() * 4 - 2)
   async function completeDigging (location) {
     clearInterval(animationInterval)
     const diggingTime = Date.now() - startDiggingTime
@@ -168,17 +169,22 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       if (typeof mcData.blockLoot === 'undefined') {
         drops.push({
           ...dropBase,
-          blockDropVelocity: new Vec3(Math.random() * 4 - 2, Math.random() * 2 + 2, Math.random() * 4 - 2),
+          blockDropVelocity: blockDropVelocity,
           blockDropId: serv.supportFeature('theFlattening') ? currentlyDugBlock.drops?.[0] : currentlyDugBlock.type
         })
       } else {
         const heldItem = player.inventory.slots[36 + player.heldItemSlot]
-        const silkTouch = heldItem?.enchants.map(enchant => enchant.name).includes('silk_touch')
+        let enchants: { name: string; lvl: number }[] | undefined
+        try {
+          enchants = heldItem?.enchants
+        } catch (e) {
+        }
+        const silkTouch = enchants?.map(enchant => enchant.name).includes('silk_touch')
         const blockDrops = mcData.blockLoot[currentlyDugBlock.name].drops.filter(drop => !(drop[`${silkTouch ? 'noS' : 's'}ilkTouch`] ?? false))
         for (const drop of blockDrops) {
           drops.push({
             ...dropBase,
-            blockDropVelocity: new Vec3(Math.random() * 4 - 2, Math.random() * 2 + 2, Math.random() * 4 - 2),
+            blockDropVelocity: blockDropVelocity,
             blockDropId: mcData.itemsByName[drop.item].id
           })
         }
@@ -240,7 +246,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       dropBlock: false,
       blockDropPosition: location.offset(0.5, 0.5, 0.5),
       blockDropWorld: player.world,
-      blockDropVelocity: new Vec3(Math.random() * 4 - 2, Math.random() * 2 + 2, Math.random() * 4 - 2),
+      blockDropVelocity: blockDropVelocity,
       blockDropId: currentlyDugBlock.type,
       blockDropDamage: currentlyDugBlock.metadata,
       blockDropPickup: 500,

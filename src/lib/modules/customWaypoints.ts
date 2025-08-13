@@ -3,16 +3,16 @@ const DELETE_CHANNEL = 'minecraft-web-client:waypoint-delete'
 
 export const server = (serv: Server) => {
   const module = {
-    customWaypoints: {} as Record<string, Waypoint>,
-    customAddWaypoint: (id: string, waypoint: Waypoint) => {
-      serv.customWaypoints.customWaypoints[id] = waypoint
+    waypoints: {} as Record<string, Waypoint>,
+    addWaypoint: (id: string, waypoint: Waypoint, players?: Player[]) => {
+      module.waypoints[id] = { ...waypoint, _players: players ? players.map(p => p.uuid) : undefined }
       // Broadcast add/update to all online players
-      for (const player of serv.players ?? []) {
+      for (const player of (players ?? serv.players ?? [])) {
         sendAddWaypoint(player, id, waypoint)
       }
     },
-    customRemoveWaypoint: (id: string) => {
-      delete serv.customWaypoints.customWaypoints[id]
+    removeWaypoint: (id: string) => {
+      delete module.waypoints[id]
       // Broadcast delete to all online players
       for (const player of serv.players ?? []) {
         sendDeleteWaypoint(player, id)
@@ -42,9 +42,11 @@ function sendDeleteWaypoint (player: Player, id: string) {
 }
 
 function sendAllWaypoints (player: Player, serv: Server) {
-  const entries = Object.entries(serv.customWaypoints.customWaypoints ?? {})
+  const entries = Object.entries(serv.customWaypoints.waypoints ?? {})
   for (const [id, waypoint] of entries) {
-    sendAddWaypoint(player, id, waypoint)
+    if (!waypoint._players || waypoint._players.includes(player.uuid)) {
+      sendAddWaypoint(player, id, waypoint)
+    }
   }
 }
 
@@ -89,6 +91,8 @@ export type Waypoint = {
   minDistance?: number
   label?: string
   color?: number
+
+  _players?: string[]
 }
 
 declare global {
