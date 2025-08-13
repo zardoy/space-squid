@@ -35,10 +35,30 @@ export const server = function (serv: Server, options: Options) {
     })
   })
 
-  const patchClient = (client) => {
+  const patchClient = (client: any, player: Player) => {
     client.oldAddListener ??= client.on.bind(client)
     client.patchedAddListener = (name, ...args) => {
-      client.oldAddListener(name, ...args)
+      if (name !== 'packet') {
+        const listener = args[0]
+        client.oldAddListener(name, (...args) => {
+          if (args.length !== 1) {
+            listener(...args)
+          } else {
+            // PATCHED PACKET EMIT
+            const data = args[0]
+            const catchErr = (err) => {
+              serv.emit('error', err, { type: 'fromPlayerPacket', name, data, player: player })
+            }
+            try {
+              listener(data)?.catch(catchErr)
+            } catch (err) {
+              catchErr(err)
+            }
+          }
+        })
+      } else {
+        client.oldAddListener(name, ...args)
+      }
       serv.cleanupFunctions.push(() => client.removeListener(name, ...args))
     }
     client.on = client.patchedAddListener
@@ -47,7 +67,7 @@ export const server = function (serv: Server, options: Options) {
 
   const addPlayerShared = async (player: Player) => {
     player.serv = serv
-    patchClient(player._client)
+    patchClient(player._client, player)
 
     for (const plugin of Object.values({ ...serv.modules, ...serv.plugins })) plugin.player?.(player, serv, options)
 

@@ -218,7 +218,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         type: currentlyDugBlock.type << 4
       })
       if (serv.supportFeature('acknowledgePlayerDigging')) {
-        player._client.write('acknowledge_player_digging', {
+        player.writePacket('acknowledge_player_digging', {
           location,
           block: currentlyDugBlock.stateId,
           status: 2,

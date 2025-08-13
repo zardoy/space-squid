@@ -27,17 +27,11 @@ export const server = function (serv: Server, options: Options) {
   serv.playerStores ??= new Map<string, PlayerStatsStore>()
   const dirtyStores = new Set<string>()
 
-  // Compute total joins from .dat files at startup
+  // Track loaded state
+  let initialLoadComplete = false
+  const loadedPlayers = new Set<string>()
+  let totalJoinsComputed = false
   serv.totalJoinsOnStart = 0
-    ; (async () => {
-      try {
-        if (options.worldFolder) {
-          const dir = path.resolve(String(options.worldFolder), 'playerdata')
-          const entries = await fs.readdir(dir).catch(() => [])
-          serv.totalJoinsOnStart = entries.filter((f) => f.toLowerCase().endsWith('.dat')).length
-        }
-      } catch { /* ignore */ }
-    })()
 
   // API: get player store
   serv.getPlayerData = (uuid: string): PlayerStatsStore => {
@@ -47,6 +41,7 @@ export const server = function (serv: Server, options: Options) {
       serv.playerStores.set(uuid, newStore)
       store = newStore
       dirtyStores.add(uuid)
+      loadedPlayers.add(uuid) // Track new players
     }
     return store
   }
@@ -62,8 +57,61 @@ export const server = function (serv: Server, options: Options) {
     dirtyStores.add(uuid)
   }
 
-  serv.getAllPlayerData = (): Array<{ uuid: string, data: PlayerStatsStore }> => {
-    return Array.from(serv.playerStores.entries()).map(([uuid, data]) => ({ uuid, data }))
+  serv.getAllPlayerData = async (): Promise<Array<{ uuid: string, data: PlayerStatsStore }>> => {
+    // Get all known players from both stores and playerdata directory
+    const allUuids = new Set<string>()
+
+    // Add all in-memory players
+    for (const uuid of serv.playerStores.keys()) {
+      allUuids.add(uuid)
+    }
+
+    // Add any players from disk that haven't been loaded yet
+    if (options.worldFolder && !initialLoadComplete) {
+      const dir = path.resolve(String(options.worldFolder), 'playerdata')
+      try {
+        const entries = await fs.readdir(dir)
+
+        // Compute total joins lazily if not done yet
+        if (!totalJoinsComputed) {
+          serv.totalJoinsOnStart = entries.filter((f) => f.toLowerCase().endsWith('.dat')).length
+          totalJoinsComputed = true
+        }
+
+        for (const file of entries) {
+          if (file.toLowerCase().endsWith('.json')) {
+            const uuid = path.basename(file, '.json')
+            allUuids.add(uuid)
+          }
+        }
+      } catch (e) {
+        serv.warn(`Failed to load player data from disk: ${String(e)}`)
+      }
+      initialLoadComplete = true
+    }
+
+    // Load any unloaded players
+    const loadPromises: Promise<void>[] = []
+    for (const uuid of allUuids) {
+      if (!loadedPlayers.has(uuid)) {
+        loadPromises.push(
+          serv.loadPlayerDataFromDisk(uuid)
+            .then(() => { loadedPlayers.add(uuid) })
+            .catch((e) => { serv.warn(`Failed to load player data ${uuid} from disk: ${String(e)}`) })
+        )
+      }
+    }
+
+    // Wait for all loads to complete
+    if (loadPromises.length > 0) {
+      await Promise.all(loadPromises)
+    }
+
+    // Return all player data
+    return Array.from(allUuids).map(uuid => ({
+      uuid,
+      data: serv.getPlayerData(uuid)
+    }))
   }
 
   // Load and save helpers
@@ -163,7 +211,7 @@ declare global {
     totalJoinsOnStart: number
     getPlayerData: (uuid: string) => PlayerStatsStore
     updatePlayerData: (uuid: string, updater: Partial<PlayerStatsStore> | ((data: PlayerStatsStore) => void)) => void
-    getAllPlayerData: () => Array<{ uuid: string, data: PlayerStatsStore }>
+    getAllPlayerData: () => Promise<Array<{ uuid: string, data: PlayerStatsStore }>>
     loadPlayerDataFromDisk: (uuid: string) => Promise<boolean>
     savePlayerDataToDisk: (uuid: string) => Promise<void>
     saveAllPlayerDataToDisk: () => Promise<void>

@@ -88,7 +88,7 @@ export const server = (serv: Server, options: Options) => {
             serv.warn(`Player ${player.username} missing entity ${entityId} (${entity.name ?? entity.type}), respawning... (ping: ${latency}ms)`)
 
             // Respawn the entity for this player
-            player._client.write(entity.spawnPacketName, entity.getSpawnPacket())
+            player.writePacket(entity.spawnPacketName as any, entity.getSpawnPacket())
 
             // Send metadata if needed
             if (serv.supportFeature('entityMetadataSentSeparately')) {

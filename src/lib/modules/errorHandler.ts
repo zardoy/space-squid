@@ -18,7 +18,6 @@ export const player = async function (player: Player, serv: Server) {
     serv.err('-------------------------------')
     serv.emit('crash')
     serv.quit(`Internal server error. ${err}`)
-    process.exit()
   }
 
   process.on('unhandledRejection', (promise) => { unhandledRejection(promise) })

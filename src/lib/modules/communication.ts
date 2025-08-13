@@ -82,7 +82,11 @@ export const entity = function (entity: Entity, serv: Server) {
 export const player = function (player: Player, serv: Server) {
   player.writePacket = (packetName, data) => {
     if (!serv.mcData.protocol.play.toClient.types[`packet_${packetName}`]) return
-    player._client.write(packetName, data)
+    try {
+      player._client.write(packetName, data)
+    } catch (err) {
+      serv.emit('error', err, { type: 'toPlayerPacket', name: packetName, data, player: player })
+    }
   }
   player.bridge = new ServerPacketBridger(serv.mcData.version.minecraftVersion!, (packetName, data) => {
     player.writePacket(packetName as keyof ClientOnMap, data)

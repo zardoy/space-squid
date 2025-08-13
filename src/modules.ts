@@ -24,7 +24,7 @@ declare global {
   }
 
   interface ServerEvents {
-    error: (error: Error, pluginName?: string) => void
+    error: (error: Error, data?: { type?: string, name?: string, data?: any, player?: Player, pluginName?: string }) => void
     listening: (port: number) => void
     pluginsReady: () => void
     /** This event is emitted once all plugins are initialized. Use this event for working with properties / methods of other plugins. */

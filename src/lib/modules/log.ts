@@ -43,8 +43,11 @@ export const server = function (serv: Server, settings: Options) {
   serv._errorBuffer ??= []
   const MAX_BUFFER_LINES = 1500
 
-  serv.on('error', (error, pluginName) => {
-    serv.err('Server: ' + error.stack + (pluginName ? ' (plugin: ' + pluginName + ')' : ''))
+  serv.on('error', (error, { type, pluginName, name } = {}) => {
+    let msg = 'Server'
+    if (type === 'fromPlayerPacket') msg = `Player packet ${name ?? ''}`
+    if (type === 'toPlayerPacket') msg = `Server packet ${name ?? ''}`
+    serv.err(msg + ': ' + error.stack + (pluginName ? ' (plugin: ' + pluginName + ')' : ''))
   })
   serv.on('clientError', (client, error) => {
     if (error.message.includes('ECONNABORTED') || error.message.includes('ECONNRESET')) return
