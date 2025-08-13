@@ -3,15 +3,38 @@ import { Vec3 } from 'vec3'
 import chalk from 'chalk'
 import UserError from '../user_error'
 
+const MAX_ATTACK_DISTANCE = 4 // Maximum reach in blocks
+const ATTACK_COOLDOWN_MS = 250 // Minimum time between attacks
+const DEFAULT_KNOCKBACK = new Vec3(0, 0.4, 0) // Base vertical knockback
+const KNOCKBACK_MULTIPLIER = 0.4 // Horizontal knockback scaling
+
 export const player = function (player: Player, serv: Server) {
+  let lastAttackTime = 0
+
   function attackEntity (entityId) {
     const attackedEntity = serv.entities[entityId]
     const attackedPlayer = attackedEntity.type === 'player' ? attackedEntity as Player : undefined
-    if (!attackedEntity || (attackedPlayer && attackedPlayer.gameMode !== 0)) return
+    if (!attackedEntity) return
+    if (attackedPlayer && (attackedPlayer.gameMode === 1 || attackedPlayer.gameMode === 3 || attackedPlayer.invincible)) return
+
+    // Anti-cheat: Distance check
+    const distance = player.position.distanceTo(attackedEntity.position)
+    if (distance > MAX_ATTACK_DISTANCE) {
+      return // Silently fail suspicious attacks
+    }
+
+    // Rate limiting
+    const now = Date.now()
+    if (now - lastAttackTime < ATTACK_COOLDOWN_MS) return
+    lastAttackTime = now
+
+    // Calculate knockback direction and strength
+    const knockbackDir = attackedEntity.position.minus(player.position).normalize()
+    const velocity = DEFAULT_KNOCKBACK.plus(knockbackDir.scaled(KNOCKBACK_MULTIPLIER))
 
     player.behavior('attack', {
       attackedEntity,
-      velocity: attackedEntity.position.minus(player.position).plus(new Vec3(0, 0.5, 0)).scaled(5)
+      velocity
     }, (o) => o.attackedEntity.takeDamage(o))
   }
 
@@ -28,7 +51,10 @@ export const player = function (player: Player, serv: Server) {
 }
 
 export const entity = function (entity: Entity, serv: Server) {
+  entity.invincible = false
+
   entity.takeDamage = ({ sound = 'game.player.hurt', damage = 1, velocity = new Vec3(0, 0, 0), maxVelocity = new Vec3(4, 4, 4), animation = true }) => {
+    if (entity.invincible) return
     entity.updateHealth(entity.health - damage)
     serv.playSound(sound, entity.world, entity.position)
 
@@ -66,6 +92,7 @@ export const server = function (serv: Server) {
     info: 'Kill entities',
     usage: '/kill <selector>|<player>',
     tab: ['player'],
+    op: true,
     parse (str) {
       return str || false
     },
@@ -94,10 +121,11 @@ export const server = function (serv: Server) {
     info: 'Applies damage to the specified entities',
     usage: '/damage',
     tab: ['player', 'number'],
-    parse(string, ctx) {
-        return string.split(' ') // todo validate
+    op: true,
+    parse (string, ctx) {
+      return string.split(' ') // todo validate
     },
-    action(data, ctx) {
+    action (data, ctx) {
       const players = serv.getPlayers(data[0], ctx.player)
       for (const player of players) {
         player.takeDamage({ damage: +data[1], })
@@ -107,6 +135,8 @@ export const server = function (serv: Server) {
 }
 declare global {
   interface Entity {
+    /** Whether the entity is invincible to all damage */
+    invincible: boolean
     /** How many half-hearts an entity has of health (e.g. Player has 20). Not really used for objects, only players and mobs. */
     health: number
     /** @internal */
