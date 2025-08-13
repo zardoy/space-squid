@@ -272,6 +272,7 @@ export const server: ServerModule = async function (serv, options) {
     base: 'setdata',
     info: 'Set entity data - for testing',
     usage: '/setdata',
+    op: true,
     tab: [
       'blockX', 'blockY', 'blockZ'
     ],

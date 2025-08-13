@@ -174,6 +174,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
         const obj = serv.parseClassic(prefix)
         if (!obj.extra) obj.extra = []
         obj.extra.push(serv.parseClassic(text))
+        serv.info(`<${player.username}> ${message}`)
         serv.broadcast(obj, {
           whitelist,
           blacklist
