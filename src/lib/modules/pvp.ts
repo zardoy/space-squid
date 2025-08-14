@@ -6,7 +6,7 @@ import UserError from '../user_error'
 const MAX_ATTACK_DISTANCE = 4 // Maximum reach in blocks
 const ATTACK_COOLDOWN_MS = 250 // Minimum time between attacks
 const DEFAULT_KNOCKBACK = new Vec3(0, 0.4, 0) // Base vertical knockback
-const KNOCKBACK_MULTIPLIER = 0.4 // Horizontal knockback scaling
+const KNOCKBACK_MULTIPLIER = 8 // Horizontal knockback scaling
 
 export const player = function (player: Player, serv: Server) {
   let lastAttackTime = 0
