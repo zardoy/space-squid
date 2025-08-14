@@ -6,9 +6,10 @@ interface SyncResponse {
   entityIds: number[]
 }
 
+// TODO add chunks sync
+
 const CHECK_INTERVAL = 1000 // 1 second
 export const server = (serv: Server, options: Options) => {
-
   const module = {
     // Track when we last requested sync from each player
     lastSyncRequests: new Map<string, { time: number, requestId: number }>(),
@@ -113,7 +114,7 @@ export const server = (serv: Server, options: Options) => {
   return module
 }
 
-export const player = (player: Player, serv: Server) => {
+export const player = (player: Player, serv: Server, options: Options) => {
   // Register sync channels with simplified string format
   player._client.registerChannel(
     SYNC_REQUEST_CHANNEL,
@@ -143,7 +144,9 @@ export const player = (player: Player, serv: Server) => {
   // Start periodic sync checks
   player.on('spawned', () => {
     player.setInterval(() => {
-      serv.customSync.requestSync(player)
+      if (options.clientCheckSync) {
+        serv.customSync.requestSync(player)
+      }
     }, CHECK_INTERVAL)
   })
 }
@@ -151,5 +154,9 @@ export const player = (player: Player, serv: Server) => {
 declare global {
   interface Server {
     customSync: ReturnType<typeof server>
+  }
+
+  interface Options {
+    clientCheckSync?: boolean
   }
 }
