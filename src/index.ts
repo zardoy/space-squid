@@ -180,7 +180,6 @@ class MCServer extends EventEmitter {
       server.pluginsReady = true
     })
 
-    if (options.logging === true) server.createLog()
     server._server.on('error', error => {
       server.emit('error', error)
     })
