@@ -70,7 +70,7 @@ class MCServer extends EventEmitter {
     if (mcData === null) throw new Error(`Version ${options.version} is not supported as it doesn't have the data.`)
     const version = mcData.version
     if (!supportedVersions.some(v => v.includes(version.majorVersion))) {
-      console.warn(`Version ${version.minecraftVersion} is not supported.`)
+      console.warn(`Version ${version.minecraftVersion} might not be supported.`)
     }
     server.supportFeature = feature => {
       if (feature === 'theFlattening') feature = 'blockStateId' as any
