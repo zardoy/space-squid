@@ -10,6 +10,9 @@ export interface Objective {
   displayText: string
   scores: Map<string, number>
   _oldLines?: ScoreboardLine[]
+  useTeams?: boolean
+  _teams?: Set<string>
+  _fakePlayers?: Map<string, string> // Maps line name to fake player name
 }
 
 const SCOREBOARD_ACTIONS = {
@@ -23,10 +26,24 @@ const SCOREBOARD_POSITIONS = {
   BELOW_NAME: 2
 }
 
+const TEAM_MODES = {
+  CREATE: 0,
+  REMOVE: 1,
+  UPDATE: 2,
+  ADD_PLAYERS: 3,
+  REMOVE_PLAYERS: 4
+}
+
 export const server = function (serv: Server, options: Options) {
   // Store objectives in server
   serv.objectives ??= {}
   serv.sidebarObjectives ??= {}
+
+  // Generate a unique player name for scoreboard line
+  const generateFakePlayer = (index: number) => {
+    // Use formatting codes to make unique invisible names
+    return `§r§e§s§${index}§r`
+  }
 
   const sendObjectivePacket = (objective: Objective, action: number, players?: any[]) => {
     const formattedText = versionToNumber(options.version) >= versionToNumber('1.13')
@@ -74,6 +91,33 @@ export const server = function (serv: Server, options: Options) {
     }
   }
 
+  const sendTeamPacket = (team: string, mode: number, options: any = {}, players?: any[]) => {
+    const packet = {
+      team,
+      mode,
+      name: JSON.stringify({ text: "", extra: [{ text: team }] }),
+      friendlyFire: 0,
+      nameTagVisibility: "always",
+      collisionRule: "always",
+      formatting: 21,
+      prefix: options.prefix ? JSON.stringify({
+        text: "",
+        extra: Array.isArray(options.prefix) ? options.prefix : [{ text: options.prefix }]
+      }) : JSON.stringify({ text: "" }),
+      suffix: options.suffix ? JSON.stringify({
+        text: "",
+        extra: Array.isArray(options.suffix) ? options.suffix : [{ text: options.suffix }]
+      }) : JSON.stringify({ text: "" }),
+      players: options.players || []
+    }
+
+    if (players) {
+      serv._writeArray('teams', packet, players)
+    } else {
+      serv._writeAll('teams', packet)
+    }
+  }
+
   // Send objectives to new players
   serv.on('newPlayer', (player) => {
     Object.values(serv.objectives).forEach((objective) => {
@@ -115,11 +159,14 @@ export const server = function (serv: Server, options: Options) {
     serv.updateScoreboard(objective, lines)
   }
 
-  serv.createSidebarScoreboard = (name: string, displayText: string): Objective => {
+  serv.createSidebarScoreboard = (name: string, displayText: string, useTeams = false): Objective => {
     const objective: Objective = {
       name,
       displayText,
-      scores: new Map<string, number>()
+      scores: new Map<string, number>(),
+      useTeams,
+      _teams: new Set<string>(),
+      _fakePlayers: new Map<string, string>()
     }
 
     // Store objective
@@ -149,21 +196,81 @@ export const server = function (serv: Server, options: Options) {
     const oldLineMap = new Map(oldLines.map(line => [line.name, line.value]))
     const newLineMap = new Map(normalizedLines.map(line => [line.name, line.value]))
 
-    // Remove lines that no longer exist
-    oldLines.forEach(({ name }) => {
-      if (!newLineMap.has(name)) {
-        sendScorePacket(name, 1, objective.name, 0) // Remove
-      }
-    })
+    if (objective.useTeams) {
+      // Handle team mode updates
+      const oldTeams = objective._teams || new Set<string>()
+      const newTeams = new Set<string>()
+      const fakePlayers = objective._fakePlayers!
 
-    // Add or update lines
-    normalizedLines.forEach(({ name, value }) => {
-      const oldValue = oldLineMap.get(name)
-      // Only send update if line is new or value changed
-      if (oldValue === undefined || oldValue !== value) {
-        sendScorePacket(name, 0, objective.name, value) // Create/update
-      }
-    })
+      // Remove old teams that are no longer used
+      oldTeams.forEach(team => {
+        if (!normalizedLines.some(line => line.name === team)) {
+          sendTeamPacket(team, TEAM_MODES.REMOVE)
+          // Remove score for the fake player
+          const fakePlayer = fakePlayers.get(team)
+          if (fakePlayer) {
+            sendScorePacket(fakePlayer, 1, objective.name, 0)
+            fakePlayers.delete(team)
+          }
+        }
+      })
+
+      // Create/update teams and scores
+      normalizedLines.forEach((line, index) => {
+        const teamName = line.name
+        newTeams.add(teamName)
+
+        // Get or create fake player name
+        let fakePlayer = fakePlayers.get(teamName)
+        if (!fakePlayer) {
+          fakePlayer = generateFakePlayer(index)
+          fakePlayers.set(teamName, fakePlayer)
+        }
+
+        if (!oldTeams.has(teamName)) {
+          // Create new team
+          sendTeamPacket(teamName, TEAM_MODES.CREATE, {
+            prefix: line.name,
+            // suffix: line.suffix,
+            players: [fakePlayer]
+          })
+          // Set initial score
+          sendScorePacket(fakePlayer, 0, objective.name, line.value)
+        } else {
+          // Update team if prefix/suffix changed
+          if (line.name) {
+            sendTeamPacket(teamName, TEAM_MODES.UPDATE, {
+              prefix: line.name,
+              // suffix: line.suffix,
+            })
+          }
+          // Update score if changed
+          const oldValue = oldLineMap.get(teamName)
+          if (oldValue === undefined || oldValue !== line.value) {
+            sendScorePacket(fakePlayer, 0, objective.name, line.value)
+          }
+        }
+      })
+
+      objective._teams = newTeams
+    } else {
+      // Handle regular score mode updates
+      // Remove lines that no longer exist
+      oldLines.forEach(({ name }) => {
+        if (!newLineMap.has(name)) {
+          sendScorePacket(name, 1, objective.name, 0) // Remove
+        }
+      })
+
+      // Add or update lines
+      normalizedLines.forEach(({ name, value }) => {
+        const oldValue = oldLineMap.get(name)
+        // Only send update if line is new or value changed
+        if (oldValue === undefined || oldValue !== value) {
+          sendScorePacket(name, 0, objective.name, value) // Create/update
+        }
+      })
+    }
 
     // Update the scores map and store old lines for next comparison
     objective.scores = newLineMap
@@ -176,6 +283,19 @@ export const server = function (serv: Server, options: Options) {
 
   serv.removeScoreboard = (objective: Objective) => {
     sendObjectivePacket(objective, SCOREBOARD_ACTIONS.REMOVE)
+
+    // Clean up teams and fake players if using team mode
+    if (objective.useTeams && objective._teams && objective._fakePlayers) {
+      objective._teams.forEach(team => {
+        sendTeamPacket(team, TEAM_MODES.REMOVE)
+        // Remove score for the fake player
+        const fakePlayer = objective._fakePlayers!.get(team)
+        if (fakePlayer) {
+          sendScorePacket(fakePlayer, 1, objective.name, 0)
+        }
+      })
+    }
+
     delete serv.objectives[objective.name]
     delete serv.sidebarObjectives[objective.name]
   }
@@ -185,7 +305,7 @@ declare global {
   interface Server {
     objectives: Record<string, Objective>
     sidebarObjectives: Record<string, boolean>
-    createSidebarScoreboard: (name: string, displayText: string) => Objective
+    createSidebarScoreboard: (name: string, displayText: string, useTeams?: boolean) => Objective
     updateScoreboard: (objective: Objective, lines: ScoreboardLine[] | string[]) => void
     displayScoreboard: (objective: Objective) => void
     removeScoreboard: (objective: Objective) => void

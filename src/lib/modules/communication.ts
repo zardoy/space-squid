@@ -1,6 +1,6 @@
 import { Vec3 } from 'vec3'
 import { ServerPacketBridger } from 'mc-bridge'
-import { ClientOnMap } from 'mc-bridge/dist/protocol.generated'
+import { ClientOnMap, ClientWriteMap } from 'mc-bridge/dist/protocol.generated'
 
 export const server = function (serv: Server, options: Options) {
   serv.bridge = new ServerPacketBridger(options.version, (packetName, data) => {
@@ -93,12 +93,12 @@ export const player = function (player: Player, serv: Server) {
   })
 }
 
-export type PacketProcessor = (packet: any, packetName: string/* , player: Player */) => any
+export type PacketProcessor<T = any> = (packet: T, packetName: string/* , player: Player */) => any
 
 declare global {
   interface Server {
     toClientPacketProcessors: Record<string, PacketProcessor[]>
-    addToClientPacketProcessor: (packet: string | null, processor: PacketProcessor) => void
+    addToClientPacketProcessor: <T extends keyof ClientOnMap>(packet: T | null, processor: PacketProcessor<T extends keyof ClientWriteMap ? ClientWriteMap[T] : any>) => void
 
     "_writeAll": (packetName: any, packetFields: any) => void
     "_writeArray": (packetName: any, packetFields: any, players: any) => void
