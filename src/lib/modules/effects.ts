@@ -59,6 +59,7 @@ export const server = function (serv: Server, options: Options) {
     info: 'Give player an effect',
     usage: '/effect <player> <effect> [seconds] [amplifier] [hideParticles]',
     tab: ['player', 'effect', 'number', 'number', 'boolean'],
+    op: true,
     onlyPlayer: true,
     parse (str) {
       return str.match(/(.+?) ([\d\w_]+)(?: (\d+|))?(?: (\d+))?(?: (true|false))?|.*? clear/) || false

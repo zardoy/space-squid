@@ -1,10 +1,8 @@
 import fs from 'fs'
-
 import path from 'path'
 import chalk from 'chalk'
 
 const timeStarted = Math.floor(Date.now() / 1000).toString()
-
 const isInNode = typeof process !== 'undefined' && !process.browser && process.platform !== 'browser' && !globalThis.__hot_reload
 
 const _servers: Server[] = []
@@ -43,6 +41,62 @@ export const server = function (serv: Server, settings: Options) {
   serv._errorBuffer ??= []
   const MAX_BUFFER_LINES = 1500
 
+  // Initialize log streams
+  let logStream: fs.WriteStream | null = null
+  let logPath: string | null = null
+
+  // Setup logging if enabled
+  if (settings.logging) {
+    try {
+      // Determine log file path based on settings type
+      if (typeof settings.logging === 'string') {
+        const logPathStr = (settings.logging as string).trim()
+        // If string provided, use as direct file path or directory
+        if (logPathStr.toLowerCase().endsWith('.log')) {
+          logPath = logPathStr
+        } else {
+          // Create logs in specified directory with timestamp
+          logPath = path.join(logPathStr, `${timeStarted}.log`)
+        }
+      } else {
+        // Default to logs directory in current path when boolean true
+        logPath = path.join('logs', `${timeStarted}.log`)
+      }
+
+      if (logPath) {
+        // Ensure directory exists
+        fs.mkdirSync(path.dirname(logPath), { recursive: true })
+
+        // Create write stream
+        logStream = fs.createWriteStream(logPath, {
+          flags: 'a', // Append mode
+          encoding: 'utf8',
+          autoClose: true
+        })
+
+        // Write initial log entry
+        logStream.write(`[INFO]: Started logging to ${logPath} at ${new Date().toISOString()}\n`)
+
+        // Handle stream errors
+        logStream.on('error', (err) => {
+          console.error('Error writing to log file:', err)
+          // Disable logging on error
+          // logStream = null
+        })
+
+        serv.cleanupFunctions.push(() => {
+          if (logStream) {
+            logStream.end('\n[INFO]: Logging ended\n')
+            logStream.close()
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Failed to initialize logging:', err)
+      logStream = null
+    }
+  }
+
   serv.on('error', (error, { type, pluginName, name } = {}) => {
     let msg = 'Server'
     if (type === 'fromPlayerPacket') msg = `Player packet ${name ?? ''}`
@@ -58,14 +112,12 @@ export const server = function (serv: Server, settings: Options) {
     serv.info(banner.username + ' banned ' + bannedUsername + (reason ? ' (' + reason + ')' : '')))
   serv.on('seed', (seed) => serv.info('World seed: ' + seed))
 
-  const logFile = path.join('logs', timeStarted + '.log')
-
   serv.log = (message, isError = false) => {
     readline?.cursorTo(process.stdout, 0)
     let date = new Date()
     let formattedDate = `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()} ${date.getFullYear()}, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
     // Prefix timestamp first
-    let fullMessage = formattedDate + ' ' + message // todo use intl
+    let fullMessage = formattedDate + ' ' + message
     // Allow user-defined formatting to modify the full line
     fullMessage = serv.formatMessage?.(fullMessage) ?? fullMessage
     if (!fullMessage) return
@@ -80,10 +132,11 @@ export const server = function (serv: Server, settings: Options) {
     }
 
     if (!settings.noConsoleOutput) console.log(fullMessage)
-    if (!settings.logging) return
-    fs.appendFile(logFile, plain + '\n', (err) => {
-      if (err) console.log(err)
-    })
+
+    // Write to log file if stream is available
+    if (logStream?.writable) {
+      logStream.write(plain + '\n')
+    }
   }
 
   serv.info = message => {
@@ -121,24 +174,36 @@ export const server = function (serv: Server, settings: Options) {
     })()
   }
 
-  serv.createLog = () => {
-    if (!settings.logging) return
-    fs.mkdir('logs', {
-      recursive: true
-    }, (err) => {
-      if (err) {
-        console.log(err)
-        return
-      }
+  // Return current log file path
+  serv.getLogPath = () => logPath
 
-      fs.writeFile(logFile, '[INFO]: Started logging...\n',
-        (err) => {
-          if (err) console.log(err)
-        })
-    })
-  }
+  // // Allow changing log file at runtime
+  // serv.setLogFile = (newPath: string) => {
+  //   try {
+  //     // Close existing stream
+  //     if (logStream) {
+  //       logStream.end('\n[INFO]: Switching log file\n')
+  //       logStream.close()
+  //     }
 
-  // todo fix hotreload
+  //     // Setup new stream
+  //     fs.mkdirSync(path.dirname(newPath), { recursive: true })
+  //     logStream = fs.createWriteStream(newPath, {
+  //       flags: 'a',
+  //       encoding: 'utf8',
+  //       autoClose: true
+  //     })
+  //     logPath = newPath
+
+  //     logStream.write(`[INFO]: Continued logging from ${new Date().toISOString()}\n`)
+  //     return true
+  //   } catch (err) {
+  //     console.error('Failed to change log file:', err)
+  //     return false
+  //   }
+  // }
+
+  // Handle command input
   rl?.on('line', (data) => {
     serv.handleCommand(data)
     rl.prompt(true)
@@ -149,9 +214,9 @@ export const player = function (player: Player, serv: Server) {
   player.on('connected', () => serv.info(player.getDisplayName('log') + ' (' + player._client.socket?.remoteAddress + ') connected'))
   player.on('spawned', () => serv.info('Position written, spawning player...'))
   player.on('disconnected', (reason) => serv.info(player.getDisplayName('log') + ' disconnected. Reason: ' + reason))
-  // player.on('chat', ({ message }) => serv.info('<' + player.username + '>' + ' ' + message))
   player.on('kicked', (kicker, reason) => serv.info(kicker.getDisplayName('log') + ' kicked ' + player.getDisplayName('log') + (reason ? ' (' + reason + ')' : '')))
 }
+
 declare global {
   interface Server {
     /** You can override this function so you can process the message before sending it to the console. */
@@ -164,7 +229,9 @@ declare global {
     "err": (message: any) => void
     /** Logs a `message` as warning */
     "warn": (message: any) => void
-    /** Creates the log file */
-    "createLog": () => void
+    /** Get current log file path */
+    "getLogPath": () => string | null
+    /** Change log file at runtime */
+    // "setLogFile": (path: string) => boolean
   }
 }
