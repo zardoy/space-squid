@@ -18,20 +18,23 @@ export const player = function (player: Player, serv: Server, { worldFolder }: O
   })
 
   player._client.on('end', async (endReason) => {
-    if (player && player.username) {
-      player._unloadAllChunks()
-      serv.broadcast(serv.chatColor.yellow + player.username + ' left the game.')
-      player.bridge.player_info({
-        action: {
-          remove_player: true,
-        },
-        data: [{
-          uuid: player.uuid
-        }]
-      })
-      player.nearbyPlayers().forEach(otherPlayer => otherPlayer.despawnEntities([player]))
+    if (player) {
+      player._unloadAllChunks?.()
+      if (player.username) {
+        serv.broadcast(serv.chatColor.yellow + player.username + ' left the game.')
+        player.bridge.player_info({
+          action: {
+            remove_player: true,
+          },
+          data: [{
+            uuid: player.uuid
+          }]
+        })
+        player.nearbyPlayers().forEach(otherPlayer => otherPlayer.despawnEntities([player]))
+        player.emit('disconnected', endReason)
+      }
+
       delete serv.entities[player.id]
-      player.emit('disconnected', endReason)
       const index = serv.players.indexOf(player)
       if (index > -1) {
         serv.players.splice(index, 1)
@@ -39,7 +42,7 @@ export const player = function (player: Player, serv: Server, { worldFolder }: O
       delete serv.uuidToPlayer[player.uuid]
     }
 
-    player.save()
+    player.save?.()
   })
 }
 declare global {

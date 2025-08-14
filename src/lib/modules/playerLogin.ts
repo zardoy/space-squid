@@ -88,14 +88,15 @@ export const server = function (serv: Server, options: Options) {
   })
   // #endregion
 
-  const playerJoined = async (client: Client) => {
-    if (client.socket?.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
+  const playerJoined = async (client: Client, assignProps?: { isFake?: boolean }) => {
+    if (client.socket?.listeners && client.socket.listeners('end').length === 0) return // TODO: should be fixed properly in nmp instead
     if (!serv.pluginsReady) {
       client.end('Server is still starting! Please wait before reconnecting.')
       return
     }
     try {
       const player = serv.initEntity('player', null, serv.overworld, new Vec3(0, 0, 0))
+      Object.assign(player, assignProps)
       Object.defineProperty(player, 'position', {
         get () {
           throw new Error('Position of the player is not ready yet and is going to be restored (possibly) from playerdata or from world spawn point. Update or use it after player is ready (player.onReady promise is resolved).')
@@ -111,15 +112,22 @@ export const server = function (serv: Server, options: Options) {
       await addPlayerShared(player)
 
       await player.login()
+      return player
     } catch (err) {
       setTimeout(() => { throw err }, 0)
     }
   }
 
+  serv._addPlayer = playerJoined
+
   if (serv.supportFeature('hasConfigurationState')) {
-    serv._server.on('playerJoin', playerJoined)
+    serv._server.on('playerJoin', async (client) => {
+      await playerJoined(client)
+    })
   } else {
-    serv._server.on('login', playerJoined)
+    serv._server.on('login', async (client) => {
+      await playerJoined(client)
+    })
   }
 
   serv.hashedSeed = [0, 0]
@@ -454,7 +462,9 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.updateHealth(player.health)
     player.emit('spawned')
 
-    await player.waitPlayerLogin()
+    if (!player.isFake) {
+      await player.waitPlayerLogin()
+    }
     player.sendRestMap()
     player.sendChunkWhenMove()
 
@@ -469,6 +479,7 @@ declare global {
   interface Server {
     /** @internal */
     "hashedSeed": number[]
+    _addPlayer: (client: Client, assignProps?: { isFake?: boolean }) => Promise<Player | undefined>
   }
   interface Player {
     /** @internal */

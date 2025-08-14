@@ -195,6 +195,7 @@ export const player = function (player: Player, serv: Server, options: Options) 
   // On disconnect, update played time and longest session
   player.on('disconnected', async () => {
     try {
+      if (!player.ready) return
       const start = player._sessionStartMs ?? Date.now()
       const sessionMs = Math.max(0, Date.now() - start)
       const store = serv.getPlayerData(player.uuid)

@@ -76,11 +76,16 @@ export const player = function (player: Player) {
   }
 
   player.sendAbilities = () => {
-    const godmode = player.gameMode === 1 || player.gameMode === 3 // Invulnerable
+    const isInvulnerable = player.gameMode === 1 || player.gameMode === 3 // Creative or Spectator
     const canFly = player.gameMode === 1 || player.gameMode === 3
     const isFlying = player.flying && canFly
-    const creativeMode = player.gameMode === 1 // Instant Break
-    const f = (+godmode * 8) + (+canFly * 4) + (+isFlying * 2) + (+creativeMode)
+    const canInstantlyBuild = player.gameMode === 1 // Creative mode
+    // Flags:
+    // 0x1 = Invulnerable
+    // 0x2 = Flying
+    // 0x4 = Allow Flying
+    // 0x8 = Creative Mode (Instant Break)
+    const f = (+isInvulnerable * 1) + (+isFlying * 2) + (+canFly * 4) + (+canInstantlyBuild * 8)
     // const walkingSpeed = 0.2 * (1 + (player.effects[1] !== null ? (player.effects[1].amplifier + 1) : 0) * 0.2)
     const flyingSpeed = 0.05000000074505806 // todo calculate instead
     const walkingSpeed = 0.10000000149011612 // todo use actual abilities from level.dat
