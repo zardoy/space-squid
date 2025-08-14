@@ -346,11 +346,18 @@ export const entity = function (entity: Entity, serv: Server) {
       entityPosition = entity.position
     }
 
-    // byte (1/256 "degrees") --> float (degrees)
-    function convToClient (b) {
-      let f = (b * 360 / 256)
-      if (f < 0) f += 360
-      return f
+    // Convert degrees to byte format (-128 to 127) for protocol
+    function convToProtocol (degrees: number) {
+      // Normalize degrees to 0-360 range
+      degrees = degrees % 360
+      if (degrees < 0) degrees += 360
+
+      // Convert to byte range (-128 to 127)
+      let b = Math.floor(degrees * 256 / 360)
+      if (b > 127) b -= 256
+
+      // Ensure we stay within protocol limits
+      return Math.max(-128, Math.min(127, b))
     }
 
     if (entity.type === 'player') {
@@ -360,8 +367,8 @@ export const entity = function (entity: Entity, serv: Server) {
         x: entityPosition.x,
         y: entityPosition.y,
         z: entityPosition.z,
-        yaw: convToClient(entity.yaw),
-        pitch: convToClient(entity.pitch),
+        yaw: convToProtocol(entity.yaw),
+        pitch: convToProtocol(entity.pitch),
         currentItem: 0,
         metadata: entity.metadata
       }
@@ -373,8 +380,8 @@ export const entity = function (entity: Entity, serv: Server) {
         x: entityPosition.x,
         y: entityPosition.y,
         z: entityPosition.z,
-        pitch: convToClient(entity.pitch),
-        yaw: convToClient(entity.yaw),
+        pitch: convToProtocol(entity.pitch),
+        yaw: convToProtocol(entity.yaw),
         objectData: entity.data,
         velocityX: scaledVelocity.x,
         velocityY: scaledVelocity.y,
@@ -388,9 +395,9 @@ export const entity = function (entity: Entity, serv: Server) {
         x: entityPosition.x,
         y: entityPosition.y,
         z: entityPosition.z,
-        yaw: convToClient(entity.yaw),
-        pitch: convToClient(entity.pitch),
-        headPitch: convToClient(entity.headPitch),
+        yaw: convToProtocol(entity.yaw),
+        pitch: convToProtocol(entity.pitch),
+        headPitch: convToProtocol(entity.headPitch),
         velocityX: scaledVelocity.x,
         velocityY: scaledVelocity.y,
         velocityZ: scaledVelocity.z,

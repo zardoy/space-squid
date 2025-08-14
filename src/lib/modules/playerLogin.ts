@@ -149,6 +149,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
     player.op = settings['everybody-op'] ?? false
     player.username = player._client.username
     player.uuid = player._client.uuid
+    player.getDisplayName = (location?: string) => player.displayName ?? player.username
 
     player.setLoadingStatus('Findig spawn point')
 
@@ -322,7 +323,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       data: [{
         uuid: player.uuid,
         player: {
-          name: player.username,
+          name: player.getDisplayName('tab'),
           properties: player.profileProperties,
         },
         gamemode: player.gameMode,
@@ -349,7 +350,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
       data: serv.players.map((otherPlayer) => ({
         uuid: otherPlayer.uuid,
         player: {
-          name: otherPlayer.username,
+          name: otherPlayer.getDisplayName('tab'),
           properties: otherPlayer.profileProperties,
         },
         gamemode: otherPlayer.gameMode,
@@ -365,7 +366,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   function announceJoin () {
-    serv.broadcast(serv.chatColor.yellow + player.username + ' joined the game.')
+    serv.broadcast(serv.chatColor.yellow + player.getDisplayName('chat') + ' joined the game.')
     player.emit('connected')
   }
 
@@ -482,6 +483,12 @@ declare global {
     op: boolean
     /** The username of the player */
     username: string
+    /** Optional display name of the player */
+    displayName?: string
+    /** Get the display name of the player, falls back to username if not set
+     * @param location Optional location where the display name will be used (e.g. 'chat', 'tab', 'log')
+     */
+    getDisplayName: (location?: string) => string
     /** @internal */
     "setLoadingStatus": (text: any) => void
     /** set player gameMode to `gameMode` */

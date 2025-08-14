@@ -146,11 +146,11 @@ export const server = function (serv: Server, settings: Options) {
 }
 
 export const player = function (player: Player, serv: Server) {
-  player.on('connected', () => serv.info(player.username + ' (' + player._client.socket?.remoteAddress + ') connected'))
+  player.on('connected', () => serv.info(player.getDisplayName('log') + ' (' + player._client.socket?.remoteAddress + ') connected'))
   player.on('spawned', () => serv.info('Position written, spawning player...'))
-  player.on('disconnected', (reason) => serv.info(player.username + ' disconnected. Reason: ' + reason))
+  player.on('disconnected', (reason) => serv.info(player.getDisplayName('log') + ' disconnected. Reason: ' + reason))
   // player.on('chat', ({ message }) => serv.info('<' + player.username + '>' + ' ' + message))
-  player.on('kicked', (kicker, reason) => serv.info(kicker.username + ' kicked ' + player.username + (reason ? ' (' + reason + ')' : '')))
+  player.on('kicked', (kicker, reason) => serv.info(kicker.getDisplayName('log') + ' kicked ' + player.getDisplayName('log') + (reason ? ' (' + reason + ')' : '')))
 }
 declare global {
   interface Server {

@@ -1,4 +1,4 @@
-import { createServer } from 'minecraft-protocol'
+import { Client, createServer } from 'minecraft-protocol'
 
 import { supportedVersions } from './lib/version'
 import Command from './lib/command'
@@ -85,15 +85,28 @@ class MCServer extends EventEmitter {
     })
     server._server.on('connection', (client) => {
       const loginOld = client['_events'].login_start
+      const pendingUsernames = new Set<string>()
       if (typeof loginOld === 'function') {
-        client['_events'].login_start = (packet) => {
-          const username = packet.username.toLowerCase()
-          const existingPlayer = Object.values(server._server.clients)
-            .find(c => c.username?.toLowerCase?.() === username)
-          if (existingPlayer) {
-            client.end('A player with this username is already connected')
-          } else {
-            loginOld(packet)
+        client['_events'].login_start = async (packet) => {
+          const packetUsername = packet.username.toLowerCase()
+          if (pendingUsernames.has(packetUsername)) {
+            client.end('A player with this username is already connecting')
+          }
+          pendingUsernames.add(packetUsername)
+          try {
+            const username = (await server.customGetUsername?.(packet, client)) ?? packetUsername
+
+            if (client.ended) return
+            const existingPlayer = Object.values(server._server.clients)
+              .find(c => c.username?.toLowerCase?.() === username)
+            if (existingPlayer) {
+              client.end('A player with this username is already connected')
+            } else {
+              loginOld({ ...packet, username })
+            }
+          } catch (err) {
+            pendingUsernames.delete(packetUsername)
+            client.end('An error occurred while connecting to the server')
           }
         }
       }
@@ -326,6 +339,8 @@ declare global {
     supportFeature: IndexedData['supportFeature']
     abortSignal: AbortSignal
     cleanupFunctions: Cleanup[]
+
+    customGetUsername?: (packet: any, client: Client) => MaybePromise<string>
   }
 
   type ServerModule = (server: Server, options: Options) => MaybePromise<void | Cleanup>

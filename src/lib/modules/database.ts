@@ -200,7 +200,7 @@ export const player = function (player: Player, serv: Server, options: Options) 
       const store = serv.getPlayerData(player.uuid)
       store.stats.totalPlayedMs += sessionMs
       if (sessionMs > store.stats.longestSessionMs) store.stats.longestSessionMs = sessionMs
-      await serv.savePlayerDataToDisk(player.uuid)
+      await Promise.all([serv.savePlayerDataToDisk(player.uuid), player.save()])
     } catch { /* ignore */ }
   })
 }

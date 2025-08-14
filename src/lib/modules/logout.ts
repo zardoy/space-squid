@@ -21,10 +21,12 @@ export const player = function (player: Player, serv: Server, { worldFolder }: O
     if (player && player.username) {
       player._unloadAllChunks()
       serv.broadcast(serv.chatColor.yellow + player.username + ' left the game.')
-      player._writeOthers('player_info', {
-        action: 4,
+      player.bridge.player_info({
+        action: {
+          remove_player: true,
+        },
         data: [{
-          UUID: player.uuid
+          uuid: player.uuid
         }]
       })
       player.nearbyPlayers().forEach(otherPlayer => otherPlayer.despawnEntities([player]))

@@ -165,9 +165,6 @@ export const entity = function (entity: Entity, serv: Server) {
 }
 declare global {
   interface Player {
-    /** @internal */
-    "teleport": (position: any) => Promise<void>
-    /** @internal */
     "sendAbilities": () => void
   }
   interface Entity {
@@ -195,7 +192,6 @@ declare global {
     "sendSelfPosition": (sendChunks?: boolean) => void
     /** @internal */
     "sendPosition": (position: Vec3, onGround: boolean, teleport?: boolean) => any
-    /** @internal */
     "teleport": (pos: Vec3) => void
   }
 }

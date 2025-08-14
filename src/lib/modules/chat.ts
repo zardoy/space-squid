@@ -162,11 +162,11 @@ export const player = function (player: Player, serv: Server, settings: Options)
   const chatHandler = ({ message }: { message: string }) => {
     if (message[0] === '/') {
       player.behavior('command', { command: message.slice(1) }, ({ command }) => player.handleCommand(command))
-      serv.info(`${player.username} issued command: ${message.split(' ')[0]}`)
+      serv.info(`${player.getDisplayName('log')} issued command: ${message.split(' ')[0]}`)
     } else {
       player.behavior('chat', {
         message,
-        prefix: '<' + player.username + '> ',
+        prefix: '<' + player.getDisplayName('chat') + '> ',
         text: message,
         whitelist: serv.players,
         blacklist: []
@@ -174,7 +174,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
         const obj = serv.parseClassic(prefix)
         if (!obj.extra) obj.extra = []
         obj.extra.push(serv.parseClassic(text))
-        serv.info(`<${player.username}> ${message}`)
+        serv.info(`<${player.getDisplayName('log')}> ${message}`)
         serv.broadcast(obj, {
           whitelist,
           blacklist
