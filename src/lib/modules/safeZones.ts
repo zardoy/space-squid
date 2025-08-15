@@ -31,7 +31,7 @@ export const server = (serv: Server) => {
   }
 }
 
-export const player = (player: Player, serv: Server, { basePositionAntiCheat, logToChatPositionAntiCheat }: Options) => {
+export const player = (player: Player, serv: Server, { basePositionAntiCheat = false, logToChatPositionAntiCheat = false }: Options) => {
   let lastMovementTime = Date.now()
   let lastPosition = player.position?.clone()
 
@@ -259,8 +259,8 @@ export type AABB = { min: Vec3, max: Vec3 }
 
 declare global {
   interface Options {
-    basePositionAntiCheat: boolean
-    logToChatPositionAntiCheat: boolean
+    basePositionAntiCheat?: boolean
+    logToChatPositionAntiCheat?: boolean
   }
 
   interface Server {
