@@ -2,8 +2,12 @@ import { Vec3 } from 'vec3'
 
 // Module to make positions safe to move to.
 // If a client sends a position outside by more than threshold, ignore and teleport back inside.
+// Also includes anti-cheat features for block collision and movement speed.
 
 const THRESHOLD = 0.5
+const PLAYER_SIZE = new Vec3(0.6, 1.8, 0.6) // Standard Minecraft player hitbox
+const MAX_MOVEMENT_DISTANCE = 10 // Maximum blocks per tick movement (accounting for speed effects)
+const BASE_WALKING_SPEED = 0.10000000149011612 // Base movement speed from playerDat.js
 
 export const server = (serv: Server) => {
   serv.safeZones ??= []
@@ -27,12 +31,46 @@ export const server = (serv: Server) => {
   }
 }
 
-export const player = (player: Player, serv: Server) => {
+export const player = (player: Player, serv: Server, { basePositionAntiCheat, logToChatPositionAntiCheat }: Options) => {
+  let lastMovementTime = Date.now()
+  let lastPosition = player.position?.clone()
+
   // Enforce safe areas on client-provided movement
   player.on('move_cancel' as any, ({ position, onGround, teleport }: { position: Vec3, onGround: boolean, teleport?: boolean }, cancel: (defaultCancel?: boolean) => void) => {
     // Allow server teleports/moves to pass through
     if (teleport) return
 
+    // Anti-cheat: Block collision detection
+    if (basePositionAntiCheat && isPlayerInsideBlock(player, serv, position)) {
+      cancel(false)
+      if (logToChatPositionAntiCheat) {
+        player.chat(`Position anti-cheat: Block collision detected. Teleporting to safe position.`)
+      }
+      player.teleport(findSafePosition(player, serv, position))
+      return
+    }
+
+    // Anti-cheat: Movement speed limit
+    const currentTime = Date.now()
+    const deltaTime = (currentTime - lastMovementTime) / 1000 // Convert to seconds
+    if (basePositionAntiCheat && lastPosition && !teleport) {
+      const maxAllowedDistance = calculateMaxMovementDistance(player, deltaTime)
+      const distance = position.distanceTo(lastPosition)
+      if (distance > maxAllowedDistance) {
+        if (logToChatPositionAntiCheat) {
+          player.chat(`Position anti-cheat: Movement speed limit exceeded. Teleporting to safe position.`)
+        }
+        cancel(false)
+        player.teleport(lastPosition)
+        return
+      }
+    }
+
+    // Update tracking for next movement
+    lastMovementTime = currentTime
+    lastPosition = position.clone()
+
+    // Safe zones enforcement (original logic)
     const zones = serv.safeZones ?? []
     if (zones.length === 0) return
 
@@ -56,10 +94,113 @@ export const player = (player: Player, serv: Server) => {
     const corrected = clampToAABBFromDirection(position, zone)
 
     // Prevent default cancel handling and perform corrective teleport ourselves
+    if (logToChatPositionAntiCheat) {
+      player.chat(`Position anti-cheat: Out of bounds. Teleporting to safe position.`)
+    }
     cancel(false)
     player.teleport(corrected)
   })
 }
+
+// Anti-cheat helper functions
+
+function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
+  const blocks = serv.mcData.blocksByStateId
+  const chunks = player.world.getColumns()
+  const chunk = chunks[position.x >> 4][position.z >> 4]
+  if (!chunk) return false
+
+  // Check collision points around player hitbox
+  const checkPositions = [
+    position, // Center
+    position.offset(PLAYER_SIZE.x / 2, 0, PLAYER_SIZE.z / 2), // Top-right corner
+    position.offset(-PLAYER_SIZE.x / 2, 0, PLAYER_SIZE.z / 2), // Top-left corner
+    position.offset(PLAYER_SIZE.x / 2, 0, -PLAYER_SIZE.z / 2), // Bottom-right corner
+    position.offset(-PLAYER_SIZE.x / 2, 0, -PLAYER_SIZE.z / 2), // Bottom-left corner
+    position.offset(0, PLAYER_SIZE.y / 2, 0), // Top center
+    position.offset(0, PLAYER_SIZE.y, 0) // Head position
+  ]
+
+  for (const checkPos of checkPositions) {
+    try {
+      const pos = new Vec3(Math.floor(checkPos.x) & 15, Math.floor(checkPos.y), Math.floor(checkPos.z) & 15)
+      const blockStateId = chunk.getBlockStateId(pos)
+      if (blocks[blockStateId]?.boundingBox === 'block') {
+        return true
+      }
+    } catch (error) {
+      // If we can't get block type, assume it's safe
+      continue
+    }
+  }
+
+  return false
+}
+
+function calculateMaxMovementDistance (player: Player, deltaTime: number): number {
+  let walkingSpeed = BASE_WALKING_SPEED
+
+  // Apply speed effect if present (effect ID 1)
+  if (player.effects?.[1]) {
+    const amplifier = player.effects[1].amplifier || 0
+    walkingSpeed = BASE_WALKING_SPEED * (1 + (amplifier + 1) * 0.2)
+  }
+
+  // For creative mode or flying, allow higher speed
+  if (player.gameMode === 1 || player.gameMode === 3 || player.flying) {
+    walkingSpeed *= 10 // Creative/spectator mode multiplier
+  }
+
+  // Convert to blocks per second and apply delta time, with maximum limit
+  const maxDistance = Math.min(walkingSpeed * 20 * deltaTime, MAX_MOVEMENT_DISTANCE)
+  return maxDistance
+}
+
+function findSafePosition (player: Player, serv: Server, attemptedPosition: Vec3) {
+  // Start from the attempted position and search nearby for a safe spot
+  const basePosition = attemptedPosition.floored()
+  const chunks = player.world.getColumns()
+  const chunk = chunks[basePosition.x >> 4][basePosition.z >> 4]
+  if (!chunk) return basePosition
+
+  // Search in expanding radius for a safe position
+  for (let radius = 0; radius <= 3; radius++) {
+    for (let x = -radius; x <= radius; x++) {
+      for (let z = -radius; z <= radius; z++) {
+        if (Math.abs(x) === radius || Math.abs(z) === radius) { // Only check edge positions for efficiency
+          const testPos = basePosition.offset(x, 0, z)
+
+          // Check if position is safe (not inside blocks)
+          let isSafe = true
+          for (let y = 0; y < Math.ceil(PLAYER_SIZE.y); y++) {
+            const checkPos = testPos.offset(0, y, 0)
+            const pos = new Vec3(Math.floor(checkPos.x) & 15, Math.floor(checkPos.y), Math.floor(checkPos.z) & 15)
+            try {
+              const blockStateId = chunk.getBlockStateId(pos)
+              if (serv.mcData.blocksByStateId[blockStateId]?.boundingBox === 'block') {
+                isSafe = false
+                break
+              }
+            } catch {
+              // If we can't check, assume unsafe
+              isSafe = false
+              break
+            }
+          }
+
+          if (isSafe) {
+            return testPos.offset(0.5, 0, 0.5) // Center in block
+          }
+        }
+      }
+    }
+  }
+
+  // If no safe position found, return player's current position
+  return player.position
+}
+
+// Original helper functions
 
 function isInsideStrict (pos: Vec3, box: AABB): boolean {
   return pos.x >= box.min.x && pos.x <= box.max.x &&
@@ -117,6 +258,11 @@ function dist1D (v: number, min: number, max: number): number {
 export type AABB = { min: Vec3, max: Vec3 }
 
 declare global {
+  interface Options {
+    basePositionAntiCheat: boolean
+    logToChatPositionAntiCheat: boolean
+  }
+
   interface Server {
     safeZones: AABB[]
     resetSafeZones: () => void

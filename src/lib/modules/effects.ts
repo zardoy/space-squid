@@ -31,7 +31,7 @@ export const entity = function (entity: Entity, serv: Server) {
     }, sendTo)
   }
 
-  entity.addEffect = (effectId, opt: any = {}) => {
+  entity.addEffect = (effectId, opt = {}) => {
     const amp = typeof opt.amplifier === 'undefined' ? 0 : opt.amplifier
     if (!entity.effects[effectId] || opt.override || amp < entity.effects[effectId].amplifier) {
       entity.effects[effectId] = {
@@ -47,7 +47,8 @@ export const entity = function (entity: Entity, serv: Server) {
   }
 
   entity.removeEffect = (effectId, opt?) => {
-    clearTimeout(entity.effects[effectId].timeout)
+    if (!entity.effects[effectId]) return
+    clearTimeout(entity.effects[effectId]!.timeout)
     entity.effects[effectId] = null
     entity.sendRemoveEffect(effectId, opt)
   }
@@ -108,15 +109,12 @@ export const server = function (serv: Server, options: Options) {
 }
 declare global {
   interface Entity {
+    "effects": Record<string, { amplifier: number, duration: number, particles: boolean, end: number, timeout: NodeJS.Timeout } | null>
     /** @internal */
-    "effects": {}
+    "sendEffect": (effectId: number, opt?: { amplifier?: number; duration?: number; particles?: boolean; whitelist?: Entity[]; blacklist?: Entity[] }) => void
     /** @internal */
-    "sendEffect": (effectId: any, opt?: { amplifier?: number; duration?: number; particles?: boolean; whitelist?: any; blacklist?: any[] }) => void
-    /** @internal */
-    "sendRemoveEffect": (effectId: any, opt?: { whitelist?: any; blacklist?: any[] | undefined }) => void
-    /** @internal */
-    "addEffect": (effectId: any, opt?: { amplifier?: number; duration?: number; particles?: boolean; whitelist?: any; blacklist?: any[] }) => boolean
-    /** @internal */
-    removeEffect: (effectId: any, opt?: { amplifier?: number; duration?: number; particles?: boolean; whitelist?: any; blacklist?: any[] }) => void
+    "sendRemoveEffect": (effectId: number, opt?: { whitelist?: Entity[]; blacklist?: Entity[] }) => void
+    "addEffect": (effectId: number, opt?: { amplifier?: number; duration?: number; particles?: boolean; whitelist?: Entity[]; blacklist?: Entity[]; override?: boolean }) => boolean
+    removeEffect: (effectId: number, opt?: { whitelist?: Entity[]; blacklist?: Entity[] }) => void
   }
 }
