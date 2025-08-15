@@ -1,3 +1,7 @@
+import { Vec3 } from 'vec3'
+
+const isPlayer = (arg: Entity): arg is Player => arg.type === 'player'
+
 export const server = function (serv: Server) {
   let ticking = false
   serv.on('tick', function (delta) {
@@ -20,9 +24,16 @@ export const server = function (serv: Server) {
             players[0].collect(entity)
           }
         }
+        // if (isPlayer(entity) && entity.isFake && !entity.size) {
+        //   entity.size = new Vec3(0.6, 1.8, 0.6)
+        //   entity.gravity = new Vec3(0, -20, 0)
+        //   entity.friction = new Vec3(0.6, 0.6, 0.6)
+        //   entity.terminalvelocity = new Vec3(27, 27, 27)
+        // }
         if (!entity.velocity || !entity.size) return
         const { position, onGround } = await entity.calculatePhysics(delta)
         if (entity.type === 'mob' ||
+          entity.type === 'player' ||
           (entity.type === 'object' &&
             (
               entity.velocity.x !== 0 ||

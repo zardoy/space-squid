@@ -119,9 +119,9 @@ export const server = function (serv: Server) {
 declare global {
   interface Entity {
     /** Gravity of entity (non-players) to calculate physics. */
-    gravity
+    gravity: Vec3
     /** Decreases velocity when touching blocks */
-    friction: any
+    friction: Vec3
     /** @internal */
     "calculatePhysics": (delta: any) => Promise<{ position: any; onGround: boolean }>
     /** @internal */

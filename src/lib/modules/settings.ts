@@ -49,7 +49,7 @@ export const player = function (player: Player, serv: Server) {
   player.gameMode = serv.gameMode
   player.prevGameMode = player.gameMode
   player.findSpawnPoint = async () => {
-    player.spawnPoint = await serv.getSpawnPoint(player.world)
+    player.spawnPoint ??= await serv.getSpawnPoint(player.world)
   }
   player._client.on('settings', ({ viewDistance }) => {
     player.view = viewDistance
