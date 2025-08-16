@@ -33,7 +33,11 @@ export const server = (serv: Server) => {
 
 export const player = (player: Player, serv: Server, { basePositionAntiCheat = false, logToChatPositionAntiCheat = false }: Options) => {
   let lastMovementTime = Date.now()
-  let lastPosition = player.position?.clone()
+  let lastPosition: Vec3 | undefined
+
+  player.onReady.then(() => {
+    lastPosition = player.position.clone()
+  })
 
   // Enforce safe areas on client-provided movement
   player.on('move_cancel' as any, ({ position, onGround, teleport }: { position: Vec3, onGround: boolean, teleport?: boolean }, cancel: (defaultCancel?: boolean) => void) => {

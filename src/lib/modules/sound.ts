@@ -1,23 +1,42 @@
 import { skipMcPrefix } from '../utils'
 
 import { Vec3 } from 'vec3'
+import { CustomWorld } from './world'
 
 export const server = function (serv: Server) {
-  serv.playSound = (sound, world, position, { whitelist, blacklist = [], radius = 32, volume = 1.0, pitch = 1.0, soundCategory = 0 }: any = {}) => {
+  serv.playSound = (sound, world, position, { whitelist, blacklist = [], radius = 32, volume = 1.0, pitch = 1.0, soundCategory = 0, saveId, customClientOptions } = {}) => {
     const players = (typeof whitelist !== 'undefined'
       ? (whitelist instanceof Array ? whitelist : [whitelist])
       : serv.getNearby({
         world,
-        position,
+        position: position!,
         radius
       }))
+
+    // Add custom options to sound name if provided
+    let finalSoundName = sound
+    if (customClientOptions) {
+      finalSoundName = `${sound}(${JSON.stringify(customClientOptions)})`
+    }
+
+    // Save sound info if saveId provided for each player
+    if (saveId) {
+      const targetPlayers = players.filter(player => blacklist.indexOf(player) === -1)
+      targetPlayers.forEach(player => {
+        player.savedSounds[saveId] = {
+          soundName: sound,
+          soundCategory
+        }
+      })
+    }
+
     players.filter(player => blacklist.indexOf(player) === -1)
       .forEach(player => {
         const iniPos = position ? position.scaled(1 / 32) : player.position.scaled(1 / 32)
         const pos = iniPos.scaled(8).floored()
         // only packet still in fixed position in all versions
         player._client.write('named_sound_effect', {
-          soundName: sound,
+          soundName: finalSoundName,
           soundCategory,
           x: pos.x,
           y: pos.y,
@@ -39,6 +58,24 @@ export const server = function (serv: Server) {
   }
 
   serv.getNote = note => 0.5 * Math.pow(Math.pow(2, 1 / 12), note)
+
+  serv.stopSound = (soundId: string, targetPlayers?: Player[]) => {
+    // If targetPlayers provided, stop sound only for them
+    // Otherwise stop for all players who have this sound saved
+    const players = targetPlayers || serv.players
+
+    players.forEach(player => {
+      const soundInfo = player.savedSounds[soundId]
+      if (soundInfo) {
+        player._client.write('stop_sound', {
+          flags: 3, // Both source and sound
+          source: soundInfo.soundCategory,
+          sound: soundInfo.soundName
+        })
+        delete player.savedSounds[soundId]
+      }
+    })
+  }
 
   serv.commands.add({
     base: 'playsoundforall',
@@ -84,8 +121,40 @@ export const server = function (serv: Server) {
 }
 
 export const player = function (player: Player, serv: Server) {
-  player.playSound = (sound, opt = {}) => {
+  // Initialize player's saved sounds storage
+  player.savedSounds = {}
+
+  player.playSound = (sound, opt: PlaySoundOptions = {}) => {
+    // If saveId is provided, store the sound in player's storage
+    if (opt.saveId) {
+      player.savedSounds[opt.saveId] = {
+        soundName: sound,
+        soundCategory: opt.soundCategory || 0
+      }
+    }
     serv.playSound(sound, player.world, null, { ...opt, whitelist: player })
+  }
+
+  player.stopSound = (soundId?: string) => {
+    if (soundId) {
+      // Stop specific sound if it exists in player's saved sounds
+      const soundInfo = player.savedSounds[soundId]
+      if (soundInfo) {
+        player._client.write('stop_sound', {
+          flags: 3, // Both source and sound
+          source: soundInfo.soundCategory,
+          sound: soundInfo.soundName
+        })
+        delete player.savedSounds[soundId]
+      }
+    } else {
+      // Stop all sounds
+      player._client.write('stop_sound', {
+        flags: 0 // Stop all sounds
+      })
+      // Clear saved sounds storage
+      player.savedSounds = {}
+    }
   }
 
   // player.on('placeBlock_cancel', async ({ reference }, cancel) => {
@@ -117,7 +186,35 @@ export const entity = function (entity: Entity, serv: Server) {
     serv.playSound(sound, entity.world, entity.position, opt)
   }
 }
+interface SavedSound {
+  soundName: string
+  soundCategory: number
+}
+
+interface PlaySoundOptions {
+  whitelist?: any
+  blacklist?: any[]
+  radius?: number
+  volume?: number
+  pitch?: number
+  soundCategory?: number
+  /** Optional ID to save the sound for later stopping */
+  saveId?: string
+  /** Custom options to be added to sound name in parentheses as JSON */
+  customClientOptions?: Record<string, any>
+}
+
+interface PlayNoteBlockOptions {
+  instrument?: string
+  particle?: boolean
+}
+
 declare global {
+  interface Player {
+    /** Stores saved sounds by ID for later stopping */
+    savedSounds: Record<string, SavedSound>
+  }
+
   interface Server {
     /** Plays `sound` (string, google "minecraft sound list") to all players in `opt.radius`.
      * If position is null, will play at the location of every player (taking into account whitelist and blacklist).
@@ -128,19 +225,25 @@ declare global {
      * - radius: Radius that sound can be heard (in fixed position so remember to multiply by 32, default 32*32)
      * - volume: float from 0-1 (default 1.0)
      * - pitch: float from 0.5 to 2 (default 1.0)
+     * - saveId: Optional ID to save the sound for later stopping
+     * - customClientOptions: Custom options to be added to sound name in parentheses as JSON
      */
-    'playSound': (sound: any, world: any, position: any, { whitelist, blacklist, radius, volume, pitch, soundCategory }?: { whitelist?: any, blacklist?: any[] | undefined, radius?: number | undefined, volume?: number | undefined, pitch?: number | undefined, soundCategory?: number | undefined }) => void
+    'playSound': (sound: string, world: CustomWorld, position: Vec3 | null, opts?: PlaySoundOptions) => void
     /** Plays noteblock in world at position. `pitch` is from 0-24 */
-    "playNoteBlock": (pitch: any, world: any, position: any, { instrument, particle }?: { instrument?: string | undefined; particle?: boolean | undefined }) => void
+    "playNoteBlock": (pitch: number, world: CustomWorld, position: Vec3, opts?: PlayNoteBlockOptions) => void
     /** Get pitch. `note` should be between 0-24 and your output is from 0.5 to 2.0 */
-    "getNote": (note: any) => number
+    "getNote": (note: number) => number
+    /** Stop a previously saved sound by its ID */
+    "stopSound": (soundId: string) => void
   }
   interface Player {
     /** Easy way to only play a sound for one player. Same opt as serv.playSound except no `whitelist`. */
-    "playSound": (sound: any, opt?: {}) => void
+    "playSound": (sound: string, opt?: PlaySoundOptions) => void
+    /** Stop a specific sound by ID or all sounds if no ID provided */
+    "stopSound": (soundId?: string) => void
   }
   interface Entity {
     /** @internal */
-    "playSoundAtSelf": (sound: any, opt?: {}) => void
+    "playSoundAtSelf": (sound: string, opt?: PlaySoundOptions) => void
   }
 }

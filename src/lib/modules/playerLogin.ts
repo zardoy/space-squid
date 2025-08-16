@@ -94,8 +94,9 @@ export const server = function (serv: Server, options: Options) {
       client.end('Server is still starting! Please wait before reconnecting.')
       return
     }
+    let player: Player
     try {
-      const player = serv.initEntity('player', null, serv.overworld, new Vec3(0, 0, 0))
+      player = serv.initEntity('player', null, serv.overworld, new Vec3(0, 0, 0))
       Object.assign(player, assignProps)
       Object.defineProperty(player, 'position', {
         get () {
@@ -114,7 +115,8 @@ export const server = function (serv: Server, options: Options) {
       await player.login()
       return player
     } catch (err) {
-      setTimeout(() => { throw err }, 0)
+      serv.emit('error', err, { type: 'playerLogin', player: player! })
+      client.end(`Internal server error during login phase: ${err.message}`)
     }
   }
 
