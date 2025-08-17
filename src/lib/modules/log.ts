@@ -50,7 +50,7 @@ export const server = function (serv: Server, settings: Options) {
     try {
       // Determine log file path based on settings type
       if (typeof settings.logging === 'string') {
-        const logPathStr = (settings.logging as string).trim()
+        const logPathStr = settings.logging.trim()
         // If string provided, use as direct file path or directory
         if (logPathStr.toLowerCase().endsWith('.log')) {
           logPath = logPathStr

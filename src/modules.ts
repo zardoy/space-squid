@@ -71,7 +71,7 @@ declare global {
     noWarpsLoad?: boolean
     "max-players"?: number
     "online-mode"?: boolean
-    logging?: boolean
+    logging?: boolean | string
     gameMode?: number
     difficulty?: number
     worldFolder?: string | false
