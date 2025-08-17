@@ -462,9 +462,9 @@ declare global {
     /** @internal */
     "initEntity": <T extends string>(type: T, entityType: any, world: CustomWorld, position: Vec3) => T extends 'player' ? Player : Entity
     /** @internal */
-    "spawnObject": (type: any, world: any, position: any, { pitch, yaw, velocity, data, itemId, itemDamage, itemCount, pickupTime, deathTime }: { pitch?: number | undefined; yaw?: number | undefined; velocity?: any; data?: number | undefined; itemId?: any; itemDamage?: number | undefined; itemCount?: number | undefined; pickupTime?: number; deathTime?: number }) => any
+    "spawnObject": (type: any, world: any, position: Vec3, { pitch, yaw, velocity, data, itemId, itemDamage, itemCount, pickupTime, deathTime }: { pitch?: number | undefined; yaw?: number | undefined; velocity?: any; data?: number | undefined; itemId?: any; itemDamage?: number | undefined; itemCount?: number | undefined; pickupTime?: number; deathTime?: number }) => any
     /** @internal */
-    "spawnMob": (type: any, world: any, position: any, { pitch, yaw, headPitch, velocity, metadata }?: { pitch?: number | undefined; yaw?: number | undefined; headPitch?: number | undefined; velocity?: any; metadata?: any[] | undefined }) => any
+    "spawnMob": (type: any, world: any, position: Vec3, { pitch, yaw, headPitch, velocity, metadata }?: { pitch?: number | undefined; yaw?: number | undefined; headPitch?: number | undefined; velocity?: any; metadata?: any[] | undefined }) => any
     /** @internal */
     "destroyEntity": (entity: any) => void
   }
@@ -510,7 +510,7 @@ declare global {
     onReady: Promise<void>
     makeReady: () => void
     /** @internal */
-    "initEntity": (type: any, entityType: any, world: any, position: any) => void
+    "initEntity": (type: any, entityType: any, world: any, position: Vec3) => void
     /** @internal */
     "getSpawnPacket": () => { entityId: any; playerUUID: any; x: any; y: any; z: any; yaw: any; pitch: any; currentItem: number; metadata: any; objectUUID?: any; type?: any; objectData?: any; velocityX?: any; velocityY?: any; velocityZ?: any; entityUUID?: any; headPitch?: undefined } | { entityId: any; objectUUID: any; type: any; x: any; y: any; z: any; pitch: any; yaw: any; objectData: any; velocityX: any; velocityY: any; velocityZ: any; playerUUID?: any; currentItem?: any; metadata?: any; entityUUID?: any; headPitch?: undefined } | { entityId: any; entityUUID: any; type: any; x: any; y: any; z: any; yaw: any; pitch: any; headPitch: any; velocityX: any; velocityY: any; velocityZ: any; metadata: any; playerUUID?: any; currentItem?: any; objectUUID?: any; objectData?: undefined } | undefined
     "updateAndSpawn": () => void

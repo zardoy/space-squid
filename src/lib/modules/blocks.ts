@@ -98,8 +98,8 @@ export const server = function (serv: Server, { version }: Options) {
       return results
     },
     action (params, ctx) {
-      if (ctx.player) ctx.player.setBlockAction(new Vec3(+params[1], +params[2], +params[3]).floored(), +params[4], params[5])
-      else serv.setBlockAction(serv.overworld, new Vec3(+params[1], +params[2], +params[3]).floored(), +params[4], params[5])
+      if (ctx.player) ctx.player.setBlockAction(new Vec3(+params[1], +params[2], +params[3]).floored(), +params[4], Number(params[5]))
+      else serv.setBlockAction(serv.overworld, new Vec3(+params[1], +params[2], +params[3]).floored(), +params[4], Number(params[5]))
     }
   })
 
@@ -114,11 +114,16 @@ export const server = function (serv: Server, { version }: Options) {
     action ([_sX, _sY, _sZ, _tX, _tY, _tZ, blockArg], ctx) {
       const [sX, sY, sZ, tX, tY, tZ] = [_sX, _sY, _sZ, _tX, _tY, _tZ].map(x => +x)
       const block = [] // todo resolve block
+      let changes = 0
       for (let x = Math.min(sX, tX); x <= Math.max(sX, tX); x++) {
         for (let y = Math.min(sY, tY); y <= Math.max(sY, tY); y++) {
           for (let z = Math.min(sZ, tZ); z <= Math.max(sZ, tZ); z++) {
-            // todo
-            ctx.player!.setBlock(new Vec3(x, y, z), block)
+            ctx.player!.setBlock(new Vec3(x, y, z), 0)
+            changes++
+            if (changes > 1000) {
+              ctx.player!.chat(`[Fill] Made ${changes} changes`)
+              break
+            }
           }
         }
       }
@@ -161,14 +166,14 @@ declare global {
      * this will not change the block for the user himself. It is mainly useful when a user places a block
      * and only needs to send it to other players on the server
      */
-    'changeBlock': (position: any, blockType: any, blockData: any) => Promise<void>
+    'changeBlock': (position: Vec3, blockType: number, blockData: any) => Promise<void>
     /** change the block at position `position` to `blockType` and `blockData`
      *
      * this will not make any changes on the server's world and only sends it to the user as a "fake" or "local" block
      */
-    'sendBlock': (position: any, blockStateId: any) => any
+    'sendBlock': (position: Vec3, blockStateId: number) => any
     /** Saves block in world and sends block update to all players of the same world. */
-    'setBlock': (position: any, stateId: any) => any
+    'setBlock': (position: Vec3, stateId: number) => any
     /** Set the block action at position `position` to `actionId` and `actionParam`.
      *
      * ``blockType`` is only required when the block at the location is a fake block.
@@ -176,11 +181,11 @@ declare global {
      *
      * This will not make any changes to the server's world and only sends it to the user as a local action.
      */
-    'sendBlockAction': (position: any, actionId: any, actionParam: any, blockType: any) => Promise<void>
+    'sendBlockAction': (position: Vec3, actionId: number, actionParam: number, blockType: number) => Promise<void>
     /** Sets a block action and sends the block action to all players in the same world.
      *
      * This will not make any changes to the server's world
      */
-    'setBlockAction': (position: any, actionId: any, actionParam: any) => any
+    'setBlockAction': (position: Vec3, actionId: number, actionParam: number) => any
   }
 }

@@ -123,7 +123,7 @@ declare global {
     /** Decreases velocity when touching blocks */
     friction: Vec3
     /** @internal */
-    "calculatePhysics": (delta: any) => Promise<{ position: any; onGround: boolean }>
+    "calculatePhysics": (delta: any) => Promise<{ position: Vec3; onGround: boolean }>
     /** @internal */
     "sendVelocity": (vel: any, maxVel: any) => void
   }

@@ -62,6 +62,6 @@ declare global {
      * - size: vec3 of the size. (0,0,0) will be at an exact position, (10,10,10) will be very spread out (particles less dense)
      * - count: Number of particles. 100,000,000+ will crash the client. Try not to go over 100,000 (sincerely, minecraft clients)
      */
-    'emitParticle': (particle: any, world: any, position: any, { whitelist, blacklist, radius, longDistance, size, count }?: { whitelist?: any, blacklist?: any[] | undefined, radius?: number | undefined, longDistance?: boolean | undefined, size?: any, count?: number | undefined }) => void
+    'emitParticle': (particle: any, world: any, position: Vec3, { whitelist, blacklist, radius, longDistance, size, count }?: { whitelist?: any, blacklist?: any[] | undefined, radius?: number | undefined, longDistance?: boolean | undefined, size?: any, count?: number | undefined }) => void
   }
 }

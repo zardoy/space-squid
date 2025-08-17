@@ -7,7 +7,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     player.sendBlock(position, block.type)
   }
 
-  player._client.on('block_dig', async ({ location, status, face }) => {
+  player._client.on('block_dig', ({ location, status, face }) => {
     if (status === 3 || status === 4) {
       const heldItem = player.inventory.slots[36 + player.heldItemSlot]
       if (!heldItem || heldItem.type === -1) return
@@ -48,13 +48,19 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       }
       const facedPos = pos.plus(directionVector)
 
-      const facedBlock = await player.world.getBlock(facedPos)
+      const columnFaced = player.world.getLoadedColumnAt(facedPos)
+      const columnBlock = player.world.getLoadedColumnAt(pos)
+      if (!columnFaced || !columnBlock) {
+        console.warn(`[Digging] Column not loaded for player ${player.username} at ${pos}`)
+        return
+      }
+      const facedBlock = columnFaced.getBlock(new Vec3(facedPos.x & 15, 0, facedPos.z & 15))
       let block
       if (facedBlock.name === 'fire') {
         block = facedBlock
         pos = facedPos
       } else {
-        block = await player.world.getBlock(pos)
+        block = columnBlock.getBlock(new Vec3(pos.x & 15, 0, pos.z & 15))
       }
 
       currentlyDugBlock = block
@@ -68,7 +74,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       } else if (status === 1 || player.gameMode >= 2) {
         cancelDigging(pos)
       } else if (status === 2) {
-        completeDigging(pos)
+        completeDigging(pos, directionVector)
       }
     }
   })
@@ -143,7 +149,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   }
 
   const blockDropVelocity = new Vec3(Math.random() * 4 - 2, Math.random() * 2 + 2, Math.random() * 4 - 2)
-  async function completeDigging (location) {
+  async function completeDigging (location: Vec3, directionVector: Vec3) {
     clearInterval(animationInterval)
     const diggingTime = Date.now() - startDiggingTime
     let stop = false
@@ -193,7 +199,8 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         position: location,
         block: currentlyDugBlock,
         dropBlock: true,
-        drops
+        drops,
+        directionVector
       }, async (data) => {
         player.changeBlock(data.position, 0, 0)
         const aboveBlock = await player.world.getBlock(data.position.offset(0, 1, 0))
