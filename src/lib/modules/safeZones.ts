@@ -6,8 +6,12 @@ import { Vec3 } from 'vec3'
 
 const THRESHOLD = 0.5
 const PLAYER_SIZE = new Vec3(0.6, 1.8, 0.6) // Standard Minecraft player hitbox
-const MAX_MOVEMENT_DISTANCE = 10 // Maximum blocks per tick movement (accounting for speed effects)
 const BASE_WALKING_SPEED = 0.10000000149011612 // Base movement speed from playerDat.js
+const KNOCKBACK_VELOCITY = 8 // From pvp.ts KNOCKBACK_MULTIPLIER
+const MAX_MOVEMENT_DISTANCE = Math.max(KNOCKBACK_VELOCITY * 2, 10) // Allow for knockback velocity + some buffer
+const STANDARD_GRAVITY = -0.0784000015258789 // Standard Minecraft gravity from mineflayer
+const BASE_SPEED_MULTIPLIER = 45 // Adjusted based on observed normal movement speeds
+const FALLING_SPEED_BUFFER = 1.5 // Extra allowance for falling speed variations
 
 export const server = (serv: Server) => {
   serv.safeZones ??= []
@@ -31,38 +35,58 @@ export const server = (serv: Server) => {
   }
 }
 
-export const player = (player: Player, serv: Server, { basePositionAntiCheat = false, logToChatPositionAntiCheat = false }: Options) => {
+export const player = (player: Player, serv: Server, { basePositionAntiCheat = false, positionAntiCheatNotifyPlayer = false }: Options) => {
   let lastMovementTime = Date.now()
-  let lastPosition: Vec3 | undefined
 
   player.onReady.then(() => {
-    lastPosition = player.position.clone()
+    player.knownPosition ??= player.position.clone()
   })
 
   // Enforce safe areas on client-provided movement
   player.on('move_cancel' as any, ({ position, onGround, teleport }: { position: Vec3, onGround: boolean, teleport?: boolean }, cancel: (defaultCancel?: boolean) => void) => {
+    const lastPosition = player.knownPosition
     // Allow server teleports/moves to pass through
-    if (teleport) return
+    const currentTime = Date.now()
+    // Check if this is a response to our teleport
+    if (player.pendingTeleport) {
+      if (position.distanceTo(player.pendingTeleport) < 0.1) {
+        lastMovementTime = currentTime
+        player.knownPosition = position.clone()
+        player.pendingTeleport = null
+      }
+      return
+    }
+    // Allow server teleports
+    if (teleport) {
+      lastMovementTime = currentTime
+      return
+    }
+    const deltaTime = (currentTime - lastMovementTime) / 1000 // Convert to seconds
+    lastMovementTime = currentTime
 
     // Anti-cheat: Block collision detection
     if (basePositionAntiCheat && isPlayerInsideBlock(player, serv, position)) {
       cancel(false)
-      if (logToChatPositionAntiCheat) {
-        player.chat(`Position anti-cheat: Block collision detected. Teleporting to safe position.`)
+      if (positionAntiCheatNotifyPlayer) {
+        player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
       }
-      player.teleport(findSafePosition(player, serv, position))
+      player.teleport(lastPosition ?? findSafePosition(player, serv, position))
       return
     }
 
     // Anti-cheat: Movement speed limit
-    const currentTime = Date.now()
-    const deltaTime = (currentTime - lastMovementTime) / 1000 // Convert to seconds
     if (basePositionAntiCheat && lastPosition && !teleport) {
-      const maxAllowedDistance = calculateMaxMovementDistance(player, deltaTime)
-      const distance = position.distanceTo(lastPosition)
-      if (distance > maxAllowedDistance) {
-        if (logToChatPositionAntiCheat) {
-          player.chat(`Position anti-cheat: Movement speed limit exceeded. Teleporting to safe position.`)
+      const velocityCheck = calculateVelocity(player, lastPosition, position, deltaTime)
+      if (velocityCheck.currentSpeed > velocityCheck.maxAllowedSpeed) {
+        if (positionAntiCheatNotifyPlayer) {
+          const excessSpeed = velocityCheck.currentSpeed - velocityCheck.maxAllowedSpeed
+          player.chat(
+            `[safeZones] Speed limit exceeded by ${excessSpeed.toFixed(1)} b/s ` +
+            `(dt=${deltaTime.toFixed(3)}s, ` +
+            `(current=${velocityCheck.currentSpeed.toFixed(1)}, ` +
+            `max=${velocityCheck.maxAllowedSpeed.toFixed(1)}, ` +
+            `mode=${velocityCheck.reason})`
+          )
         }
         cancel(false)
         player.teleport(lastPosition)
@@ -70,9 +94,7 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
       }
     }
 
-    // Update tracking for next movement
-    lastMovementTime = currentTime
-    lastPosition = position.clone()
+    // lastPosition = position.clone()
 
     // Safe zones enforcement (original logic)
     const zones = serv.safeZones ?? []
@@ -98,8 +120,8 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     const corrected = clampToAABBFromDirection(position, zone)
 
     // Prevent default cancel handling and perform corrective teleport ourselves
-    if (logToChatPositionAntiCheat) {
-      player.chat(`Position anti-cheat: Out of bounds. Teleporting to safe position.`)
+    if (positionAntiCheatNotifyPlayer) {
+      player.chat(`[safeZones] Out of bounds. Teleporting to safe position.`)
     }
     cancel(false)
     player.teleport(corrected)
@@ -110,8 +132,7 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
 
 function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
   const blocks = serv.mcData.blocksByStateId
-  const chunks = player.world.getColumns()
-  const chunk = chunks[position.x >> 4][position.z >> 4]
+  const chunk = player.world.getLoadedColumnAt(position)
   if (!chunk) return false
 
   // Check collision points around player hitbox
@@ -141,23 +162,63 @@ function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
   return false
 }
 
-function calculateMaxMovementDistance (player: Player, deltaTime: number): number {
-  let walkingSpeed = BASE_WALKING_SPEED
+interface VelocityCheck {
+  maxAllowedSpeed: number // blocks per second
+  currentSpeed: number // blocks per second
+  reason: string
+}
+
+function calculateVelocity (player: Player, lastPosition: Vec3, newPosition: Vec3, deltaTime: number): VelocityCheck {
+
+  // Calculate horizontal and vertical speeds separately
+  const horizontalDiff = new Vec3(newPosition.x - lastPosition.x, 0, newPosition.z - lastPosition.z)
+  const horizontalSpeed = horizontalDiff.norm() / deltaTime
+  const verticalSpeed = Math.abs(newPosition.y - lastPosition.y) / deltaTime
+
+  // Base speed check is only for horizontal movement
+  let maxHorizontalSpeed = BASE_WALKING_SPEED * BASE_SPEED_MULTIPLIER
+  let maxVerticalSpeed = Math.abs(STANDARD_GRAVITY) * 20 * FALLING_SPEED_BUFFER // Convert to blocks/s and add buffer
 
   // Apply speed effect if present (effect ID 1)
   if (player.effects?.[1]) {
     const amplifier = player.effects[1].amplifier || 0
-    walkingSpeed = BASE_WALKING_SPEED * (1 + (amplifier + 1) * 0.2)
+    maxHorizontalSpeed *= (1 + (amplifier + 1) * 0.2)
   }
 
   // For creative mode or flying, allow higher speed
   if (player.gameMode === 1 || player.gameMode === 3 || player.flying) {
-    walkingSpeed *= 10 // Creative/spectator mode multiplier
+    maxHorizontalSpeed *= 10 // Creative/spectator mode multiplier
+    maxVerticalSpeed *= 10
   }
 
-  // Convert to blocks per second and apply delta time, with maximum limit
-  const maxDistance = Math.min(walkingSpeed * 20 * deltaTime, MAX_MOVEMENT_DISTANCE)
-  return maxDistance
+  // Check if player was recently knocked back (within last 2 seconds)
+  const now = Date.now()
+  const lastDamageTime = player.lastDamageTime || 0
+  if (now - lastDamageTime < 2000) {
+    // Allow much higher speed right after taking damage (knockback)
+    maxHorizontalSpeed = Math.max(maxHorizontalSpeed, KNOCKBACK_VELOCITY * 20)
+    maxVerticalSpeed = Math.max(maxVerticalSpeed, KNOCKBACK_VELOCITY * 20)
+  }
+
+  // Use the appropriate speed comparison based on movement type
+  const verticalDiff = newPosition.y - lastPosition.y
+  const currentSpeed = verticalDiff < 0 ? verticalSpeed : horizontalSpeed
+  const maxAllowedSpeed = verticalDiff < 0 ? maxVerticalSpeed : maxHorizontalSpeed
+
+  let reason = ''
+  if (currentSpeed > maxAllowedSpeed) {
+    reason = (player.gameMode === 1 || player.gameMode === 3) ? 'creative' :
+      player.flying ? 'flying' :
+        verticalDiff < 0 ? 'falling' :
+          player.effects?.[1] ? `speed ${player.effects[1].amplifier}` :
+            now - lastDamageTime < 2000 ? 'knockback' : 'walking'
+  }
+
+  return {
+    maxAllowedSpeed,
+    currentSpeed,
+    reason
+  }
 }
 
 function findSafePosition (player: Player, serv: Server, attemptedPosition: Vec3) {
@@ -264,7 +325,7 @@ export type AABB = { min: Vec3, max: Vec3 }
 declare global {
   interface Options {
     basePositionAntiCheat?: boolean
-    logToChatPositionAntiCheat?: boolean
+    positionAntiCheatNotifyPlayer?: boolean
   }
 
   interface Server {
