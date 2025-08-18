@@ -183,10 +183,7 @@ export const player = function (player: Player, serv: Server, options: Options) 
   })
 
   // Count placed blocks attempts
-  let lastPlace = 0
   player.on('blockPlaced', () => {
-    if (Date.now() - lastPlace < 5) return
-    lastPlace = Date.now()
     const store = serv.getPlayerData(player.uuid)
     store.stats.totalPlacedBlocks += 1
     serv.updatePlayerData(player.uuid, store)

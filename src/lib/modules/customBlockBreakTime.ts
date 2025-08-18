@@ -56,7 +56,7 @@ export const player = async (player: Player, serv: Server) => {
       return undefined
     }
 
-    return config.blocks?.[block.type] ?? config.blocks?.['*']
+    return config.blocks?.[block.stateId] ?? config.blocks?.['*']
   }
 
   // Register the channel
@@ -80,6 +80,7 @@ export type BreakTimeConfig = {
   toolNames: string[]
   blocks: {
     [stateId: number]: number
+    '*'?: number
   }
 }
 

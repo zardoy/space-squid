@@ -3,6 +3,7 @@ import TypedEmitter from 'typed-emitter'
 import EventEmitter from 'events'
 import { IndexedData, Block as MinecraftDataBlock } from 'minecraft-data'
 import { Block as PrismarineBlock } from 'prismarine-block'
+import { BehaviorEventMap } from './lib/behavior'
 
 // all is coherent and stays in the same place
 declare global {
@@ -45,7 +46,7 @@ declare global {
     mcData: IndexedData
   }
   // Omit is to allow inheritance of Entity
-  interface Player extends Omit<Entity, keyof TypedEmitter<{}>>, TypedEmitter<PlayerEvents> {
+  interface Player extends Omit<Entity, keyof TypedEmitter<{}>>, TypedEmitter<PlayerEvents & BehaviorEventMap<{ [K in keyof PlayerBehaviorInputMap]: PlayerBehaviorInputMap[K] }>> {
     dimension: string | number
     _client: Client
   }

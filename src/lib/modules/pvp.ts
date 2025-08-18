@@ -58,6 +58,11 @@ export const entity = function (entity: Entity, serv: Server) {
     entity.updateHealth(entity.health - damage)
     serv.playSound(sound, entity.world, entity.position)
 
+    // Track last damage time for anti-cheat movement checks
+    if (entity.type === 'player') {
+      (entity as Player).lastDamageTime = Date.now()
+    }
+
     entity.sendVelocity(velocity, maxVelocity)
 
     if (entity.health <= 0) {
@@ -134,6 +139,11 @@ export const server = function (serv: Server) {
   })
 }
 declare global {
+  interface Player {
+    /** Timestamp of last damage taken, used for movement anti-cheat */
+    lastDamageTime?: number
+  }
+
   interface Entity {
     /** Whether the entity is invincible to all damage */
     invincible: boolean
@@ -150,5 +160,14 @@ declare global {
     'takeDamage': ({ sound, damage, velocity, maxVelocity, animation }: { sound?: string | undefined, damage?: number | undefined, velocity?: any, maxVelocity?: any, animation?: boolean | undefined }) => void
     /** @internal */
     "kill": (options?: {}) => void
+  }
+
+  interface PlayerBehaviorInputMap {
+    'attack': {
+      _input: {
+        attackedEntity: Entity
+        velocity: Vec3
+      }
+    }
   }
 }

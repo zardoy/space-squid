@@ -1,6 +1,6 @@
 export const player = function (player: Player) {
   player._client.on('arm_animation', () =>
-    player.behavior('punch', {}, () => {
+    player.behavior('armSwing', {}, () => {
       player._writeOthersNearby('animation', {
         entityId: player.id,
         animation: 0
@@ -23,4 +23,10 @@ export const player = function (player: Player) {
   })
 }
 declare global {
+  interface PlayerBehaviorInputMap {
+    'armSwing': {
+      _input: {
+      }
+    }
+  }
 }

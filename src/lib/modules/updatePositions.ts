@@ -67,12 +67,25 @@ export const player = function (player: Player) {
       flags: 0x00,
       teleportId: 1
     })
-    if (sendChunks) player.emit('move')
+    if (sendChunks) player.sendChunkWhenMove()
   }
 
+  let oldSetTimeout: any
   player.teleport = async (position) => {
+    // Track pending teleport for anti-cheat
+    if (oldSetTimeout) clearTimeout(oldSetTimeout)
+    player.pendingTeleport = position.clone()
+
     const notCancelled = await player.sendPosition(position, false, true)
-    if (notCancelled) player.sendSelfPosition()
+    if (!notCancelled) return
+    player.sendSelfPosition()
+
+    // Clear pending teleport after a short delay to handle network latency
+    oldSetTimeout = player.setTimeout(() => {
+      if (player.pendingTeleport?.equals(position)) {
+        player.pendingTeleport = null
+      }
+    }, 1000) // 1 second timeout
   }
 
   player.sendAbilities = () => {
@@ -98,10 +111,11 @@ export const player = function (player: Player) {
 }
 
 export const entity = function (entity: Entity, serv: Server) {
-  entity.sendPosition = (position, onGround, teleport = false) => {
-    if (typeof position === 'undefined') throw new Error('undef')
-    if (entity.position.equals(position) && entity.onGround === onGround) return Promise.resolve()
-    return entity.behavior('move', {
+  entity.sendPosition = async (position, onGround, teleport = false) => {
+    if (typeof position === 'undefined') throw new Error('position is undefined')
+    if (entity.position.equals(position) && entity.onGround === onGround) return true
+    let cancelled = false
+    await entity.behavior('move', {
       position,
       onGround,
       teleport
@@ -160,8 +174,10 @@ export const entity = function (entity: Entity, serv: Server) {
       entity.position = position
       entity.onGround = onGround
     }, () => {
+      cancelled = true
       if (entity.type === 'player') entity.sendSelfPosition()
     })
+    return !cancelled
   }
 
   entity.teleport = (pos) => { // Overwritten in players inject above
@@ -171,6 +187,8 @@ export const entity = function (entity: Entity, serv: Server) {
 declare global {
   interface Player {
     "sendAbilities": () => void
+    /** Position we're expecting the client to move to after teleport */
+    pendingTeleport?: Vec3 | null
   }
   interface Entity {
     /** ID of entity on server */
@@ -196,7 +214,24 @@ declare global {
      * @internal */
     "sendSelfPosition": (sendChunks?: boolean) => void
     /** @internal */
-    "sendPosition": (position: Vec3, onGround: boolean, teleport?: boolean) => any
+    "sendPosition": (position: Vec3, onGround: boolean, teleport?: boolean) => Promise<boolean>
     "teleport": (pos: Vec3) => void
+  }
+
+  interface PlayerBehaviorInputMap {
+    'move': {
+      _input: {
+        position: Vec3
+        onGround: boolean
+        teleport: boolean
+      }
+    }
+    'look': {
+      _input: {
+        yaw: number
+        pitch: number
+        onGround: boolean
+      }
+    }
   }
 }

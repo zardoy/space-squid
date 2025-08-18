@@ -714,4 +714,14 @@ declare global {
      */
     'changeWorld': (world: any, opt: any) => Promise<void>
   }
+
+  interface PlayerBehaviorInputMap {
+    'sendChunk': {
+      _input: {
+        x: number
+        z: number
+        chunk: Chunk
+      }
+    }
+  }
 }

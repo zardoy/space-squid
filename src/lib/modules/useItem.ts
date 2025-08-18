@@ -31,7 +31,7 @@ export const server = (serv: Server, { version }: Options) => {
     } else {
       if (serv.supportFeature('entityMCPrefixed')) { // 1.12 support
         serv.onItemPlace('spawn_egg', ({ item, player, placedPosition }) => {
-          serv.spawnMob(getEntID(item.nbt.value.EntityTag.value.id.value), player.world, placedPosition)
+          serv.spawnMob(getEntID((item.nbt?.value as any)?.EntityTag?.value?.id?.value), player.world, placedPosition)
           return { id: -1, data: 0 }
         })
       } else {
@@ -42,7 +42,7 @@ export const server = (serv: Server, { version }: Options) => {
           })
         } else {
           serv.onItemPlace('spawn_egg', ({ item, player, placedPosition }) => { // 1.9, 1.10, 1.11 support
-            serv.spawnMob(getEntID('minecraft:' + item.nbt.value.EntityTag.value.id.value), player.world, placedPosition)
+            serv.spawnMob(getEntID('minecraft:' + (item.nbt?.value as any)?.EntityTag?.value?.id?.value), player.world, placedPosition)
             return { id: -1, data: 0 }
           })
         }

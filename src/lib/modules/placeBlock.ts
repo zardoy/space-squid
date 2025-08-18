@@ -1,5 +1,6 @@
 import { Block } from 'prismarine-block'
 import { Vec3 } from 'vec3'
+import { Item } from 'prismarine-item'
 
 const materialToSound = {
   undefined: 'stone',
@@ -36,6 +37,17 @@ export const server = (serv: Server, { version }: Options) => {
       serv.warn(`onItemPlace handler was registered twice for ${name}`)
     }
     itemPlaceHandlers.set(item.id, handler)
+  }
+
+  serv.itemUseHandlers = new Map()
+
+  serv.onItemUse = (name, handler) => {
+    const item = mcData.itemsByName[name] ?? mcData.blocksByName[name]
+    if (!item) {
+      serv.warn(`[onItemUse] Unknown item or block ${name}`)
+      return
+    }
+    serv.itemUseHandlers.set(item.id, handler)
   }
 
   if (serv.supportFeature('theFlattening')) {
@@ -147,7 +159,22 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   const mcData = serv.mcData
   const blocks = mcData.blocks
 
-  player._client.on('block_place', async ({ direction, location, cursorY } = {}) => {
+  let lastPlace = 0
+  player._client.on('block_place', async ({ direction, location, cursorY, hand = 0 }: {
+    hand: number
+    location: { x: number, y: number, z: number }
+    direction: number
+    cursorX: number
+    cursorY: number
+    cursorZ: number
+    insideBlock: boolean
+    worldBorderHit: boolean
+    sequence: number
+  }) => {
+    if (hand !== 0) return // todo-low implement offhand
+    if (Date.now() - lastPlace < 15) return
+    lastPlace = Date.now()
+
     const referencePosition = new Vec3(location.x, location.y, location.z)
     const block = await player.world.getBlock(referencePosition)
     block.position = referencePosition
@@ -198,7 +225,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         half,
         waterlogged: (await player.world.getBlock(placedPosition)).type === mcData.blocksByName.water.id
       }
-    })
+    }) ?? {}
 
     if (!blocks[id]) return
 
@@ -221,11 +248,31 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     const stateId = serv.supportFeature('theFlattening') ? (blocks[id].minStateId + data) : (id << 4 | data)
     player.setBlock(placedPosition, stateId)
   })
+
+  let lastItemUse = 0
+  player._client.on('use_item', async ({ hand = 0 }: {
+    hand: number
+    sequence: number
+    rotation: any
+  }) => {
+    if (Date.now() - lastItemUse < 15) return
+    lastItemUse = Date.now()
+
+    const heldItem = player.inventory.slots[hand === 0 ? 36 + player.heldItemSlot : 45]
+    if (!heldItem || heldItem.type === -1) return
+
+    const handler = serv.itemUseHandlers.get(heldItem.type)
+    if (handler) {
+      handler({ item: heldItem, slot: hand === 0 ? player.heldItemSlot : 45, player })
+    }
+  })
 }
 
 const directionToVector = [new Vec3(0, -1, 0), new Vec3(0, 1, 0), new Vec3(0, 0, -1), new Vec3(0, 0, 1), new Vec3(-1, 0, 0), new Vec3(1, 0, 0)]
 const directionToAxis = ['y', 'y', 'z', 'z', 'x', 'x']
 const directionToFacing = ['south', 'west', 'north', 'east',]
+
+type MaybePromise<T> = T | Promise<T>
 
 declare global {
   interface Server {
@@ -237,7 +284,9 @@ declare global {
      *
      * The argument given to the handler is an object containing the held item that triggered the event, the direction (face) on which the player clicked, the angle of the player around the placed block. It should return an object containing the id and data of the block to place.
      */
-    'onItemPlace': (name: any, handler: any, warn?: boolean) => void
+    'onItemPlace': (name: string, handler: (data: { item: Item, direction: number, angle: number, player: Player, referencePosition: Vec3, placedPosition: Vec3, directionVector: Vec3, properties: any }) => MaybePromise<{ id: number, data: number } | void>, warn?: boolean) => void
+    'onItemUse': (name: string, handler: (data: { item: Item, slot: number, player: Player }) => void) => void
+    itemUseHandlers: Map<number, (data: { item: Item, slot: number, player: Player }) => void>
     /** @internal */
     'interactWithBlock': (data: any) => Promise<boolean>
     /** Register a handler that will be called when a player interact with a block of type `name`.

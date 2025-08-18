@@ -99,4 +99,12 @@ export const player = function (player: Player, serv: Server) {
   })
 }
 declare global {
+  interface PlayerBehaviorInputMap {
+    'requestRespawn': {
+      _input: {
+        previousGameMode: number
+        dimension: number
+      }
+    }
+  }
 }

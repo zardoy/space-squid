@@ -259,4 +259,21 @@ declare global {
     /** @internal */
     "system": (message: any) => void
   }
+
+  interface PlayerBehaviorInputMap {
+    'command': {
+      _input: {
+        command: string
+      }
+    }
+    'chat': {
+      _input: {
+        message: string
+        prefix: string
+        text: string
+        whitelist: Player[]
+        blacklist: Player[]
+      }
+    }
+  }
 }

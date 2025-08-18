@@ -188,4 +188,20 @@ declare global {
      */
     'setBlockAction': (position: Vec3, actionId: number, actionParam: number) => any
   }
+
+  interface PlayerBehaviorInputMap {
+    'sendBlock': {
+      _input: {
+        position: Vec3
+      }
+    }
+    'sendBlockAction': {
+      _input: {
+        position: Vec3
+        actionId: number
+        actionParam: number
+        blockType: number
+      }
+    }
+  }
 }

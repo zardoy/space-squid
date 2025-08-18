@@ -1,7 +1,7 @@
-import Behavior from '../behavior'
+import Behavior, { CustomEventEmitter, BehaviorCallFunction } from '../behavior'
 
 export const server = function (serv: Server) {
-  serv.behavior = Behavior(serv)
+  serv.behavior = Behavior(serv as unknown as CustomEventEmitter)
 }
 
 export const entity = function (entity) {
@@ -13,5 +13,8 @@ declare global {
   }
   interface Entity {
     behavior: ReturnType<typeof Behavior>
+  }
+  interface Player {
+    behavior: BehaviorCallFunction<{ [K in keyof PlayerBehaviorInputMap]: PlayerBehaviorInputMap[K] }>
   }
 }
