@@ -34,16 +34,34 @@ export const server = function (serv: Server) {
       .forEach(player => {
         const iniPos = position ? position.scaled(1 / 32) : player.position.scaled(1 / 32)
         const pos = iniPos.scaled(8).floored()
-        // only packet still in fixed position in all versions
-        player._client.write('named_sound_effect', {
-          soundName: finalSoundName,
-          soundCategory,
-          x: pos.x,
-          y: pos.y,
-          z: pos.z,
-          volume,
-          pitch: Math.round(pitch * 63)
-        })
+        if (serv.supportFeature('removedNamedSoundEffectPacket')) { // 1.19.3 removes named_sound_effect
+          player._client.write('sound_effect', {
+            soundId: 0,
+            soundEvent: {
+              resource: finalSoundName,
+              range: undefined
+            },
+            soundCategory,
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+            volume,
+            pitch: Math.round(pitch * 63),
+            seed: 0
+          })
+        } else {
+          // only packet still in fixed position in all versions
+          player._client.write('named_sound_effect', {
+            soundName: finalSoundName,
+            soundCategory,
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+            volume,
+            pitch: Math.round(pitch * 63),
+            seed: 0
+          })
+        }
       })
   }
 
@@ -70,7 +88,8 @@ export const server = function (serv: Server) {
         player._client.write('stop_sound', {
           flags: 3, // Both source and sound
           source: soundInfo.soundCategory,
-          sound: soundInfo.soundName
+          sound: soundInfo.soundName,
+          seed: 0
         })
         delete player.savedSounds[soundId]
       }
@@ -143,14 +162,16 @@ export const player = function (player: Player, serv: Server) {
         player._client.write('stop_sound', {
           flags: 3, // Both source and sound
           source: soundInfo.soundCategory,
-          sound: soundInfo.soundName
+          sound: soundInfo.soundName,
+          seed: 0
         })
         delete player.savedSounds[soundId]
       }
     } else {
       // Stop all sounds
       player._client.write('stop_sound', {
-        flags: 0 // Stop all sounds
+        flags: 0, // Stop all sounds
+        seed: 0
       })
       // Clear saved sounds storage
       player.savedSounds = {}

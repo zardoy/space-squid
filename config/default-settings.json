@@ -6,24 +6,26 @@
   "logging": true,
   "gameMode": 1,
   "difficulty": 1,
-  "worldFolder":"world",
+  "worldFolder": "world",
   "generation": {
     "name": "diamond_square",
-    "options":{
+    "options": {
       "worldHeight": 80
     }
   },
   "kickTimeout": 10000,
-  "plugins": {
-
-  },
+  "plugins": {},
   "modpe": false,
   "view-distance": 10,
   "player-list-text": {
-    "header":{"text": "Flying squid"},
-    "footer":{"text": "Test server"}
+    "header": {
+      "text": "Flying squid"
+    },
+    "footer": {
+      "text": "Test server"
+    }
   },
   "everybody-op": false,
-  "max-entities":100,
-  "version": "1.16.1"
+  "max-entities": 100,
+  "version": "1.18.2"
 }

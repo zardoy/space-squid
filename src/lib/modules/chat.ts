@@ -208,12 +208,32 @@ export const player = function (player: Player, serv: Server, settings: Options)
       })
     }
   }
-  player._client.on('chat', chatHandler)
-  player._client.on('chat_message', chatHandler)
-  player._client.on('chat_command', ({ command }: { command: string }) => {
-    // serv.info(`${player.username} issued command: ${command}`)
-    chatHandler({ message: `/${command}` })
+  // 1.19+ -- from nmp server example - not implementing chat singing yet, so all messages are sent as system_chat
+  function handleChatMessage (data: any) {
+    const fmtMessage = `<${player.username}> ${data.message}`
+    serv.broadcast(fmtMessage, { whitelist: serv.players, blacklist: [] })
+  }
+
+  player._client.on('chat_message', (data: any) => {
+    player.behavior('chat', {
+      message: data.message,
+      prefix: '<' + player.username + '> ',
+      text: data.message,
+      whitelist: serv.players,
+      blacklist: [],
+      data
+    }, ({ data }: any) => {
+      handleChatMessage(data)
+    })
   })
+  player._client.on('chat_command', (data: any) => {
+    const command = data.command
+    player.behavior('command', { command }, ({ command }: any) => {
+      player.handleCommand(command)
+    })
+  })
+
+  player._client.on('chat', chatHandler)
 
   const sendChat = (message, isSystem) => {
     if (typeof message === 'string') message = serv._createJsonChat(message)
@@ -225,7 +245,16 @@ export const player = function (player: Player, serv: Server, settings: Options)
   }
 
   player.chat = message => {
-    sendChat(message, false)
+    if (serv.supportFeature('signedChat')) {
+      return player.system(message)
+    } else {
+      const chatComponent = typeof message === 'string' ? serv._createJsonChat(message) : message
+      player._client.write('chat', {
+        message: JSON.stringify(chatComponent),
+        position: 0,
+        sender: '0'
+      })
+    }
   }
 
   player.emptyChat = (count = 1) => {

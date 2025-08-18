@@ -442,6 +442,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
         groundUp: bitMap !== undefined ? true : undefined,
         //note: it's a flag that tells the client to trust the edges of the chunk, meaning that the client can render the chunk without having to wait for the edges to be sent
         trustEdges: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
+        suppressLightUpdates: true, // 1.19.2
         bitMap: bitMap,
         ...serv.supportFeature('blockStateId') && serv.looseProtocolMode ? {
           // groundUp: false,

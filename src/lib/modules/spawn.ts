@@ -329,7 +329,10 @@ export const entity = function (entity: Entity, serv: Server) {
 
     if (entity.type === 'player') entity.spawnPacketName = 'named_entity_spawn'
     else if (entity.type === 'object') entity.spawnPacketName = 'spawn_entity'
-    else if (entity.type === 'mob') entity.spawnPacketName = 'spawn_entity_living'
+    else if (entity.type === 'mob') {
+      if (serv.supportFeature('consolidatedEntitySpawnPacket')) entity.spawnPacketName = 'spawn_entity'
+      else entity.spawnPacketName = 'spawn_entity_living'
+    }
   }
 
   entity.getSpawnPacket = () => {
@@ -360,49 +363,24 @@ export const entity = function (entity: Entity, serv: Server) {
       return Math.max(-128, Math.min(127, b))
     }
 
-    if (entity.type === 'player') {
-      return {
-        entityId: entity.id,
-        playerUUID: entity.uuid,
-        x: entityPosition.x,
-        y: entityPosition.y,
-        z: entityPosition.z,
-        yaw: convToProtocol(entity.yaw),
-        pitch: convToProtocol(entity.pitch),
-        currentItem: 0,
-        metadata: entity.metadata
-      }
-    } else if (entity.type === 'object') {
-      return {
-        entityId: entity.id,
-        objectUUID: entity.uuid,
-        type: entity.entityType,
-        x: entityPosition.x,
-        y: entityPosition.y,
-        z: entityPosition.z,
-        pitch: convToProtocol(entity.pitch),
-        yaw: convToProtocol(entity.yaw),
-        objectData: entity.data,
-        velocityX: scaledVelocity.x,
-        velocityY: scaledVelocity.y,
-        velocityZ: scaledVelocity.z
-      }
-    } else if (entity.type === 'mob') {
-      return {
-        entityId: entity.id,
-        entityUUID: entity.uuid,
-        type: entity.entityType,
-        x: entityPosition.x,
-        y: entityPosition.y,
-        z: entityPosition.z,
-        yaw: convToProtocol(entity.yaw),
-        pitch: convToProtocol(entity.pitch),
-        headPitch: convToProtocol(entity.headPitch),
-        velocityX: scaledVelocity.x,
-        velocityY: scaledVelocity.y,
-        velocityZ: scaledVelocity.z,
-        metadata: entity.metadata
-      }
+    return {
+      entityId: entity.id,
+      playerUUID: entity.uuid,
+      entityUUID: entity.uuid,
+      objectUUID: entity.uuid,
+      type: entity.entityType,
+      x: entityPosition.x,
+      y: entityPosition.y,
+      z: entityPosition.z,
+      yaw: convToProtocol(entity.yaw),
+      pitch: convToProtocol(entity.pitch),
+      headPitch: convToProtocol(entity.headPitch),
+      currentItem: 0,
+      objectData: entity.data,
+      velocityX: scaledVelocity.x,
+      velocityY: scaledVelocity.y,
+      velocityZ: scaledVelocity.z,
+      metadata: entity.metadata
     }
   }
 

@@ -44,7 +44,6 @@ declare global {
 
   interface Server extends TypedEmitter<ServerEvents> {
     mcData: IndexedData
-    _sendPlayerEventLeave: (player: Player) => void
   }
   // Omit is to allow inheritance of Entity
   interface Player extends Omit<Entity, keyof TypedEmitter<{}>>, TypedEmitter<PlayerEvents & BehaviorEventMap<{ [K in keyof PlayerBehaviorInputMap]: PlayerBehaviorInputMap[K] }>> {

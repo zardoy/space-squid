@@ -8,7 +8,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     player.sendBlock(position, block.type)
   }
 
-  player._client.on('block_dig', ({ location, status, face }) => {
+  player._client.on('block_dig', ({ location, status, face, sequence }) => {
     if (status === 3 || status === 4) {
       const heldItem = player.inventory.slots[36 + player.heldItemSlot]
       if (!heldItem || heldItem.type === -1) return
@@ -70,12 +70,12 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         if (player.gameMode === 1) {
           creativeDigging(pos)
         } else {
-          startDigging(pos)
+          startDigging(pos, sequence)
         }
       } else if (status === 1 || player.gameMode >= 2) {
-        cancelDigging(pos)
+        cancelDigging(pos, sequence)
       } else if (status === 2) {
-        completeDigging(pos, directionVector)
+        completeDigging(pos, directionVector, sequence)
       }
     }
   })
@@ -93,7 +93,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   let expectedDiggingTime: number
   let lastDestroyState: number
   let currentAnimationId: number
-  function startDigging (location: Vec3) {
+  function startDigging (location: Vec3, sequenceId?: number) {
     serv.entityMaxId++
     currentAnimationId = serv.entityMaxId
     expectedDiggingTime = diggingTime()
@@ -124,6 +124,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     }
     if (serv.supportFeature('acknowledgePlayerDigging')) {
       player._client.write('acknowledge_player_digging', {
+        sequenceId, // 1.19
         location,
         block: currentlyDugBlock.stateId,
         status: 0,
@@ -132,7 +133,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     }
   }
 
-  function cancelDigging (location) {
+  function cancelDigging (location: Vec3, sequenceId?: number) {
     clearInterval(animationInterval)
     player._writeOthersNearby('block_break_animation', {
       entityId: currentAnimationId,
@@ -141,6 +142,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     })
     if (serv.supportFeature('acknowledgePlayerDigging')) {
       player._client.write('acknowledge_player_digging', {
+        sequenceId, // 1.19
         location,
         block: currentlyDugBlock.stateId,
         status: 1,
@@ -150,7 +152,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   }
 
   const blockDropVelocity = new Vec3(Math.random() * 4 - 2, Math.random() * 2 + 2, Math.random() * 4 - 2)
-  async function completeDigging (location: Vec3, directionVector: Vec3) {
+  async function completeDigging (location: Vec3, directionVector: Vec3, sequenceId?: number) {
     clearInterval(animationInterval)
     const diggingTime = Date.now() - startDiggingTime
     let stop = false
@@ -217,6 +219,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         }
         if (serv.supportFeature('acknowledgePlayerDigging')) {
           player._client.write('acknowledge_player_digging', {
+            sequenceId, // 1.19
             location,
             block: 0,
             status: 2,
@@ -231,6 +234,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       })
       if (serv.supportFeature('acknowledgePlayerDigging')) {
         player.writePacket('acknowledge_player_digging', {
+          sequenceId, // 1.19
           location,
           block: currentlyDugBlock.stateId,
           status: 2,
