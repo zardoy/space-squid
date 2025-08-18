@@ -6,12 +6,11 @@ import { Vec3 } from 'vec3'
 
 const THRESHOLD = 0.5
 const PLAYER_SIZE = new Vec3(0.6, 1.8, 0.6) // Standard Minecraft player hitbox
-const BASE_WALKING_SPEED = 0.10000000149011612 // Base movement speed from playerDat.js
+// Vanilla-like movement validation constants (from ServerGamePacketListenerImpl.java)
+const VANILLA_SPEED_LIMIT_NORMAL = 100.0 // Normal movement limit (squared distance)
+const VANILLA_SPEED_LIMIT_FLYING = 300.0 // Elytra/flying limit (squared distance)
 const KNOCKBACK_VELOCITY = 8 // From pvp.ts KNOCKBACK_MULTIPLIER
-const MAX_MOVEMENT_DISTANCE = Math.max(KNOCKBACK_VELOCITY * 2, 10) // Allow for knockback velocity + some buffer
-const STANDARD_GRAVITY = -0.0784000015258789 // Standard Minecraft gravity from mineflayer
-const BASE_SPEED_MULTIPLIER = 45 // Adjusted based on observed normal movement speeds
-const FALLING_SPEED_BUFFER = 1.5 // Extra allowance for falling speed variations
+const KNOCKBACK_GRACE_PERIOD = 2000 // Allow higher speed for 2 seconds after damage
 
 export const server = (serv: Server) => {
   serv.safeZones ??= []
@@ -37,6 +36,10 @@ export const server = (serv: Server) => {
 
 export const player = (player: Player, serv: Server, { basePositionAntiCheat = false, positionAntiCheatNotifyPlayer = false }: Options) => {
   let lastMovementTime = Date.now()
+  let packetCount = 0 // Track move packets per tick (vanilla approach)
+  serv.on('tick', (deltaTime, tickCount) => {
+    packetCount = 0
+  })
 
   player.onReady.then(() => {
     player.knownPosition ??= player.position.clone()
@@ -65,27 +68,32 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     lastMovementTime = currentTime
 
     // Anti-cheat: Block collision detection
-    if (basePositionAntiCheat && isPlayerInsideBlock(player, serv, position)) {
-      cancel(false)
-      if (positionAntiCheatNotifyPlayer) {
-        player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
-      }
-      player.teleport(lastPosition ?? findSafePosition(player, serv, position))
-      return
-    }
+    // if (basePositionAntiCheat && isPlayerInsideBlock(player, serv, position)) {
+    //   cancel(false)
+    //   if (positionAntiCheatNotifyPlayer) {
+    //     player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
+    //   }
+    //   player.teleport(lastPosition ?? findSafePosition(player, serv, position))
+    //   return
+    // }
 
-    // Anti-cheat: Movement speed limit
+    // Anti-cheat: Movement speed limit (vanilla-like approach)
     if (basePositionAntiCheat && lastPosition && !teleport) {
-      const velocityCheck = calculateVelocity(player, lastPosition, position, deltaTime)
-      if (velocityCheck.currentSpeed > velocityCheck.maxAllowedSpeed) {
+      packetCount++
+
+      // Limit packet count per tick like vanilla (max 5 meaningful packets)
+      if (packetCount > 5) {
+        packetCount = 1
+      }
+
+      const speedCheck = validateMovementSpeed(player, lastPosition, position, packetCount)
+      if (!speedCheck.isValid) {
         if (positionAntiCheatNotifyPlayer) {
-          const excessSpeed = velocityCheck.currentSpeed - velocityCheck.maxAllowedSpeed
           player.chat(
-            `[safeZones] Speed limit exceeded by ${excessSpeed.toFixed(1)} b/s ` +
-            `(dt=${deltaTime.toFixed(3)}s, ` +
-            `(current=${velocityCheck.currentSpeed.toFixed(1)}, ` +
-            `max=${velocityCheck.maxAllowedSpeed.toFixed(1)}, ` +
-            `mode=${velocityCheck.reason})`
+            `[safeZones] ${speedCheck.reason} ` +
+            `(distance²=${speedCheck.distanceSquared.toFixed(2)}, ` +
+            `limit=${speedCheck.speedLimit.toFixed(2)}, ` +
+            `velocity²=${speedCheck.currentVelocitySquared.toFixed(2)})`
           )
         }
         cancel(false)
@@ -162,62 +170,73 @@ function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
   return false
 }
 
-interface VelocityCheck {
-  maxAllowedSpeed: number // blocks per second
-  currentSpeed: number // blocks per second
+interface SpeedValidationResult {
+  isValid: boolean
   reason: string
+  distanceSquared: number
+  speedLimit: number
+  currentVelocitySquared: number
 }
 
-function calculateVelocity (player: Player, lastPosition: Vec3, newPosition: Vec3, deltaTime: number): VelocityCheck {
+function validateMovementSpeed (player: Player, lastPosition: Vec3, newPosition: Vec3, packetCount: number): SpeedValidationResult {
+  // Calculate movement delta (like vanilla)
+  const deltaX = newPosition.x - lastPosition.x
+  const deltaY = newPosition.y - lastPosition.y
+  const deltaZ = newPosition.z - lastPosition.z
 
-  // Calculate horizontal and vertical speeds separately
-  const horizontalDiff = new Vec3(newPosition.x - lastPosition.x, 0, newPosition.z - lastPosition.z)
-  const horizontalSpeed = horizontalDiff.norm() / deltaTime
-  const verticalSpeed = Math.abs(newPosition.y - lastPosition.y) / deltaTime
+  // Calculate squared distance moved (vanilla approach for efficiency)
+  const distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
 
-  // Base speed check is only for horizontal movement
-  let maxHorizontalSpeed = BASE_WALKING_SPEED * BASE_SPEED_MULTIPLIER
-  let maxVerticalSpeed = Math.abs(STANDARD_GRAVITY) * 20 * FALLING_SPEED_BUFFER // Convert to blocks/s and add buffer
+  // Get player's current velocity squared (would be from entity.getDeltaMovement().lengthSqr() in vanilla)
+  // Since we don't track this exactly, we'll use a reasonable estimate
+  // Vanilla subtracts current velocity from distance to allow for momentum
+  // We'll use a moderate estimate to allow for normal sprinting movement
+  const estimatedVelocitySquared = Math.min(distanceSquared * 0.6, 50) // Allow some momentum, capped
 
-  // Apply speed effect if present (effect ID 1)
+  // Determine speed limit based on player state
+  let speedLimit = VANILLA_SPEED_LIMIT_NORMAL
+  let mode = 'walking'
+
+  // Assume player is always sprinting (as requested) - increases speed by ~30%
+  // Sprinting in vanilla increases movement by 1.3x, so squared distance by 1.69x
+  speedLimit *= 1.69 // 1.3^2 for sprinting
+  mode = 'sprinting'
+
+  // Check if player is flying/creative (higher limit)
+  if (player.gameMode === 1 || player.gameMode === 3 || player.flying) {
+    speedLimit = VANILLA_SPEED_LIMIT_FLYING * 1.69 // Also apply sprinting to creative
+    mode = 'creative/flying+sprint'
+  }
+
+  // Apply speed effect multiplier if present (effect ID 1 = speed)
   if (player.effects?.[1]) {
     const amplifier = player.effects[1].amplifier || 0
-    maxHorizontalSpeed *= (1 + (amplifier + 1) * 0.2)
+    const speedMultiplier = 1 + (amplifier + 1) * 0.2
+    speedLimit *= speedMultiplier * speedMultiplier // Square it since we're comparing squared distances
+    mode = `speed ${amplifier}`
   }
 
-  // For creative mode or flying, allow higher speed
-  if (player.gameMode === 1 || player.gameMode === 3 || player.flying) {
-    maxHorizontalSpeed *= 10 // Creative/spectator mode multiplier
-    maxVerticalSpeed *= 10
-  }
-
-  // Check if player was recently knocked back (within last 2 seconds)
+  // Check if player was recently damaged (allow higher speed for knockback)
   const now = Date.now()
   const lastDamageTime = player.lastDamageTime || 0
-  if (now - lastDamageTime < 2000) {
-    // Allow much higher speed right after taking damage (knockback)
-    maxHorizontalSpeed = Math.max(maxHorizontalSpeed, KNOCKBACK_VELOCITY * 20)
-    maxVerticalSpeed = Math.max(maxVerticalSpeed, KNOCKBACK_VELOCITY * 20)
+  if (now - lastDamageTime < KNOCKBACK_GRACE_PERIOD) {
+    speedLimit = Math.max(speedLimit, KNOCKBACK_VELOCITY * KNOCKBACK_VELOCITY * 4) // Very generous for knockback
+    mode = 'knockback'
   }
 
-  // Use the appropriate speed comparison based on movement type
-  const verticalDiff = newPosition.y - lastPosition.y
-  const currentSpeed = verticalDiff < 0 ? verticalSpeed : horizontalSpeed
-  const maxAllowedSpeed = verticalDiff < 0 ? maxVerticalSpeed : maxHorizontalSpeed
+  // Apply packet count multiplier (vanilla does this)
+  const adjustedLimit = speedLimit * packetCount
 
-  let reason = ''
-  if (currentSpeed > maxAllowedSpeed) {
-    reason = (player.gameMode === 1 || player.gameMode === 3) ? 'creative' :
-      player.flying ? 'flying' :
-        verticalDiff < 0 ? 'falling' :
-          player.effects?.[1] ? `speed ${player.effects[1].amplifier}` :
-            now - lastDamageTime < 2000 ? 'knockback' : 'walking'
-  }
+  // Vanilla check: distanceSquared - currentVelocitySquared > limit
+  const excessMovement = distanceSquared - estimatedVelocitySquared
+  const isValid = excessMovement <= adjustedLimit
 
   return {
-    maxAllowedSpeed,
-    currentSpeed,
-    reason
+    isValid,
+    reason: isValid ? 'valid' : `Movement too fast (${mode})`,
+    distanceSquared,
+    speedLimit: adjustedLimit,
+    currentVelocitySquared: estimatedVelocitySquared
   }
 }
 
