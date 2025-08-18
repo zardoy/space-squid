@@ -73,6 +73,10 @@ export const server = function (serv: Server, options: Options) {
 
     serv.emit('newPlayer', player)
     player.emit('asap')
+
+    player.on('move', () => {
+      player.sendChunkWhenMove()
+    })
   }
 
   // #region hot reload
@@ -81,7 +85,6 @@ export const server = function (serv: Server, options: Options) {
     for (const player of serv.players ?? []) {
       addPlayerShared(player)
       player.world = serv.overworld
-      player.sendChunkWhenMove()
       player._unloadAllChunks()
       player.sendRestMap()
     }
@@ -271,25 +274,28 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   player.sendChunkWhenMove = () => {
-    player.on('move', () => {
-      if (player.stopChunkUpdates) return
-      if (getXYPos(player.position).distanceTo(getXYPos(player.lastPositionChunkUpdated)) > 16) {
-        player.sendRestMap()
-      }
-      if (!serv.supportFeature('updateViewPosition')) {
-        return
-      }
-      const chunkX = Math.floor(player.position.x / 16)
-      const chunkZ = Math.floor(player.position.z / 16)
-      const lastChunkX = Math.floor(player.lastPositionPlayersUpdated.x / 16)
-      const lastChunkZ = Math.floor(player.lastPositionPlayersUpdated.z / 16)
-      if (chunkX !== lastChunkX || chunkZ !== lastChunkZ) {
-        player._client.write('update_view_position', {
-          chunkX,
-          chunkZ
-        })
-      }
-    })
+    if (player.stopChunkUpdates) {
+      return
+    }
+    if (!player.lastPositionChunkUpdated) {
+      return
+    }
+    if (getXYPos(player.position).distanceTo(getXYPos(player.lastPositionChunkUpdated)) > 16) {
+      player.sendRestMap()
+    }
+    if (!serv.supportFeature('updateViewPosition')) {
+      return
+    }
+    const chunkX = Math.floor(player.position.x / 16)
+    const chunkZ = Math.floor(player.position.z / 16)
+    const lastChunkX = Math.floor(player.lastPositionPlayersUpdated.x / 16)
+    const lastChunkZ = Math.floor(player.lastPositionPlayersUpdated.z / 16)
+    if (chunkX !== lastChunkX || chunkZ !== lastChunkZ) {
+      player._client.write('update_view_position', {
+        chunkX,
+        chunkZ
+      })
+    }
   }
 
   function updateTime () {
@@ -468,7 +474,6 @@ export const player = async function (player: Player, serv: Server, settings: Op
       await player.waitPlayerLogin()
     }
     player.sendRestMap()
-    player.sendChunkWhenMove()
 
     if (playerData.new) { // otherwise we skip unnecessary fs operation
       player.save()
