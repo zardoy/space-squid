@@ -27,7 +27,7 @@ export const server = (serv: Server, { version }: Options) => {
       player._client.write('open_window', {
         windowId: player.windowId,
         inventoryType: window.type,
-        windowTitle: JSON.stringify('Crafting')
+        windowTitle: serv._createChatComponent('Crafting').toNetworkFormat()
       })
       const sendItems = () => {
         // Sending container content

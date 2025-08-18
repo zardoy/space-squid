@@ -33,6 +33,12 @@ export const server = function (serv: Server, options: Options) {
     client.on('error', error => {
       serv.emit('clientError', client, error)
     })
+    client.on('state', (now) => {
+      if (now === 'configuration') {
+        client.write('feature_flags', { features: ['minecraft:vanilla'] })
+        client.write('select_known_packs', { packs: [] })
+      }
+    })
   })
 
   const patchClient = (client: any, player: Player) => {
@@ -182,7 +188,10 @@ export const player = async function (player: Player, serv: Server, settings: Op
     const savedDimension = (playerData?.player?.Dimension?.value ?? 'overworld').replace('minecraft:', '')
     player.world = (savedDimension === 'the_nether' || savedDimension === 'nether') ? serv.netherworld : (serv.worlds[savedDimension] ?? serv.overworld)
 
-    serv.players.push(player)
+    if (!player.disconnected) {
+      // it's possible player gets kicked during login process ; don't add them to the server
+      serv.players.push(player)
+    }
     serv.uuidToPlayer[player.uuid] = player
     player.loadedChunks = {}
     player.setLoadingStatus(null)
@@ -258,7 +267,8 @@ export const player = async function (player: Player, serv: Server, settings: Op
       maxPlayers: Math.min(255, serv._server.maxPlayers),
       enableRespawnScreen: true,
       isDebug: false,
-      isFlat: settings.generation?.name === 'superflat'
+      isFlat: settings.generation?.name === 'superflat',
+      enforcesSecureChat: (serv._server as any).options?.enforcesSecureChat
     })
     player.emit('login')
     if (serv.supportFeature('difficultySentSeparately')) {

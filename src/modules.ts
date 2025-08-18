@@ -1,4 +1,4 @@
-import { Client } from 'minecraft-protocol'
+import { Client, Server as ProtocolServer } from 'minecraft-protocol'
 import TypedEmitter from 'typed-emitter'
 import EventEmitter from 'events'
 import { IndexedData, Block as MinecraftDataBlock } from 'minecraft-data'
@@ -44,11 +44,13 @@ declare global {
 
   interface Server extends TypedEmitter<ServerEvents> {
     mcData: IndexedData
+    _sendPlayerEventLeave: (player: Player) => void
   }
   // Omit is to allow inheritance of Entity
   interface Player extends Omit<Entity, keyof TypedEmitter<{}>>, TypedEmitter<PlayerEvents & BehaviorEventMap<{ [K in keyof PlayerBehaviorInputMap]: PlayerBehaviorInputMap[K] }>> {
     dimension: string | number
     _client: Client
+    disconnected?: boolean
   }
   interface Entity extends EventEmitter {
     _client: Client

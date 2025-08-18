@@ -1,10 +1,9 @@
 import { versionToNumber } from '../../utils'
+const nbt = require('prismarine-nbt')
 
 export const server = function (serv: Server) {
   serv.broadcast = (message, { whitelist = serv.players, blacklist = [], system = false }: any = {}) => {
     if (whitelist.type === 'player') whitelist = [whitelist]
-
-    if (typeof message === 'string') message = serv.parseClassic(message)
 
     whitelist.filter(w => blacklist.indexOf(w) === -1).forEach(player => {
       if (!system) player.chat(message)
@@ -74,7 +73,8 @@ export const server = function (serv: Server) {
     reset: '§r'
   }
 
-  serv.parseClassic = (message) => {
+  // TODO: update and use prismarine-chat (doesn't yet support NBT chat components beyond decoding them)
+  serv._createJsonChat = (message) => {
     if (typeof message === 'object') return message
     const messageList: {
       text,
@@ -156,6 +156,32 @@ export const server = function (serv: Server) {
       }
     } else return { text: '' }
   }
+
+  serv._createChatComponent = (text) => {
+    if (serv.supportFeature('chatPacketsUseNbtComponents')) {
+      if (typeof text !== 'string') {
+        if (text.text) text = text.text
+        else {
+          serv.debug?.('Cannot yet convert JSON chat messages to NBT ; re-call in plaintext: ' + JSON.stringify(text))
+          text = JSON.stringify(text)
+        }
+      }
+      const tag = nbt.comp({
+        text: nbt.string(text)
+      })
+      tag.toNetworkFormat = () => tag
+      return tag
+    } else {
+      if (typeof text === 'object') {
+        text.toNetworkFormat = () => JSON.stringify(text)
+        return text
+      }
+      const ret = serv._createJsonChat(text)
+      ret.toNetworkFormat = () => JSON.stringify(ret)
+      return ret
+    }
+  }
+  serv._createNetworkEncodedChatComponent = (val) => serv._createChatComponent(val).toNetworkFormat()
 }
 
 export const player = function (player: Player, serv: Server, settings: Options) {
@@ -171,9 +197,9 @@ export const player = function (player: Player, serv: Server, settings: Options)
         whitelist: serv.players,
         blacklist: []
       }, ({ prefix, text, whitelist, blacklist }) => {
-        const obj = serv.parseClassic(prefix)
+        const obj = serv._createJsonChat(prefix)
         if (!obj.extra) obj.extra = []
-        obj.extra.push(serv.parseClassic(text))
+        obj.extra.push(serv._createJsonChat(text))
         serv.info(`<${player.getDisplayName('log')}> ${message}`)
         serv.broadcast(obj, {
           whitelist,
@@ -190,7 +216,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
   })
 
   const sendChat = (message, isSystem) => {
-    if (typeof message === 'string') message = serv.parseClassic(message)
+    if (typeof message === 'string') message = serv._createJsonChat(message)
     if (versionToNumber(settings.version) >= versionToNumber('1.19')) {
       player._client.write('systemChat', { formattedMessage: JSON.stringify(message), position: isSystem ? 2 : 0, sender: '0' })
     } else {
@@ -209,7 +235,21 @@ export const player = function (player: Player, serv: Server, settings: Options)
   }
 
   player.system = message => {
-    sendChat(message, true)
+    const chatComponent = serv._createChatComponent(message)
+    if (serv.supportFeature('signedChat')) {
+      player._client.write('system_chat', {
+        // 1.20.3+ writes NBT in chat packets ; below is stringified JSON chat components
+        content: chatComponent.toNetworkFormat(),
+        type: 1, // chat
+        isActionBar: false
+      })
+    } else {
+      player._client.write('chat', {
+        message: chatComponent.toNetworkFormat(),
+        position: 2,
+        sender: '0'
+      })
+    }
   }
 }
 declare global {
@@ -248,7 +288,13 @@ declare global {
     }
     "color": Server['chatColor']
     /** @internal */
-    "parseClassic": (message: string) => any
+    "_createJsonChat": (message: any) => any
+    /** @internal */
+    "_createChatComponent": (message: any) => any
+    /** @internal */
+    "_createNetworkEncodedChatComponent": (message: any) => any
+    /** @internal */
+    "debug"?: (message: string) => void
   }
   interface Player {
     // todo better type
