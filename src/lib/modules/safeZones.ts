@@ -87,13 +87,33 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
       }
 
       const speedCheck = validateMovementSpeed(player, lastPosition, position, packetCount)
+
+      // Add debug fields to player
+      player['debugMaxVelocity'] = speedCheck.distanceSquared
+      player['debugVelocityAllowanceMax'] = speedCheck.speedLimit
+      player['debugVelocityDiff'] = speedCheck.distanceSquared - speedCheck.speedLimit
+      player['debugExcessMovement'] = speedCheck.distanceSquared - speedCheck.currentVelocitySquared
+      player['debugIsValid'] = speedCheck.isValid
+      player['debugPacketCount'] = packetCount
+
+      // Debug output for all movements (temporary)
+      if (positionAntiCheatNotifyPlayer && speedCheck.distanceSquared > 0.001) {
+        player.chat(
+          `[DEBUG] distance²=${speedCheck.distanceSquared.toFixed(3)}, ` +
+          `limit=${speedCheck.speedLimit.toFixed(3)}, ` +
+          `excess=${player['debugExcessMovement'].toFixed(3)}, ` +
+          `valid=${speedCheck.isValid}, packets=${packetCount}`
+        )
+      }
+
       if (!speedCheck.isValid) {
         if (positionAntiCheatNotifyPlayer) {
           player.chat(
             `[safeZones] ${speedCheck.reason} ` +
             `(distance²=${speedCheck.distanceSquared.toFixed(2)}, ` +
             `limit=${speedCheck.speedLimit.toFixed(2)}, ` +
-            `velocity²=${speedCheck.currentVelocitySquared.toFixed(2)})`
+            `velocity²=${speedCheck.currentVelocitySquared.toFixed(2)}, ` +
+            `excess=${player['debugExcessMovement'].toFixed(2)})`
           )
         }
         cancel(false)
