@@ -7,8 +7,8 @@ import { Vec3 } from 'vec3'
 const THRESHOLD = 0.5
 const PLAYER_SIZE = new Vec3(0.6, 1.8, 0.6) // Standard Minecraft player hitbox
 // Vanilla-like movement validation constants (from ServerGamePacketListenerImpl.java)
-const VANILLA_SPEED_LIMIT_NORMAL = 100.0 // Normal movement limit (squared distance)
-const VANILLA_SPEED_LIMIT_FLYING = 300.0 // Elytra/flying limit (squared distance)
+const VANILLA_SPEED_LIMIT_NORMAL = 0.3 / 1.69 // Normal movement limit (squared distance)
+const VANILLA_SPEED_LIMIT_FLYING = 0.8 / 1.69 // Elytra/flying limit (squared distance)
 const KNOCKBACK_VELOCITY = 8 // From pvp.ts KNOCKBACK_MULTIPLIER
 const KNOCKBACK_GRACE_PERIOD = 2000 // Allow higher speed for 2 seconds after damage
 
@@ -54,7 +54,7 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     if (player.pendingTeleport) {
       if (position.distanceTo(player.pendingTeleport) < 0.1) {
         lastMovementTime = currentTime
-        player.knownPosition = position.clone()
+        // player.knownPosition = position.clone()
         player.pendingTeleport = null
       }
       return
@@ -68,14 +68,14 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     lastMovementTime = currentTime
 
     // Anti-cheat: Block collision detection
-    // if (basePositionAntiCheat && isPlayerInsideBlock(player, serv, position)) {
-    //   cancel(false)
-    //   if (positionAntiCheatNotifyPlayer) {
-    //     player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
-    //   }
-    //   player.teleport(lastPosition ?? findSafePosition(player, serv, position))
-    //   return
-    // }
+    if (basePositionAntiCheat && isPlayerInsideBlock(player, serv, position) && lastPosition) {
+      cancel(false)
+      if (positionAntiCheatNotifyPlayer) {
+        player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
+      }
+      player.teleport(isPlayerInsideBlock(player, serv, lastPosition) ? lastPosition : findSafePosition(player, serv, position))
+      return
+    }
 
     // Anti-cheat: Movement speed limit (vanilla-like approach)
     if (basePositionAntiCheat && lastPosition && !teleport) {
@@ -97,14 +97,14 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
       player['debugPacketCount'] = packetCount
 
       // Debug output for all movements (temporary)
-      if (positionAntiCheatNotifyPlayer && speedCheck.distanceSquared > 0.001) {
-        player.chat(
-          `[DEBUG] distance²=${speedCheck.distanceSquared.toFixed(3)}, ` +
-          `limit=${speedCheck.speedLimit.toFixed(3)}, ` +
-          `excess=${player['debugExcessMovement'].toFixed(3)}, ` +
-          `valid=${speedCheck.isValid}, packets=${packetCount}`
-        )
-      }
+      // if (positionAntiCheatNotifyPlayer && speedCheck.distanceSquared > 0.001) {
+      //   player.chat(
+      //     `[DEBUG] distance²=${speedCheck.distanceSquared.toFixed(3)}, ` +
+      //     `limit=${speedCheck.speedLimit.toFixed(3)}, ` +
+      //     `excess=${player['debugExcessMovement'].toFixed(3)}, ` +
+      //     `valid=${speedCheck.isValid}, packets=${packetCount}`
+      //   )
+      // }
 
       if (!speedCheck.isValid) {
         if (positionAntiCheatNotifyPlayer) {
@@ -163,15 +163,16 @@ function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
   const chunk = player.world.getLoadedColumnAt(position)
   if (!chunk) return false
 
-  // Check collision points around player hitbox
+  // Player hitbox is 0.6 x 1.8 x 0.6, so check the two blocks that could contain the player
+  // Floor the position to get the base block coordinates
+  const baseX = Math.floor(position.x)
+  const baseY = Math.floor(position.y)
+  const baseZ = Math.floor(position.z)
+
+  // Check the two blocks: base block and the block above (since player height is 1.8)
   const checkPositions = [
-    position, // Center
-    position.offset(PLAYER_SIZE.x / 2, 0, PLAYER_SIZE.z / 2), // Top-right corner
-    position.offset(-PLAYER_SIZE.x / 2, 0, PLAYER_SIZE.z / 2), // Top-left corner
-    position.offset(PLAYER_SIZE.x / 2, 0, -PLAYER_SIZE.z / 2), // Bottom-right corner
-    position.offset(-PLAYER_SIZE.x / 2, 0, -PLAYER_SIZE.z / 2), // Bottom-left corner
-    position.offset(0, PLAYER_SIZE.y / 2, 0), // Top center
-    position.offset(0, PLAYER_SIZE.y, 0) // Head position
+    new Vec3(baseX & 15, baseY, baseZ & 15),      // Base block (feet level)
+    new Vec3(baseX & 15, baseY + 1, baseZ & 15)  // Block above (head level)
   ]
 
   for (const checkPos of checkPositions) {
@@ -263,9 +264,12 @@ function validateMovementSpeed (player: Player, lastPosition: Vec3, newPosition:
 function findSafePosition (player: Player, serv: Server, attemptedPosition: Vec3) {
   // Start from the attempted position and search nearby for a safe spot
   const basePosition = attemptedPosition.floored()
-  const chunks = player.world.getColumns()
-  const chunk = chunks[basePosition.x >> 4][basePosition.z >> 4]
-  if (!chunk) return basePosition
+
+  const getBlock = (pos: Vec3) => {
+    const chunk = player.world.getLoadedColumnAt(pos)
+    if (!chunk) return null
+    return chunk.getBlockStateId(new Vec3(Math.floor(pos.x) & 15, Math.floor(pos.y), Math.floor(pos.z) & 15))
+  }
 
   // Search in expanding radius for a safe position
   for (let radius = 0; radius <= 3; radius++) {
@@ -278,10 +282,9 @@ function findSafePosition (player: Player, serv: Server, attemptedPosition: Vec3
           let isSafe = true
           for (let y = 0; y < Math.ceil(PLAYER_SIZE.y); y++) {
             const checkPos = testPos.offset(0, y, 0)
-            const pos = new Vec3(Math.floor(checkPos.x) & 15, Math.floor(checkPos.y), Math.floor(checkPos.z) & 15)
             try {
-              const blockStateId = chunk.getBlockStateId(pos)
-              if (serv.mcData.blocksByStateId[blockStateId]?.boundingBox === 'block') {
+              const blockStateId = getBlock(checkPos)
+              if (blockStateId === null || serv.mcData.blocksByStateId[blockStateId]?.boundingBox === 'block') {
                 isSafe = false
                 break
               }
@@ -300,6 +303,7 @@ function findSafePosition (player: Player, serv: Server, attemptedPosition: Vec3
     }
   }
 
+  serv.warn('[safeZones] no safe position found')
   // If no safe position found, return player's current position
   return player.position
 }
