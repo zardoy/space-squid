@@ -25,7 +25,10 @@ export type BehaviorEventMap<M extends BehaviorInputMap, MK extends keyof M = ke
 
 export type BehaviorCallFunction<M extends BehaviorInputMap> = <E extends keyof M, D = M[E]['_input'], DF extends D = D, R = void>(eventName: E, data: D, func?: BehaviorFunction<DF, R>, cancelFunc?: BehaviorFunction<DF, R>) => Promise<BehaviorResult<R>>
 
-type BehaviorResult<R> = R extends void ? void : R
+type BehaviorResult<R> = {
+  data: R extends void ? void : R,
+  cancelled: boolean,
+}
 
 export default (obj: CustomEventEmitter) => {
   const handleError = (err: Error, eventName: string, canContinue: boolean) => {
@@ -107,7 +110,10 @@ export default (obj: CustomEventEmitter) => {
       handleError(err, eventName + '_done', true)
     }
 
-    return resp
+    return {
+      data: resp,
+      cancelled
+    }
   }
 
   return behavior

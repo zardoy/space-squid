@@ -21,7 +21,7 @@ export const server = function (serv: Server) {
             radius: 1.75 // Seems good for now
           })
           if (players.length) {
-            players[0].collect(entity)
+            players[0].collect(entity as any)
           }
         }
         // if (isPlayer(entity) && entity.isFake && !entity.size) {

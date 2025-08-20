@@ -39,18 +39,19 @@ export const entity = function (entity: Entity, serv: Server) {
         duration: opt.duration || 30 * 20,
         particles: opt.particles || true,
         end: Date.now() + (opt.duration || 30 * 20) * 1000 / 20, // 1000/20 === convert from ticks to milliseconds,
-        timeout: setTimeout(() => entity.removeEffect(effectId, {}), (opt.duration || 30 * 20) * 1000 / 20)
+        timeout: opt.duration === -1 ? undefined : setTimeout(() => entity.removeEffect(effectId, {}), (opt.duration || 30 * 20) * 1000 / 20)
       }
-      entity.sendEffect(effectId, opt)
+      entity.sendEffect(effectId, { ...opt, whitelist: [entity] })
       return true
     } else return false
   }
 
   entity.removeEffect = (effectId, opt?) => {
-    if (!entity.effects[effectId]) return
-    clearTimeout(entity.effects[effectId]!.timeout)
+    const effect = entity.effects[effectId]
+    if (!effect) return
+    if (effect.timeout) clearTimeout(effect.timeout)
     entity.effects[effectId] = null
-    entity.sendRemoveEffect(effectId, opt)
+    entity.sendRemoveEffect(effectId, { ...opt, whitelist: [entity] })
   }
 }
 
@@ -109,7 +110,7 @@ export const server = function (serv: Server, options: Options) {
 }
 declare global {
   interface Entity {
-    "effects": Record<string, { amplifier: number, duration: number, particles: boolean, end: number, timeout: NodeJS.Timeout } | null>
+    "effects": Record<string, { amplifier: number, duration: number, particles: boolean, end: number, timeout?: NodeJS.Timeout } | null>
     /** @internal */
     "sendEffect": (effectId: number, opt?: { amplifier?: number; duration?: number; particles?: boolean; whitelist?: Entity[]; blacklist?: Entity[] }) => void
     /** @internal */

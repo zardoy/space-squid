@@ -1,5 +1,5 @@
 import { versionToNumber } from '../../utils'
-const nbt = require('prismarine-nbt')
+import nbt from 'prismarine-nbt'
 
 export const server = function (serv: Server) {
   serv.broadcast = (message, { whitelist = serv.players, blacklist = [], system = false }: any = {}) => {
@@ -169,6 +169,7 @@ export const server = function (serv: Server) {
       const tag = nbt.comp({
         text: nbt.string(text)
       })
+      //@ts-ignore
       tag.toNetworkFormat = () => tag
       return tag
     } else {
@@ -286,36 +287,65 @@ declare global {
     /** Broadcasts `message` to all the players with the optional `color`. */
     "broadcast": (message: any, opt?: { whitelist?: any; blacklist?: any[]; system?: boolean }) => void
     "chatColor": {
-      black: string
-      dark_blue: string
-      dark_green: string
-      dark_cyan: string
-      dark_red: string
-      purple: string
-      dark_purple: string
-      gold: string
-      gray: string
-      dark_gray: string
-      blue: string
-      green: string
-      aqua: string
-      cyan: string
-      red: string
-      pink: string
-      light_purple: string
-      yellow: string
-      white: string
-      random: string
-      obfuscated: string
-      bold: string
-      strikethrough: string
-      underlined: string
-      underline: string
-      italic: string
-      italics: string
-      reset: string
+      black: "&0"
+      dark_blue: "&1"
+      dark_green: "&2"
+      dark_cyan: "&3"
+      dark_red: "&4"
+      purple: "&5"
+      dark_purple: "&5"
+      gold: "&6"
+      gray: "&7"
+      dark_gray: "&8"
+      blue: "&9"
+      green: "&a"
+      aqua: "&b"
+      cyan: "&b"
+      red: "&c"
+      pink: "&d"
+      light_purple: "&d"
+      yellow: "&e"
+      white: "&f"
+      random: "&k"
+      obfuscated: "&k"
+      bold: "&l"
+      strikethrough: "&m"
+      underlined: "&n"
+      underline: "&n"
+      italic: "&o"
+      italics: "&o"
+      reset: "&r"
     }
-    "color": Server['chatColor']
+    "color": {
+      black: "§0",
+      dark_blue: "§1",
+      dark_green: "§2",
+      dark_cyan: "§3",
+      dark_red: "§4",
+      purple: "§5",
+      dark_purple: "§5",
+      gold: "§6",
+      gray: "§7",
+      dark_gray: "§8",
+      blue: "§9",
+      green: "§a",
+      aqua: "§b",
+      cyan: "§b",
+      red: "§c",
+      pink: "§d",
+      light_purple: "§d",
+      yellow: "§e",
+      white: "§f",
+      random: "§k",
+      obfuscated: "§k",
+      bold: "§l",
+      strikethrough: "§m",
+      underlined: "§n",
+      underline: "§n",
+      italic: "§o",
+      italics: "§o",
+      reset: "§r"
+    }
     /** @internal */
     "_createJsonChat": (message: any) => any
     /** @internal */

@@ -10,7 +10,12 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   // player.heldItem = new Item(256, 1)
   player.inventory = windows.createWindow(1, 'minecraft:inventory', 'inv', 36)
 
-  player._client.on('held_item_slot', ({ slotId } = {}) => {
+  player._client.on('held_item_slot', async ({ slotId } = {}) => {
+    const { cancelled } = await player.behavior('changeHeldItemSlot', { slot: slotId, item: player.inventory.slots[36 + slotId] })
+    if (cancelled) {
+      player.writePacket('held_item_slot', { slotId: player.heldItemSlot })
+      return
+    }
     player.heldItemSlot = slotId
     player.setEquipment(0, player.inventory.slots[36 + player.heldItemSlot])
 
@@ -255,20 +260,28 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   }
 }
 declare global {
+  interface Entity {
+    // from prismarine-entity
+    setEquipment: (slot: number, item: any) => void
+  }
+
   interface Player {
     /** @internal */
     windowType: string
     /** @internal */
     windowPos: any
-    // where it comes from?
-    /** @internal */
-    setEquipment: (slot: number, item: any) => void
-    /** @internal */
-    "heldItemSlot": number
-    "heldItem": Item
-    "inventory": Window
-    "customWindow": Window | undefined
-    /** @internal */
-    "collect": (collectEntity: any) => void
+    heldItemSlot: number
+    heldItem: Item
+    inventory: Window
+    customWindow: Window | undefined
+    "collect": (collectEntity: Entity & { itemId: number, damage: number }) => void
+  }
+
+  interface PlayerBehaviorInputMap {
+    'changeHeldItemSlot': {
+      _input: {
+        slot: number
+      }
+    }
   }
 }

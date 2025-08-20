@@ -1,12 +1,12 @@
 export const player = function (player: Player) {
-  player._client.on('arm_animation', () =>
+  player._client.on('arm_animation', () => {
     player.behavior('armSwing', {}, () => {
       player._writeOthersNearby('animation', {
         entityId: player.id,
         animation: 0
       })
     })
-  )
+  })
 
   player._client.on('entity_action', ({ actionId }) => {
     if (actionId === 3) {
