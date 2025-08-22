@@ -15,11 +15,12 @@ export type BehaviorInputMap = {
 
 export type MaybePromise<T> = T | Promise<T>
 
-export type BehaviorEventMap<M extends BehaviorInputMap, MK extends keyof M = keyof M> = {
-  [K in MK | `${MK & string}_cancel` | `${MK & string}_done`]:
-  K extends `${MK & string}_cancel` ? (data: M[MK]['_input'], cancel: CancelFunction) => MaybePromise<void> :
-  K extends `${MK & string}_done` ? (data: M[MK]['_input'], resp: any, cancelled: boolean) => MaybePromise<void> :
-  (data: M[MK]['_input'], cancelled: boolean, cancelCount: number) => MaybePromise<void>
+export type BehaviorEventMap<M extends BehaviorInputMap> = {
+  [K in keyof M]: (data: M[K]['_input'], cancelled: boolean, cancelCount: number) => MaybePromise<void>
+} & {
+  [K in keyof M as `${K & string}_cancel`]: (data: M[K]['_input'], cancel: CancelFunction) => MaybePromise<void>
+} & {
+  [K in keyof M as `${K & string}_done`]: (data: M[K]['_input'], resp: any, cancelled: boolean) => MaybePromise<void>
 }
 
 
