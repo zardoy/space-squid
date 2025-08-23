@@ -229,6 +229,14 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
     if (!blocks[id]) return
 
+    if (serv.blacklistedBlocks && serv.blacklistedBlocks.has(blocks[id].name)) {
+      return
+    }
+
+    if (serv.isBlockAllowed && !serv.isBlockAllowed(placedPosition, id, { player, type: 'placeBlock' })) {
+      return
+    }
+
     player.emit('blockPlaced', blocks[id])
 
     const sound = 'dig.' + (materialToSound[blocks[id].material ?? ''] || 'stone')

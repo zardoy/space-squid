@@ -4,6 +4,14 @@ import { Vec3 } from 'vec3'
 
 export const player = function (player: Player, serv: Server) {
   player.changeBlock = async (position, stateId, blockData, notify = true) => {
+    if (serv.blacklistedBlocks && serv.blacklistedBlocks.has(serv.mcData.blocks[stateId]?.name)) {
+      return
+    }
+
+    if (serv.isBlockAllowed && !serv.isBlockAllowed(position, stateId, { player, type: 'updateWorld' })) {
+      return
+    }
+
     serv.getNearby({
       world: player.world,
       position
@@ -166,6 +174,11 @@ export const server = function (serv: Server, { version }: Options) {
   })
 }
 declare global {
+  interface Server {
+    isBlockAllowed?: (position: Vec3, stateId: number, source: { player?: Player, type: 'updateWorld' | 'getCreativeSlot' | 'placeBlock' }) => boolean
+    blacklistedBlocks?: Set<string>
+  }
+
   interface Player {
     /** change the block at position `position` to `blockType` and `blockData`
      *

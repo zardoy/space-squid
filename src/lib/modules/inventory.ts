@@ -188,6 +188,11 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     }
 
     const newItem = Item.fromNotch(item)
+    if (newItem) {
+      if (serv.blacklistedBlocks && serv.blacklistedBlocks.has(newItem.name)) {
+        return
+      }
+    }
     window.updateSlot(slot, newItem!)
   })
 

@@ -68,7 +68,7 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     lastMovementTime = currentTime
 
     // Anti-cheat: Block collision detection
-    if (basePositionAntiCheat && isPlayerInsideBlock(player, serv, position) && lastPosition) {
+    if (basePositionAntiCheat && player.gameMode !== 3 && isPlayerInsideBlock(player, serv, position) && lastPosition) {
       cancel(false)
       if (positionAntiCheatNotifyPlayer) {
         player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
