@@ -3,16 +3,22 @@ import { skipMcPrefix } from '../utils'
 import { Vec3 } from 'vec3'
 
 export const player = function (player: Player, serv: Server) {
-  player.changeBlock = async (position, blockType, blockData) => {
-    serv.players
-      .filter(p => p.world === player.world && player !== p)
-      .forEach(p => p.sendBlock(position, blockType/* , blockData */)) // todo
+  player.changeBlock = async (position, stateId, blockData, notify = true) => {
+    serv.getNearby({
+      world: player.world,
+      position
+    })
+      .forEach(p => p.sendBlock(position, stateId/* , blockData */)) // todo
 
-    await player.world.setBlockType(position, blockType)
-    await player.world.setBlockData(position, blockData)
+    await player.world.setBlockStateId(position, stateId)
+    if (blockData) {
+      await player.world.setBlockData(position, blockData)
+    }
 
-    if (blockType === 0) serv.notifyNeighborsOfStateChange(player.world, position, serv.tickCount, serv.tickCount, true)
-    else serv.updateBlock(player.world, position, serv.tickCount, serv.tickCount, true)
+    if (notify) {
+      if (stateId === 0) serv.notifyNeighborsOfStateChange(player.world, position, serv.tickCount, serv.tickCount, true)
+      else serv.updateBlock(player.world, position, serv.tickCount, serv.tickCount, true)
+    }
   }
 
   player.sendBlock = (position, blockStateId) => // Call from player.setBlock unless you want "local" fake blocks
@@ -166,7 +172,7 @@ declare global {
      * this will not change the block for the user himself. It is mainly useful when a user places a block
      * and only needs to send it to other players on the server
      */
-    'changeBlock': (position: Vec3, blockType: number, blockData: any) => Promise<void>
+    'changeBlock': (position: Vec3, stateId: number, blockData?: any, notify?: boolean) => Promise<void>
     /** change the block at position `position` to `blockType` and `blockData`
      *
      * this will not make any changes on the server's world and only sends it to the user as a "fake" or "local" block

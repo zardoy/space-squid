@@ -36,7 +36,7 @@ export const server = function (serv: Server, options: Options) {
   serv._writeNearby = (packetName, packetFields, loc) =>
     serv._writeArray(packetName, packetFields, serv.getNearby(loc))
 
-  serv.getNearby = ({ world, position, radius = 8 * 16 }) => serv.players.filter(player =>
+  serv.getNearby = ({ world, position, radius = (options['view-distance'] ?? 8) * 16 }) => serv.players.filter(player =>
     player.world === world &&
     player.position.distanceTo(position) <= radius
   )
