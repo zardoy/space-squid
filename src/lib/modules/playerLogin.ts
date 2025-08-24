@@ -69,6 +69,27 @@ export const server = function (serv: Server, options: Options) {
     }
     client.on = client.patchedAddListener
     client.addListener = client.patchedAddListener
+
+    const parseSerializer = () => {
+      if (!player._client.serializer?.createPacketBuffer) return
+      const oldCreatePacketBuffer = player._client.serializer.createPacketBuffer.bind(player._client.serializer)
+      // better errors dx
+      player._client.serializer.createPacketBuffer = (packet) => {
+        try {
+          // if (packet.name === 'set_slot') debugger
+          return oldCreatePacketBuffer(packet)
+        } catch (e) {
+          // todo use general err
+          const error = new Error(`Error creating packet buffer for packet ${packet.name}: ${e} ${JSON.stringify(packet.params, null, 2)}`)
+          serv.emit('error', error, { type: 'toPlayerPacket', name: packet.name, data: packet.params, player: player })
+          return Buffer.alloc(0)
+        }
+      }
+    }
+    parseSerializer()
+    player._client.on('state', (state) => {
+      parseSerializer()
+    })
   }
 
   const addPlayerShared = async (player: Player) => {
