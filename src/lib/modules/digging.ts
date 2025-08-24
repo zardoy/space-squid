@@ -15,9 +15,6 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
       const count = (status === 4) ? 1 : heldItem.count
 
-      heldItem.count -= count
-      if (heldItem.count === 0) player.inventory.slots[36 + player.heldItemSlot] = null
-
       // TODO: correct position & velocity + physic simulation
       player.behavior('item_drop', {
         blockDropPosition: player.position,
@@ -29,7 +26,12 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         blockDropPickup: 500,
         blockDropDeath: 60 * 5 * 1000
       }, async (data) => {
-        dropBlock(data)
+        const currentItem = player.inventory.slots[36 + player.heldItemSlot]
+        if (currentItem && currentItem.count > 0) {
+          dropBlock(data)
+          currentItem.count -= count
+          if (currentItem.count === 0) player.inventory.slots[36 + player.heldItemSlot] = null
+        }
       })
     } else if (status === 5) {
       // TODO: Shoot arrow / finish eating
