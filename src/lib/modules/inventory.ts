@@ -13,7 +13,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   player._client.on('held_item_slot', async ({ slotId } = {}) => {
     const { cancelled } = await player.behavior('changeHeldItemSlot', { slot: slotId, item: player.inventory.slots[36 + slotId] })
     if (cancelled) {
-      player.writePacket('held_item_slot', { slotId: player.heldItemSlot })
+      player.writePacket('held_item_slot', { slot: player.heldItemSlot })
       return
     }
     player.heldItemSlot = slotId

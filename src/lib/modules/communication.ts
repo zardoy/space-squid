@@ -135,6 +135,6 @@ declare global {
 
   interface Player {
     "bridge": ServerPacketBridger
-    "writePacket": (packetName: keyof ClientOnMap, data: any) => void
+    "writePacket": <T extends keyof ClientOnMap>(packetName: T, data: ClientOnMap[T]) => void
   }
 }
