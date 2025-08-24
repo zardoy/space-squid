@@ -77,7 +77,7 @@ class Command {
           success: output
         }
       } catch (err) {
-        console.error(`Error in command from ${ctx.player?.username || 'server'} "${command}":`)
+        console.error(`Error in command from ${(ctx.player as any)?.username || 'server'} "${command}":`)
         console.error(err)
         return {
           error: `Internal server error: ${err.message}`
