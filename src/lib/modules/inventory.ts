@@ -286,6 +286,7 @@ declare global {
     'changeHeldItemSlot': {
       _input: {
         slot: number
+        item: Item
       }
     }
   }

@@ -167,6 +167,11 @@ declare global {
       _input: {
         attackedEntity: Entity
         velocity: Vec3
+
+        sound?: string
+        damage?: number
+        maxVelocity?: Vec3
+        animation?: boolean
       }
     }
   }
