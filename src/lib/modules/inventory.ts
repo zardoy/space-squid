@@ -181,6 +181,8 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   })
 
   player._client.on('set_creative_slot', ({ slot, item } = {}) => {
+    if (player.gameMode !== 1) return
+
     const window = player.customWindow || player.inventory
     if (item.blockId === -1) {
       window.updateSlot(slot, null!)
