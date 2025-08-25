@@ -88,6 +88,12 @@ export const player = function (player: Player, serv: Server) {
       serv.emit('error', err, { type: 'toPlayerPacket', name: packetName, data, player: player })
     }
   }
+  player.onPacket = (packetName, callback) => {
+    player._client.on(packetName, callback)
+    return () => {
+      player._client.off(packetName, callback)
+    }
+  }
   player.bridge = new ServerPacketBridger(serv.mcData.version.minecraftVersion!, (packetName, data) => {
     player.writePacket(packetName as keyof ClientOnMap, data)
   })
@@ -136,5 +142,6 @@ declare global {
   interface Player {
     "bridge": ServerPacketBridger
     "writePacket": <T extends keyof ClientOnMap>(packetName: T, data: ClientOnMap[T]) => void
+    onPacket: <T extends keyof ClientWriteMap>(packetName: T, callback: (data: ClientWriteMap[T]) => void) => (() => void)
   }
 }

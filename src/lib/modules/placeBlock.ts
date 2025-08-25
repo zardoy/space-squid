@@ -115,7 +115,6 @@ export const server = (serv: Server, { version }: Options) => {
     blockInteractHandler.set(block.id, handler)
   }
 
-  const PrismarineBlock = require('prismarine-block')(version)
   const { blocksArray: blocks } = serv.mcData
   // todo use map for speed
   // doors/gates opening/closing
@@ -130,7 +129,7 @@ export const server = (serv: Server, { version }: Options) => {
           ...block.getProperties(),
         }
         props.open = !props.open
-        const newBlock = PrismarineBlock.fromProperties(block.type, props, block.biome.id)
+        const newBlock = serv.PrismarineBlock.fromProperties(block.type, props as any, block.biome.id)
         player.setBlock(block.position, newBlock.stateId)
       }
       toggleDoorState(block.position)

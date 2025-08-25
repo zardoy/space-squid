@@ -1,14 +1,132 @@
 import { Vec3 } from 'vec3'
-import PrismarineItem, { Item } from 'prismarine-item'
-import PrismarineWindows, { Window } from 'prismarine-windows'
+import PrismarineItem, { type Item } from 'prismarine-item'
+import PrismarineWindows, { type Window } from 'prismarine-windows'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
-  const Item = PrismarineItem(version)
   const windows = PrismarineWindows(version)
+  const Item = serv.PrismarineItem
 
   player.heldItemSlot = 0
   // player.heldItem = new Item(256, 1)
   player.inventory = windows.createWindow(1, 'minecraft:inventory', 'inv', 36)
+
+  player.openCustomWindow = (options: OpenCustomWindowOptions) => {
+    const windowInfo = windows.windows[options.inventoryType]
+    if (!windowInfo) {
+      throw new Error(`Invalid inventory type: ${options.inventoryType}`)
+    }
+    const craftSlot = windowInfo.craft
+
+    const window = windows.createWindow(1, windowInfo.type, options.title) as CustomWindow
+    // todo fix in prismarine-windows
+    window.type = windowInfo.type
+    for (let i = 0; i < window.inventoryStart; i++) {
+      window.slots[i] = options.windowSlots[i] ?? null
+    }
+    if (craftSlot !== undefined && craftSlot !== -1 && options.resultSlot) {
+      window.slots[craftSlot] = options.resultSlot
+    }
+    for (let i = window.inventoryStart; i < window.inventoryEnd; i++) {
+      if (!options.noPlayerInventory) {
+        window.slots[i] = player.inventory.slots[i - window.inventoryStart + player.inventory.inventoryStart]
+      } else {
+        window.slots[i] = options.windowSlots[i] ?? null
+      }
+    }
+
+    if (player.windowId === undefined) { player.windowId = 1 } else { player.windowId = player.windowId + 1 }
+    player.writePacket('open_window', {
+      windowId: player.windowId,
+      inventoryType: window.type as any,
+      windowTitle: serv._createChatComponent(options.title).toNetworkFormat(),
+      entityId: player.id,
+      slotCount: window.slots.length,
+      useProvidedTitle: true,
+    })
+
+    const sendItems = () => {
+      // Sending container content
+      player.writePacket('window_items', {
+        windowId: player.windowId,
+        stateId: 1,
+        items: window.slots.map(item => Item.toNotch(item)),
+        carriedItem: { present: false }
+      })
+    }
+    sendItems()
+
+    const updateSlotBackInInventory = (slot: number, item: Item | null) => {
+      if (slot < window.inventoryStart || slot > window.inventoryEnd || player.lockInventory || options.noPlayerInventory) return
+      player.inventory.updateSlot(slot - window.inventoryStart + player.inventory.inventoryStart, item!)
+    }
+
+    let closed = false
+    const onWindowClosed = () => {
+      if (closed) return
+      closed = true
+      player.writePacket('window_items', {
+        windowId: 0,
+        stateId: 1,
+        items: player.inventory.slots.map(item => Item.toNotch(item)),
+        carriedItem: { present: false }
+      })
+      player.customWindow = undefined
+    }
+
+    const listener = ({ windowId }: { windowId: number } | { windowId: any }): void => {
+      if (windowId !== player.windowId) return
+      onWindowClosed()
+      unlisten()
+    }
+    const unlisten = player.onPacket('close_window', listener)
+
+    //@ts-ignore
+    window.on('updateSlot', (oldSlot: number, oldItem: Item | null, newItem: Item | null) => {
+      updateSlotBackInInventory(oldSlot, oldItem)
+
+      options.onSlotClick?.(oldSlot, oldItem, newItem, closeWindow)
+    })
+
+    const closeWindow = () => {
+      player.writePacket('close_window', {
+        windowId: player.windowId,
+      })
+      onWindowClosed()
+    }
+    window.close = closeWindow
+    return window
+  }
+
+  serv.tabComplete.add('inventoryType', () => {
+    return Object.keys(windows.windows)
+  })
+
+  serv.commands.add({
+    base: 'testwindow',
+    info: 'testwindow',
+    usage: '/testwindow <inventoryType>',
+    parse (string, ctx) {
+      return string.split(' ')
+    },
+    tab: [
+      'inventoryType'
+    ],
+    action: (data, ctx) => {
+      const [inventoryType] = data
+      if (!inventoryType) {
+        return 'Usage: /testwindow <inventoryType>'
+      }
+      player.openCustomWindow({
+        inventoryType: inventoryType as any,
+        title: 'Test Window',
+        windowSlots: new Array(52).fill(null).map((_, i) => new serv.PrismarineItem(1, 1, 0)),
+        resultSlot: new serv.PrismarineItem(serv.mcData.itemsByName.redstone_block.id, 1, 0),
+        onSlotClick: (slot, oldItem, newItem, closeWindow) => {
+          closeWindow()
+        }
+      })
+    }
+  })
 
   player._client.on('held_item_slot', async ({ slotId } = {}) => {
     const { cancelled } = await player.behavior('changeHeldItemSlot', { slot: slotId, item: player.inventory.slots[36 + slotId] })
@@ -160,6 +278,16 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       }
     }
 
+    if (!player.customWindow && player.lockInventory) {
+      player._client.write('window_items', {
+        windowId: 0,
+        stateId: 1,
+        items: player.inventory.slots.map(item => Item.toNotch(item)),
+        carriedItem: { present: false }
+      })
+      return
+    }
+
     const window = (player.customWindow || player.inventory)
     const formAcceptClickData = (index) => {
       return {
@@ -266,6 +394,108 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     }
   }
 }
+
+export type CustomWindow = Window & {
+  close: () => void
+}
+
+const allWindowTypes = [
+  'minecraft:inventory',
+  'minecraft:generic_9x1',
+  'minecraft:generic_9x2',
+  'minecraft:generic_9x3',
+  'minecraft:generic_9x4',
+  'minecraft:generic_9x5',
+  'minecraft:generic_9x6',
+  'minecraft:generic_3x3',
+  'minecraft:crafter_3x3',
+  'minecraft:anvil',
+  'minecraft:beacon',
+  'minecraft:blast_furnace',
+  'minecraft:brewing_stand',
+  'minecraft:crafting',
+  'minecraft:enchantment',
+  'minecraft:furnace',
+  'minecraft:grindstone',
+  'minecraft:hopper',
+  'minecraft:lectern',
+  'minecraft:loom',
+  'minecraft:merchant',
+  'minecraft:shulker_box',
+  'minecraft:smithing',
+  'minecraft:smoker',
+  'minecraft:cartography',
+  'minecraft:stonecutter',
+
+  'minecraft:chest',
+  'minecraft:crafting_table',
+  'minecraft:dispenser',
+  'minecraft:enchanting_table',
+  'minecraft:container',
+  'minecraft:villager',
+  'minecraft:dropper',
+  'EntityHorse',
+]
+
+// todo use from prismarine-windows
+type Post1_14Windows =
+  | 'minecraft:inventory'
+  | 'minecraft:generic_9x1'
+  | 'minecraft:generic_9x2'
+  | 'minecraft:generic_9x3'
+  | 'minecraft:generic_9x4'
+  | 'minecraft:generic_9x5'
+  | 'minecraft:generic_9x6'
+  | 'minecraft:generic_3x3'
+  | 'minecraft:crafter_3x3'
+  | 'minecraft:anvil'
+  | 'minecraft:beacon'
+  | 'minecraft:blast_furnace'
+  | 'minecraft:brewing_stand'
+  | 'minecraft:crafting'
+  | 'minecraft:enchantment'
+  | 'minecraft:furnace'
+  | 'minecraft:grindstone'
+  | 'minecraft:hopper'
+  | 'minecraft:lectern'
+  | 'minecraft:loom'
+  | 'minecraft:merchant'
+  | 'minecraft:shulker_box'
+  | 'minecraft:smithing'
+  | 'minecraft:smoker'
+  | 'minecraft:cartography'
+  | 'minecraft:stonecutter'
+
+type Pre1_14Windows =
+  | 'minecraft:inventory'
+  | 'minecraft:chest'
+  | 'minecraft:crafting_table'
+  | 'minecraft:furnace'
+  | 'minecraft:dispenser'
+  | 'minecraft:enchanting_table'
+  | 'minecraft:brewing_stand'
+  | 'minecraft:container'
+  | 'minecraft:villager'
+  | 'minecraft:beacon'
+  | 'minecraft:anvil'
+  | 'minecraft:hopper'
+  | 'minecraft:dropper'
+  | 'minecraft:shulker_box'
+  | 'EntityHorse'
+
+interface OpenCustomWindowOptions {
+  // crafter_3x3
+  inventoryType: Post1_14Windows | Pre1_14Windows
+  title: string
+  // slots: Record<number, Item>
+  windowSlots: Record<number, Item>
+  resultSlot?: Item
+  noPlayerInventory?: boolean
+
+  onClose?: (window: Window) => void
+  onSlotClick?: (slot: number, oldItem: Item | null, newItem: Item | null, closeWindow: () => void) => void
+}
+
 declare global {
   interface Entity {
     // from prismarine-entity
@@ -273,6 +503,8 @@ declare global {
   }
 
   interface Player {
+    lockInventory?: boolean
+
     /** @internal */
     windowType: string
     /** @internal */
@@ -280,8 +512,10 @@ declare global {
     heldItemSlot: number
     heldItem: Item
     inventory: Window
-    customWindow: Window | undefined
+    customWindow: CustomWindow | undefined
     "collect": (collectEntity: Entity & { itemId: number, damage: number }) => void
+
+    openCustomWindow: (options: OpenCustomWindowOptions) => CustomWindow
   }
 
   interface PlayerBehaviorInputMap {

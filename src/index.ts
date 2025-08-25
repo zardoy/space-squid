@@ -6,6 +6,9 @@ import * as builtinModules from './lib/modules'
 import { EventEmitter } from 'events'
 import { Server as ProtocolServer } from 'minecraft-protocol'
 import { IndexedData } from 'minecraft-data'
+import PrismarineItem from 'prismarine-item'
+import PrismarineBlock from 'prismarine-block'
+import MinecraftData from 'minecraft-data'
 import './types' // include Server declarations from all modules
 import './modules'
 import { TimerManager } from './lib/utils/timerManager'
@@ -65,19 +68,21 @@ class MCServer extends EventEmitter {
     server.cleanupFunctions = [
       () => this.abortController.abort()
     ]
-    const mcData = require('minecraft-data')(options.version)
+    const mcData = MinecraftData(options.version)
     server.mcData = mcData
     if (mcData === null) throw new Error(`Version ${options.version} is not supported as it doesn't have the data.`)
-    const version = mcData.version
-    if (!supportedVersions.some(v => v.includes(version.majorVersion))) {
-      console.warn(`Version ${version.minecraftVersion} might not be supported.`)
+    const _version = mcData.version
+    if (!supportedVersions.some(v => v.includes(_version.majorVersion!))) {
+      console.warn(`Version ${_version.minecraftVersion} might not be supported.`)
     }
-    server.supportFeature = feature => {
+    server.supportFeature = (feature: any) => {
       if (feature === 'theFlattening') feature = 'blockStateId' as any
       if (feature === 'dimensionDataIsAvailable') return +options.version.split('.')[1] >= 16
       return mcData.supportFeature(feature)
     }
     server.commands = new Command({})
+    server.PrismarineItem = PrismarineItem(options.version)
+    server.PrismarineBlock = PrismarineBlock(options.version)
     // pass version, motd, port, max-players, online-mode
     const oldServer = options.oldServerData
     server._server = oldServer?._server ?? createServer({
@@ -132,7 +137,7 @@ class MCServer extends EventEmitter {
     patchServer(server)
 
     const promises: Promise<any>[] = []
-    const coreModules = ['utils', 'communication', 'tick', 'commands', 'settings']
+    const coreModules = ['utils', 'communication', 'tick', 'settings', 'commands', 'tabComplete']
     server.modules = builtinModules.builtinPlugins
 
     // Sort modules so core modules are first in specified order
@@ -332,6 +337,8 @@ type MaybePromise<T> = T | Promise<T>
 
 declare global {
   interface Server {
+    PrismarineItem: ReturnType<typeof PrismarineItem>
+    PrismarineBlock: ReturnType<typeof PrismarineBlock>
     commands: Command
     pluginsReady: boolean
     _server: ProtocolServer

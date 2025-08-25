@@ -20,7 +20,7 @@ export const server = (serv: Server, { version }: Options) => {
         if (craftingSlot < window.inventoryStart || craftingSlot > window.inventoryEnd) return
         player.inventory.updateSlot(craftingSlot - window.inventoryStart + player.inventory.inventoryStart, item!)
       }
-      player.customWindow = window
+      player.customWindow = window as any
       // todo refactor to general open container gui method
       // Dynamic window ID feature
       if (player.windowId === undefined) { player.windowId = 1 } else { player.windowId = player.windowId + 1 }
@@ -47,7 +47,7 @@ export const server = (serv: Server, { version }: Options) => {
         skipUpdate = false
       }
       //@ts-ignore
-      window.on('updateSlot', (oldSlot, oldItem, newItem) => {
+      window.on('updateSlot', (oldSlot: number, oldItem: Item | null, newItem: Item | null) => {
         updateSlotBackInInventory(oldSlot, newItem)
         if (oldItem === newItem || skipUpdate) return
         if (oldSlot === 0) { // crafting result slot
