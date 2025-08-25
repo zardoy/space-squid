@@ -32,6 +32,8 @@ export const server = (serv: Server) => {
 }
 
 function sendBreakTimeConfig (player: Player, serv: Server) {
+  if (!serv.customPlayersBreakTime[player.uuid]) return
+
   const config = serv.customPlayersBreakTime[player.uuid]
   const data = {
     customBreakTime: config?.blocks ?? {},
