@@ -70,7 +70,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         items: player.inventory.slots.map(item => Item.toNotch(item)),
         carriedItem: { present: false }
       })
-      player.customWindow = undefined
+      options.onClose?.(window)
     }
 
     const listener = ({ windowId }: { windowId: number } | { windowId: any }): void => {
@@ -94,6 +94,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       onWindowClosed()
     }
     window.close = closeWindow
+    player.customWindow = window as any
     return window
   }
 
@@ -122,7 +123,6 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         windowSlots: new Array(52).fill(null).map((_, i) => new serv.PrismarineItem(1, 1, 0)),
         resultSlot: new serv.PrismarineItem(serv.mcData.itemsByName.redstone_block.id, 1, 0),
         onSlotClick: (slot, oldItem, newItem, closeWindow) => {
-          closeWindow()
         }
       })
     }
