@@ -201,7 +201,6 @@ declare global {
     velocity: Vec3
     /** Used to calculate collisions for server-side entities */
     size: Vec3
-    /** @internal */
     knownPosition: Vec3
     /** Yaw of entity (rotation looking up and down) */
     yaw: number

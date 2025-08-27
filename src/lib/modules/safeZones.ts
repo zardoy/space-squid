@@ -145,11 +145,12 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     if (isInsideExpanded(position, zone, THRESHOLD)) return
 
     // Otherwise, clamp back inside from direction of attempted position
-    const corrected = clampToAABBFromDirection(position, zone)
+    let corrected = clampToAABBFromDirection(position, zone)
+    corrected = serv.onSafeZoneViolation?.(player) ?? corrected
 
     // Prevent default cancel handling and perform corrective teleport ourselves
     if (positionAntiCheatNotifyPlayer) {
-      player.chat(`[safeZones] Out of bounds. Teleporting to safe position.`)
+      player.chat(`[safeZones] Out of bounds ${zone.min.toString()} <-> ${zone.max.toString()}: ${position.toString()} -> ${corrected.toString()}. Teleporting to safe position.`)
     }
     cancel(false)
     player.teleport(corrected)
@@ -310,7 +311,7 @@ function findSafePosition (player: Player, serv: Server, attemptedPosition: Vec3
 
 // Original helper functions
 
-function isInsideStrict (pos: Vec3, box: AABB): boolean {
+export function isInsideStrict (pos: Vec3, box: AABB): boolean {
   return pos.x >= box.min.x && pos.x <= box.max.x &&
     pos.y >= box.min.y && pos.y <= box.max.y &&
     pos.z >= box.min.z && pos.z <= box.max.z
@@ -375,5 +376,14 @@ declare global {
     safeZones: AABB[]
     resetSafeZones: () => void
     addSafeZones: (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => void
+    onSafeZoneViolation?: (player: Player) => Vec3 | void
   }
+
+  // interface PlayerBehaviorInputMap {
+  //   safeZoneViolation: {
+  //     _input: {
+  //       correctedPosition: Vec3
+  //     }
+  //   }
+  // }
 }

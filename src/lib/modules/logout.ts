@@ -2,7 +2,13 @@ import once from '@tootallnate/once'
 
 export const server = function (serv: Server) {
   serv.quit = async (reason = 'Server closed') => {
-    serv.cleanupFunctions.forEach(fn => fn())
+    serv.cleanupFunctions.forEach(fn => {
+      try {
+        fn?.()
+      } catch (err) {
+        serv.err('[quit] Error in cleanup function: ' + err)
+      }
+    })
     await Promise.all(serv.players.map((player) => {
       player.kick(reason)
       return once(player, 'disconnected')

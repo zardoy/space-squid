@@ -57,6 +57,7 @@
     "prismarine-chunk": "^1.39.0",
     "prismarine-entity": "^2.5.0",
     "prismarine-item": "^1.17.0",
+    "prismarine-block": "^1.22.0",
     "prismarine-nbt": "^2.7.0",
     "prismarine-provider-anvil": "github:zardoy/prismarine-provider-anvil#everything",
     "prismarine-windows": "^2.8.0",

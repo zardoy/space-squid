@@ -37,7 +37,8 @@ function sendBreakTimeConfig (player: Player, serv: Server) {
   const config = serv.customPlayersBreakTime[player.uuid]
   const data = {
     customBreakTime: config?.blocks ?? {},
-    customBreakTimeToolAllowance: config?.toolNames ?? []
+    customBreakTimeToolAllowance: config?.toolNames ?? [],
+    ...config?.rawConfig
   }
 
   player._client.writeChannel(
@@ -84,6 +85,7 @@ export type BreakTimeConfig = {
     [stateId: number]: number
     '*'?: number
   }
+  rawConfig?: any
 }
 
 declare global {
