@@ -1,4 +1,6 @@
 import { Vec3 } from 'vec3'
+import { CustomWorld } from './world'
+import { IndexedData } from 'minecraft-data'
 
 // Module to make positions safe to move to.
 // If a client sends a position outside by more than threshold, ignore and teleport back inside.
@@ -52,10 +54,16 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     const currentTime = Date.now()
     // Check if this is a response to our teleport
     if (player.pendingTeleport) {
-      if (position.distanceTo(player.pendingTeleport) < 0.1) {
-        lastMovementTime = currentTime
-        // player.knownPosition = position.clone()
-        player.pendingTeleport = null
+      cancel(false) // while waiting for teleport confirmation, ignore old movements
+      return
+    }
+    if (player.validateNextPosition) {
+      if (player.validateNextPosition.distanceTo(position) < 0.1) {
+        player.validateNextPosition = undefined
+      } else {
+        player.teleport(player.validateNextPosition)
+        cancel(false)
+        return
       }
       return
     }
@@ -73,7 +81,18 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
       if (positionAntiCheatNotifyPlayer) {
         player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
       }
-      player.teleport(isPlayerInsideBlock(player, serv, lastPosition) ? lastPosition : findSafePosition(player, serv, position))
+      let safePosition: Vec3 | undefined
+      if (isPlayerInsideBlock(player, serv, lastPosition)) {
+        safePosition = lastPosition
+      } else {
+        safePosition = findSafePosition(player.world, serv.mcData, position)
+        if (!safePosition) {
+          // dont do anything about it, let player get out themselves
+        }
+      }
+      if (safePosition) {
+        player.teleport(safePosition)
+      }
       return
     }
 
@@ -157,9 +176,9 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
   })
 }
 
-// Anti-cheat helper functions
+// Anti-cheat helper functions - EXPORTED FOR TESTING
 
-function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
+export function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
   const blocks = serv.mcData.blocksByStateId
   const chunk = player.world.getLoadedColumnAt(position)
   if (!chunk) return false
@@ -192,7 +211,7 @@ function isPlayerInsideBlock (player: Player, serv: Server, position: Vec3) {
   return false
 }
 
-interface SpeedValidationResult {
+export interface SpeedValidationResult {
   isValid: boolean
   reason: string
   distanceSquared: number
@@ -200,7 +219,7 @@ interface SpeedValidationResult {
   currentVelocitySquared: number
 }
 
-function validateMovementSpeed (player: Player, lastPosition: Vec3, newPosition: Vec3, packetCount: number): SpeedValidationResult {
+export function validateMovementSpeed (player: Player, lastPosition: Vec3, newPosition: Vec3, packetCount: number): SpeedValidationResult {
   // Calculate movement delta (like vanilla)
   const deltaX = newPosition.x - lastPosition.x
   const deltaY = newPosition.y - lastPosition.y
@@ -262,54 +281,60 @@ function validateMovementSpeed (player: Player, lastPosition: Vec3, newPosition:
   }
 }
 
-function findSafePosition (player: Player, serv: Server, attemptedPosition: Vec3) {
+export function findSafePosition (playerWorld: CustomWorld, mcData: IndexedData, attemptedPosition: Vec3) {
   // Start from the attempted position and search nearby for a safe spot
   const basePosition = attemptedPosition.floored()
 
   const getBlock = (pos: Vec3) => {
-    const chunk = player.world.getLoadedColumnAt(pos)
+    const chunk = playerWorld.getLoadedColumnAt(pos)
     if (!chunk) return null
     return chunk.getBlockStateId(new Vec3(Math.floor(pos.x) & 15, Math.floor(pos.y), Math.floor(pos.z) & 15))
   }
 
-  // Search in expanding radius for a safe position
-  for (let radius = 0; radius <= 3; radius++) {
+  const SEARCH_RADIUS = 5
+
+  // Search in expanding radius in all directions except downward (x, z, y+)
+  // Start with radius 0 (current position), then expand outward
+  for (let radius = 0; radius <= SEARCH_RADIUS; radius++) {
+    // Search in a cube pattern but only allow y >= 0 (no downward search)
     for (let x = -radius; x <= radius; x++) {
       for (let z = -radius; z <= radius; z++) {
-        if (Math.abs(x) === radius || Math.abs(z) === radius) { // Only check edge positions for efficiency
-          const testPos = basePosition.offset(x, 0, z)
+        for (let y = 0; y <= radius; y++) { // Only search upward and at same level, never down
+          // Only check positions at the current radius for efficiency
+          if (Math.abs(x) === radius || Math.abs(z) === radius || y === radius) {
+            const testPos = basePosition.offset(x, y, z)
 
-          // Check if position is safe (not inside blocks)
-          let isSafe = true
-          for (let y = 0; y < Math.ceil(PLAYER_SIZE.y); y++) {
-            const checkPos = testPos.offset(0, y, 0)
-            try {
-              const blockStateId = getBlock(checkPos)
-              if (blockStateId === null || serv.mcData.blocksByStateId[blockStateId]?.boundingBox === 'block') {
+            // Check if position is safe (not inside blocks)
+            let isSafe = true
+            for (let checkY = 0; checkY < Math.ceil(PLAYER_SIZE.y); checkY++) {
+              const checkPos = testPos.offset(0, checkY, 0)
+              try {
+                const blockStateId = getBlock(checkPos)
+                if (blockStateId === null || mcData.blocksByStateId[blockStateId]?.boundingBox === 'block') {
+                  isSafe = false
+                  break
+                }
+              } catch {
+                // If we can't check, assume unsafe
                 isSafe = false
                 break
               }
-            } catch {
-              // If we can't check, assume unsafe
-              isSafe = false
-              break
             }
-          }
 
-          if (isSafe) {
-            return testPos.offset(0.5, 0, 0.5) // Center in block
+            if (isSafe) {
+              return testPos.offset(0.5, 0, 0.5) // Center in block
+            }
           }
         }
       }
     }
   }
 
-  serv.warn('[safeZones] no safe position found')
-  // If no safe position found, return player's current position
-  return player.position
+  // Return undefined if no safe position found
+  return undefined
 }
 
-// Original helper functions
+// Helper functions - EXPORTED FOR TESTING
 
 export function isInsideStrict (pos: Vec3, box: AABB): boolean {
   return pos.x >= box.min.x && pos.x <= box.max.x &&
@@ -317,13 +342,13 @@ export function isInsideStrict (pos: Vec3, box: AABB): boolean {
     pos.z >= box.min.z && pos.z <= box.max.z
 }
 
-function isInsideExpanded (pos: Vec3, box: AABB, threshold: number): boolean {
+export function isInsideExpanded (pos: Vec3, box: AABB, threshold: number): boolean {
   return pos.x >= (box.min.x - threshold) && pos.x <= (box.max.x + threshold) &&
     pos.y >= (box.min.y - threshold) && pos.y <= (box.max.y + threshold) &&
     pos.z >= (box.min.z - threshold) && pos.z <= (box.max.z + threshold)
 }
 
-function clampToAABBFromDirection (pos: Vec3, box: AABB): Vec3 {
+export function clampToAABBFromDirection (pos: Vec3, box: AABB): Vec3 {
   const epsilon = 0.01
   let x = pos.x
   let y = pos.y
@@ -344,12 +369,12 @@ function clampToAABBFromDirection (pos: Vec3, box: AABB): Vec3 {
   return new Vec3(x, y, z)
 }
 
-function clamp (v: number, min: number, max: number): number {
+export function clamp (v: number, min: number, max: number): number {
   if (min > max) return v // degenerate box; shouldn't happen
   return Math.max(min, Math.min(max, v))
 }
 
-function distanceToAABB (p: Vec3, box: AABB): number {
+export function distanceToAABB (p: Vec3, box: AABB): number {
   // Squared distance from point to AABB
   const dx = dist1D(p.x, box.min.x, box.max.x)
   const dy = dist1D(p.y, box.min.y, box.max.y)
@@ -357,7 +382,7 @@ function distanceToAABB (p: Vec3, box: AABB): number {
   return dx * dx + dy * dy + dz * dz
 }
 
-function dist1D (v: number, min: number, max: number): number {
+export function dist1D (v: number, min: number, max: number): number {
   if (v < min) return min - v
   if (v > max) return v - max
   return 0

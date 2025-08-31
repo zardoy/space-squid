@@ -56,6 +56,7 @@ export const player = function (player: Player) {
     receivedLook(yaw, pitch, onGround)
   })
 
+  player.lastTeleportId ??= 0
   player.sendSelfPosition = (sendChunks = true) => {
     // double position in all versions
     player._client.write('position', {
@@ -65,28 +66,31 @@ export const player = function (player: Player) {
       yaw: convToClient(player.yaw),
       pitch: convToClient(player.pitch),
       flags: 0x00,
-      teleportId: 1
+      teleportId: ++player.lastTeleportId
     })
     if (sendChunks) player.sendChunkWhenMove()
   }
 
-  let oldSetTimeout: any
   player.teleport = async (position) => {
-    // Track pending teleport for anti-cheat
-    if (oldSetTimeout) clearTimeout(oldSetTimeout)
-    player.pendingTeleport = position.clone()
-
     const notCancelled = await player.sendPosition(position, false, true)
     if (!notCancelled) return
     player.sendSelfPosition()
 
-    // Clear pending teleport after a short delay to handle network latency
-    oldSetTimeout = player.setTimeout(() => {
-      if (player.pendingTeleport?.equals(position)) {
-        player.pendingTeleport = null
-      }
-    }, 1000) // 1 second timeout
+    player.pendingTeleport = {
+      position: position.clone(),
+      teleportId: player.lastTeleportId
+    }
   }
+
+  player.onPacket('teleport_confirm', ({ teleportId }) => {
+    if (teleportId === player.lastTeleportId && player.pendingTeleport) {
+      // validate the position
+      player.validateNextPosition = player.pendingTeleport.position
+      player.pendingTeleport = undefined
+    } else {
+      console.log('Invalid teleport confirm packet received', player.pendingTeleport, 'received:', teleportId)
+    }
+  })
 
   player.sendAbilities = () => {
     const isInvulnerable = player.gameMode === 1 || player.gameMode === 3 // Creative or Spectator
@@ -186,9 +190,11 @@ export const entity = function (entity: Entity, serv: Server) {
 }
 declare global {
   interface Player {
+    lastTeleportId: number
+    validateNextPosition?: Vec3
     "sendAbilities": () => void
     /** Position we're expecting the client to move to after teleport */
-    pendingTeleport?: Vec3 | null
+    pendingTeleport?: { position: Vec3, teleportId: number }
   }
   interface Entity {
     /** ID of entity on server */
