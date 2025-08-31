@@ -159,16 +159,28 @@ export const server = function (serv: Server, settings: Options) {
       const orig = console.log
       return function () {
         readline.cursorTo(process.stdout, 0)
-        // let tmp
-        // try {
-        //   tmp = process.stdout
-        //   // @ts-ignore
-        //   process.stdout = process.stderr
-        //   orig.apply(console, arguments)
-        // } finally {
-        //   process.stdout = tmp
-        // }
+
+        // Apply original console.log to stdout
         orig.apply(console, arguments)
+
+        // Redirect to server log if enabled and not disabled
+        if (!settings.noConsoleLogRedirect && logStream?.writable) {
+          const args = Array.from(arguments)
+          const message = args.map(arg =>
+            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+          ).join(' ')
+
+          // Add timestamp and prefix for console.log entries
+          const timestamp = new Date().toISOString()
+          const logEntry = `[${timestamp}] [CONSOLE]: ${message}\n`
+
+          try {
+            logStream.write(logEntry)
+          } catch (err) {
+            // Silently fail if log writing fails to avoid infinite loops
+          }
+        }
+
         rl.prompt(true)
       }
     })()
@@ -233,5 +245,10 @@ declare global {
     "getLogPath": () => string | null
     /** Change log file at runtime */
     // "setLogFile": (path: string) => boolean
+  }
+
+  interface Options {
+    /** Whether to redirect console.log output to server log file. Defaults to true. */
+    noConsoleLogRedirect?: boolean
   }
 }

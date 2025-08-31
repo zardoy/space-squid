@@ -82,7 +82,7 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
         player.chat(`[safeZones] Block collision detected. Teleporting to safe position.`)
       }
       let safePosition: Vec3 | undefined
-      if (isPlayerInsideBlock(player, serv, lastPosition)) {
+      if (!isPlayerInsideBlock(player, serv, lastPosition)) {
         safePosition = lastPosition
       } else {
         safePosition = findSafePosition(player.world, serv.mcData, position)
@@ -161,11 +161,16 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
     }
 
     // If new position is within expanded bounds (threshold), allow it
-    if (isInsideExpanded(position, zone, THRESHOLD)) return
+    if (isInsideExpanded(position, zone)) return
 
     // Otherwise, clamp back inside from direction of attempted position
     let corrected = clampToAABBFromDirection(position, zone)
-    corrected = serv.onSafeZoneViolation?.(player) ?? corrected
+    let customCorrection = serv.onSafeZoneViolation?.(player)
+    if (customCorrection && !isInsideExpanded(customCorrection, zone)) {
+      serv.emit('error', new Error('Invalid custom zone pos correction!'))
+      customCorrection = undefined
+    }
+    corrected = customCorrection ?? corrected
 
     // Prevent default cancel handling and perform corrective teleport ourselves
     if (positionAntiCheatNotifyPlayer) {
@@ -342,7 +347,7 @@ export function isInsideStrict (pos: Vec3, box: AABB): boolean {
     pos.z >= box.min.z && pos.z <= box.max.z
 }
 
-export function isInsideExpanded (pos: Vec3, box: AABB, threshold: number): boolean {
+export function isInsideExpanded (pos: Vec3, box: AABB, threshold: number = THRESHOLD): boolean {
   return pos.x >= (box.min.x - threshold) && pos.x <= (box.max.x + threshold) &&
     pos.y >= (box.min.y - threshold) && pos.y <= (box.max.y + threshold) &&
     pos.z >= (box.min.z - threshold) && pos.z <= (box.max.z + threshold)

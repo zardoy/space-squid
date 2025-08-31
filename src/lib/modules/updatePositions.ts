@@ -83,12 +83,13 @@ export const player = function (player: Player) {
   }
 
   player.onPacket('teleport_confirm', ({ teleportId }) => {
+    if (!player.lastTeleportId) return
     if (teleportId === player.lastTeleportId && player.pendingTeleport) {
       // validate the position
       player.validateNextPosition = player.pendingTeleport.position
       player.pendingTeleport = undefined
     } else {
-      console.log('Invalid teleport confirm packet received', player.pendingTeleport, 'received:', teleportId)
+      // console.log('Invalid teleport confirm packet received', player.pendingTeleport, 'received:', teleportId)
     }
   })
 
