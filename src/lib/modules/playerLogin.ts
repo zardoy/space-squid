@@ -231,18 +231,22 @@ export const player = async function (player: Player, serv: Server, settings: Op
       const theItem = registry.itemsByName[itemName] || registry.blocksByName[itemName]
       // todo test with undefined values (need to preserve!)
       if (!theItem) {
-        console.warn(`Unknown item ${itemName} (id in player ${player.username} inventory ${itemValue})`)
+        console.warn(`Failed to restore inventory slot. Unknown item ${itemName} (id in player ${player.username} inventory ${itemValue})`)
         return
       }
 
-      let newItem
-      // todo use supports
-      if (mcData.version['<']('1.13')) newItem = new Item(theItem.id, item.Count.value, item.Damage.value)
-      else if (item.tag) newItem = new Item(theItem.id, item.Count.value, item.tag)
-      else newItem = new Item(theItem.id, item.Count.value)
+      try {
+        let newItem
+        // todo use supports
+        if (mcData.version['<']('1.13')) newItem = new Item(theItem.id, (item.Count ?? item.count)?.value ?? 1, (item.Damage ?? item.damage).value)
+        else if (item.tag) newItem = new Item(theItem.id, (item.Count ?? item.count)?.value ?? 1, item.tag)
+        else newItem = new Item(theItem.id, (item.Count ?? item.count)?.value ?? 1)
 
-      const slot = convertInventorySlotId.fromNBT(item.Slot.value)
-      player.inventory.updateSlot(slot, newItem)
+        const slot = convertInventorySlotId.fromNBT((item.Slot ?? item.slot).value)
+        player.inventory.updateSlot(slot, newItem)
+      } catch (err) {
+        console.warn(`Failed to restore inventory slot. Error while restoring item ${itemName} (id in player ${player.username} inventory ${itemValue})`, err)
+      }
     })
     player._client.write('held_item_slot', {
       slot: player.heldItemSlot
