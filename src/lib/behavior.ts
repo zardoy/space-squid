@@ -1,6 +1,6 @@
 export type CustomEventEmitter = {
+  listeners (event: string): Function[]
   emit (event: string, ...args: any[]): boolean
-  emitThen (event: string, ...args: any[]): Promise<void>
 }
 
 export type CancelFunction = (defaultCancel?: boolean, hidden?: boolean) => void
@@ -66,14 +66,18 @@ export default (obj: CustomEventEmitter) => {
     // Handle each event emission separately to allow pipeline to continue
     // PRE EVENT
     try {
-      await obj.emitThen(eventName + '_cancel', data, cancel)
+      for (const listener of obj.listeners(eventName + '_cancel')) {
+        await listener(data, cancel)
+      }
     } catch (err) {
       handleError(err, eventName + '_cancel', false)
     }
 
     // MAIN EVENT
     try {
-      await obj.emitThen(eventName, data, cancelled, cancelCount)
+      for (const listener of obj.listeners(eventName)) {
+        await listener(data, cancelled, cancelCount)
+      }
     } catch (err) {
       handleError(err, eventName, false)
     }
@@ -106,7 +110,9 @@ export default (obj: CustomEventEmitter) => {
 
     // POST EVENT
     try {
-      await obj.emitThen(eventName + '_done', data, resp, cancelled)
+      for (const listener of obj.listeners(eventName + '_done')) {
+        await listener(data, resp, cancelled)
+      }
     } catch (err) {
       handleError(err, eventName + '_done', true)
     }

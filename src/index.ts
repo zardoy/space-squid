@@ -21,7 +21,6 @@ if (typeof process !== 'undefined' && !process.browser && process.platform !== '
   process.exit(1)
 }
 
-require('emit-then').register()
 if (process.env.NODE_ENV === 'dev') {
   require('longjohn')
 }
