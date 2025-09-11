@@ -88,16 +88,16 @@ class MCServer extends EventEmitter {
     server._server = oldServer?._server ?? createServer({
       ...options,
     })
+    const connPendingUsernames = new Set<string>()
     server._server.on('connection', (client) => {
       const loginOld = client['_events'].login_start
-      const pendingUsernames = new Set<string>()
       if (typeof loginOld === 'function') {
         client['_events'].login_start = async (packet) => {
           const packetUsername = packet.username.toLowerCase()
-          if (pendingUsernames.has(packetUsername)) {
+          if (connPendingUsernames.has(packetUsername)) {
             client.end('A player with this username is already connecting')
           }
-          pendingUsernames.add(packetUsername)
+          connPendingUsernames.add(packetUsername)
           try {
             const username = (await server.customGetUsername?.(packet, client)) ?? packetUsername
 
@@ -110,8 +110,9 @@ class MCServer extends EventEmitter {
               loginOld({ ...packet, username })
             }
           } catch (err) {
-            pendingUsernames.delete(packetUsername)
             client.end('An error occurred while connecting to the server')
+          } finally {
+            connPendingUsernames.delete(packetUsername)
           }
         }
       }
