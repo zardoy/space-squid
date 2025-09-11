@@ -2,6 +2,8 @@ import { pascalCase } from 'change-case'
 import UserError from '../user_error'
 import { skipMcPrefix } from '../utils'
 
+const isPlayer = (entity: Entity): entity is Player => entity.type === 'player'
+
 export const entity = function (entity: Entity, serv: Server) {
   entity.effects = {}
   for (let i = 1; i <= 23; i++) { // 23 in 1.8, 27 in 1.9
@@ -19,7 +21,7 @@ export const entity = function (entity: Entity, serv: Server) {
       duration,
       hideParticles: !particles
     }
-    serv._writeArray('entity_effect', data, sendTo)
+    serv._writeArray('entity_effect', data, sendTo.filter(isPlayer))
   }
 
   entity.sendRemoveEffect = (effectId, { whitelist, blacklist = [] } = {}) => {
@@ -28,7 +30,7 @@ export const entity = function (entity: Entity, serv: Server) {
     serv._writeArray('remove_entity_effect', {
       entityId: entity.id,
       effectId
-    }, sendTo)
+    }, sendTo.filter(isPlayer))
   }
 
   entity.addEffect = (effectId, opt = {}) => {
@@ -41,7 +43,9 @@ export const entity = function (entity: Entity, serv: Server) {
         end: Date.now() + (opt.duration || 30 * 20) * 1000 / 20, // 1000/20 === convert from ticks to milliseconds,
         timeout: opt.duration === -1 ? undefined : setTimeout(() => entity.removeEffect(effectId, {}), (opt.duration || 30 * 20) * 1000 / 20)
       }
-      entity.sendEffect(effectId, { ...opt, whitelist: [entity] })
+      if (isPlayer(entity)) {
+        entity.sendEffect(effectId, { ...opt, whitelist: [entity] })
+      }
       return true
     } else return false
   }

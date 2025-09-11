@@ -51,7 +51,8 @@ export const server = function (serv: Server, { version }: Options) {
     },
     action (data, ctx) {
       const selectorString = ctx.player ? ctx.player.selectorString : serv.selectorString
-      const players = selectorString(data.playersNamesAndTargetValues)
+      const isPlayer = (entity: Entity): entity is Player => entity.type === 'player'
+      const players = selectorString(data.playersNamesAndTargetValues).filter(isPlayer)
       switch (data.level) {
         case 'title':
           serv._writeArray("Title", { "set_title_text": data.text }, players)
