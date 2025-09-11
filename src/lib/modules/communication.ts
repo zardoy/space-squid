@@ -17,6 +17,7 @@ export const server = function (serv: Server, options: Options) {
         ...(serv.toClientPacketProcessors['*'] ?? [])
       ]) {
         packetFields = processor(packetFields, packetName) ?? packetFields
+        if (packetFields === false) return
       }
       return oldWrite(packetName, packetFields)
     }
@@ -28,10 +29,10 @@ export const server = function (serv: Server, options: Options) {
   }
 
   serv._writeAll = (packetName, packetFields) =>
-    serv.players.forEach((player) => player._client.write(packetName, packetFields))
+    serv.players.forEach((player) => player.writePacket(packetName as any, packetFields))
 
   serv._writeArray = (packetName, packetFields, players) =>
-    players.forEach((player) => player._client.write(packetName, packetFields))
+    players.forEach((player) => player.writePacket(packetName as any, packetFields))
 
   serv._writeNearby = (packetName, packetFields, loc) =>
     serv._writeArray(packetName, packetFields, serv.getNearby(loc))
@@ -76,7 +77,7 @@ export const entity = function (entity: Entity, serv: Server) {
     serv._writeArray(packetName, packetFields, entity.getNearbyPlayers())
 
   entity._writeNearby = (packetName, packetFields) =>
-    serv._writeArray(packetName, packetFields, [...entity.getNearbyPlayers(), ...entity.type === 'player' ? [entity] : []])
+    serv._writeArray(packetName, packetFields, [...entity.getNearbyPlayers(), ...entity.type === 'player' ? [entity as Player] : []])
 }
 
 export const player = function (player: Player, serv: Server) {
@@ -106,9 +107,9 @@ declare global {
     toClientPacketProcessors: Record<string, PacketProcessor[]>
     addToClientPacketProcessor: <T extends keyof ClientOnMap>(packet: T | null, processor: PacketProcessor<T extends keyof ClientWriteMap ? ClientWriteMap[T] : any>) => void
 
-    "_writeAll": (packetName: any, packetFields: any) => void
-    "_writeArray": (packetName: any, packetFields: any, players: any) => void
-    '_writeNearby': (packetName: any, packetFields: any, loc: { world: Player['world'], position: Vec3, radius?: number }) => void
+    "_writeAll": (packetName: string, packetFields: any) => void
+    "_writeArray": (packetName: string, packetFields: any, players: Player[]) => void
+    '_writeNearby': (packetName: string, packetFields: any, loc: { world: Player['world'], position: Vec3, radius?: number }) => void
     /** Returns array of players within loc. loc is a required paramater. The object contains:
      *
      * * world: World position is in
