@@ -160,14 +160,18 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     let stop = false
     // const MAX_DIG_DISTANCE = 7
     const MAX_DIG_DISTANCE = 8
-    const tooFast = expectedDiggingTime - diggingTime > 50
+    const digTimeDiff = expectedDiggingTime - diggingTime
+    const DIG_TIME_ALLOWED_THRESHOLD = 50
+    const tooFast = digTimeDiff > DIG_TIME_ALLOWED_THRESHOLD
     const tooFar = player.position.distanceTo(location) > MAX_DIG_DISTANCE
     if (tooFast || tooFar) {
       stop = true
       await player.behavior('suspiciousDigStopped', {
         tooFast,
+        digTimeDiff,
         tooFar,
-        location
+        location,
+        digTimeAllowedThreshold: DIG_TIME_ALLOWED_THRESHOLD
       }, () => { }, () => {
         stop = false
       })
@@ -283,6 +287,10 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
 const directionToVector = [new Vec3(0, -1, 0), new Vec3(0, 1, 0), new Vec3(0, 0, -1), new Vec3(0, 0, 1), new Vec3(-1, 0, 0), new Vec3(1, 0, 0)]
 declare global {
+  interface Player {
+    debugDigChunkUpdate?: boolean
+  }
+
   interface PlayerBehaviorInputMap {
     'item_drop': {
       _input: {
@@ -318,9 +326,13 @@ declare global {
 
     'suspiciousDigStopped': {
       _input: {
+        expectedDiggingTime: number
+        actualDiggingTime: number
         tooFast: boolean
         tooFar: boolean
         location: Vec3
+        digTimeDiff: number
+        digTimeAllowedThreshold: number
       }
     }
   }

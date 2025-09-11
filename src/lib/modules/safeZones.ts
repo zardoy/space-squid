@@ -38,10 +38,6 @@ export const server = (serv: Server) => {
 
 export const player = (player: Player, serv: Server, { basePositionAntiCheat = false, positionAntiCheatNotifyPlayer = false }: Options) => {
   let lastMovementTime = Date.now()
-  let packetCount = 0 // Track move packets per tick (vanilla approach)
-  serv.on('tick', (deltaTime, tickCount) => {
-    packetCount = 0
-  })
 
   player.onReady.then(() => {
     player.knownPosition ??= player.position.clone()
@@ -98,14 +94,7 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
 
     // Anti-cheat: Movement speed limit (vanilla-like approach)
     if (basePositionAntiCheat && lastPosition && !teleport) {
-      packetCount++
-
-      // Limit packet count per tick like vanilla (max 5 meaningful packets)
-      if (packetCount > 5) {
-        packetCount = 1
-      }
-
-      const speedCheck = validateMovementSpeed(player, lastPosition, position, packetCount)
+      const speedCheck = validateMovementSpeed(player, lastPosition, position)
 
       // Add debug fields to player
       player['debugMaxVelocity'] = speedCheck.distanceSquared
@@ -113,26 +102,24 @@ export const player = (player: Player, serv: Server, { basePositionAntiCheat = f
       player['debugVelocityDiff'] = speedCheck.distanceSquared - speedCheck.speedLimit
       player['debugExcessMovement'] = speedCheck.distanceSquared - speedCheck.currentVelocitySquared
       player['debugIsValid'] = speedCheck.isValid
-      player['debugPacketCount'] = packetCount
 
-      // Debug output for all movements (temporary)
-      // if (positionAntiCheatNotifyPlayer && speedCheck.distanceSquared > 0.001) {
-      //   player.chat(
-      //     `[DEBUG] distance²=${speedCheck.distanceSquared.toFixed(3)}, ` +
-      //     `limit=${speedCheck.speedLimit.toFixed(3)}, ` +
-      //     `excess=${player['debugExcessMovement'].toFixed(3)}, ` +
-      //     `valid=${speedCheck.isValid}, packets=${packetCount}`
-      //   )
-      // }
+      if (player.debugMovementSpeed && speedCheck.isValid) {
+        const currentSpeed = Math.sqrt(speedCheck.distanceSquared).toFixed(3)
+        player.chat(
+          `[DEBUG] (valid) ${currentSpeed}<${speedCheck.speedLimit.toFixed(3)}, ` +
+          `limit=${speedCheck.speedLimit.toFixed(3)}, ` +
+          `excess=${player['debugExcessMovement'].toFixed(3)}, ` +
+          `valid=${speedCheck.isValid}`
+        )
+      }
 
       if (!speedCheck.isValid) {
         if (positionAntiCheatNotifyPlayer) {
+          const currentSpeed = Math.sqrt(speedCheck.distanceSquared).toFixed(2)
+          const maxSpeed = Math.sqrt(speedCheck.speedLimit).toFixed(2)
+          const excess = Math.sqrt(Math.max(0, speedCheck.distanceSquared - speedCheck.speedLimit)).toFixed(2)
           player.chat(
-            `[safeZones] ${speedCheck.reason} ` +
-            `(distance²=${speedCheck.distanceSquared.toFixed(2)}, ` +
-            `limit=${speedCheck.speedLimit.toFixed(2)}, ` +
-            `velocity²=${speedCheck.currentVelocitySquared.toFixed(2)}, ` +
-            `excess=${player['debugExcessMovement'].toFixed(2)})`
+            `[safeZones] ${speedCheck.reason} - ${currentSpeed}>${maxSpeed} (excess ${excess})`
           )
         }
         cancel(false)
@@ -224,7 +211,7 @@ export interface SpeedValidationResult {
   currentVelocitySquared: number
 }
 
-export function validateMovementSpeed (player: Player, lastPosition: Vec3, newPosition: Vec3, packetCount: number): SpeedValidationResult {
+export function validateMovementSpeed (player: Player, lastPosition: Vec3, newPosition: Vec3): SpeedValidationResult {
   // Calculate movement delta (like vanilla)
   const deltaX = newPosition.x - lastPosition.x
   const deltaY = newPosition.y - lastPosition.y
@@ -270,18 +257,15 @@ export function validateMovementSpeed (player: Player, lastPosition: Vec3, newPo
     mode = 'knockback'
   }
 
-  // Apply packet count multiplier (vanilla does this)
-  const adjustedLimit = speedLimit * packetCount
-
   // Vanilla check: distanceSquared - currentVelocitySquared > limit
   const excessMovement = distanceSquared - estimatedVelocitySquared
-  const isValid = excessMovement <= adjustedLimit
+  const isValid = excessMovement <= speedLimit * 5
 
   return {
     isValid,
     reason: isValid ? 'valid' : `Movement too fast (${mode})`,
     distanceSquared,
-    speedLimit: adjustedLimit,
+    speedLimit: speedLimit,
     currentVelocitySquared: estimatedVelocitySquared
   }
 }
@@ -400,6 +384,10 @@ declare global {
   interface Options {
     basePositionAntiCheat?: boolean
     positionAntiCheatNotifyPlayer?: boolean
+  }
+
+  interface Player {
+    debugMovementSpeed?: boolean
   }
 
   interface Server {

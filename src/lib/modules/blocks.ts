@@ -12,11 +12,13 @@ export const player = function (player: Player, serv: Server) {
       return
     }
 
-    serv.getNearby({
-      world: player.world,
-      position
-    })
-      .forEach(p => p.sendBlock(position, stateId/* , blockData */)) // todo
+    if (!player.debugDigChunkUpdate) {
+      serv.getNearby({
+        world: player.world,
+        position
+      })
+        .forEach(p => p.sendBlock(position, stateId/* , blockData */)) // todo
+    }
 
     await player.world.setBlockStateId(position, stateId)
     if (blockData) {
@@ -26,6 +28,17 @@ export const player = function (player: Player, serv: Server) {
     if (notify) {
       if (stateId === 0) serv.notifyNeighborsOfStateChange(player.world, position, serv.tickCount, serv.tickCount, true)
       else serv.updateBlock(player.world, position, serv.tickCount, serv.tickCount, true)
+    }
+
+    if (player.debugDigChunkUpdate) {
+      // Resend current player chunk to update client with latest block changes
+      const playerChunkX = Math.floor(player.position.x / 16)
+      const playerChunkZ = Math.floor(player.position.z / 16)
+      player.world.getColumn(playerChunkX, playerChunkZ).then((column) => {
+        player.sendChunk(playerChunkX, playerChunkZ, column)
+      }).catch(err => {
+        console.warn('Failed to resend chunk for debug:', err)
+      })
     }
   }
 
