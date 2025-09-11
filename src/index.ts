@@ -95,12 +95,13 @@ class MCServer extends EventEmitter {
           const packetUsername = packet.username.toLowerCase()
           if (connPendingUsernames.has(packetUsername)) {
             client.end('A player with this username is already connecting')
+            return
           }
           connPendingUsernames.add(packetUsername)
           try {
             const username = (await server.customGetUsername?.(packet, client)) ?? packetUsername
 
-            if (client.ended) return
+            if (client.ended || client['_endReason']) return
             const existingPlayer = Object.values(server._server.clients)
               .find(c => c.username?.toLowerCase?.() === username)
             if (existingPlayer) {
