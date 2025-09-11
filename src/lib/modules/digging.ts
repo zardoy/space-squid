@@ -86,7 +86,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     // assume holding nothing and usual conditions
     const customBreakTime = player.customGetBreakTime(currentlyDugBlock)
     if (customBreakTime !== undefined) return customBreakTime * 1000
-    return currentlyDugBlock.digTime(null, false, false, false)
+    return currentlyDugBlock.digTime(player.inventory.slots[36 + player.heldItemSlot]?.type ?? null, false, false, false)
   }
 
   let currentlyDugBlock: Block
