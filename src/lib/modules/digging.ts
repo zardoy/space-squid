@@ -171,7 +171,9 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         digTimeDiff,
         tooFar,
         location,
-        digTimeAllowedThreshold: DIG_TIME_ALLOWED_THRESHOLD
+        digTimeAllowedThreshold: DIG_TIME_ALLOWED_THRESHOLD,
+        actualDiggingTime: diggingTime,
+        expectedDiggingTime
       }, () => { }, () => {
         stop = false
       })
