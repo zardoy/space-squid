@@ -164,7 +164,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
     const DIG_TIME_ALLOWED_THRESHOLD = 50
     const tooFast = digTimeDiff > DIG_TIME_ALLOWED_THRESHOLD
     const tooFar = player.position.distanceTo(location) > MAX_DIG_DISTANCE
-    if (tooFast || tooFar) {
+    if (tooFar) {
       stop = true
       await player.behavior('suspiciousDigStopped', {
         tooFast,
@@ -173,8 +173,11 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         location,
         digTimeAllowedThreshold: DIG_TIME_ALLOWED_THRESHOLD,
         actualDiggingTime: diggingTime,
-        expectedDiggingTime
-      }, () => { }, () => {
+        expectedDiggingTime,
+        stop
+      }, (data) => {
+        stop = data.stop
+      }, () => {
         stop = false
       })
     }
@@ -328,6 +331,7 @@ declare global {
 
     'suspiciousDigStopped': {
       _input: {
+        stop: boolean
         expectedDiggingTime: number
         actualDiggingTime: number
         tooFast: boolean
