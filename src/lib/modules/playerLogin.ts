@@ -93,6 +93,10 @@ export const server = function (serv: Server, options: Options) {
   }
 
   const addPlayerShared = async (player: Player) => {
+    player.op = options['everybody-op'] ?? false
+    player.username = player._client.username
+    player.uuid = player._client.uuid
+
     player.serv = serv
     patchClient(player._client, player)
 
@@ -186,9 +190,6 @@ export const player = async function (player: Player, serv: Server, settings: Op
   async function addPlayer () {
     player.type = 'player'
     player.crouching = false // Needs added in prismarine-entity later
-    player.op = settings['everybody-op'] ?? false
-    player.username = player._client.username
-    player.uuid = player._client.uuid
     player.getDisplayName = (location?: string) => player.displayName ?? player.username
 
     player.setLoadingStatus('Findig spawn point')

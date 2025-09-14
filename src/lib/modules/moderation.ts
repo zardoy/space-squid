@@ -1,24 +1,32 @@
 import UserError from '../user_error'
 
 export const server = function (serv: Server, settings: Options) {
-  serv.ban = async (uuid, reason) => {
+  serv.ban = (uuid, reason, kick = true) => {
     if (!serv.bannedPlayers[uuid]) {
+      reason ||= 'Your account is banned!'
       serv.bannedPlayers[uuid] = {
         time: Date.now(),
-        reason: reason || 'Your account is banned!'
+        reason: reason
+      }
+      if (kick) {
+        const player = serv.players.find(player => player.uuid === uuid)
+        if (player) player.kick(reason)
       }
       return true
     } else return false
   }
-  serv.banIP = async (IP, reason) => {
+  serv.banIP = (IP, reason, kick = true) => {
     if (!serv.bannedIPs[IP]) {
+      reason ||= 'Your IP is banned!'
       serv.bannedIPs[IP] = {
         time: Date.now(),
-        reason: reason || 'Your IP is banned!'
+        reason: reason
       }
-      Object.keys(serv.players)
-        .filter(uuid => serv.players[uuid]._client.socket?.remoteAddress === IP)
-        .forEach(uuid => serv.players[uuid].kick(serv.bannedIPs[serv.players[uuid]._client.socket?.remoteAddress!].reason))
+      if (kick) {
+        Object.keys(serv.players)
+          .filter(uuid => serv.players[uuid]._client.socket?.remoteAddress === IP)
+          .forEach(uuid => serv.players[uuid].kick(serv.bannedIPs[serv.players[uuid]._client.socket?.remoteAddress!].reason))
+      }
       return true
     } else return false
   }
@@ -28,6 +36,10 @@ export const server = function (serv: Server, settings: Options) {
   }
 
   serv.getUUIDFromUsername = async username => {
+    // quick lookup in players list
+    const player = serv.players.find(player => player.username.toLowerCase() === username.toLowerCase())
+    if (player) return player.uuid
+
     return await new Promise((resolve, reject) => {
       fetch('https://api.mojang.com/users/profiles/minecraft/' + username)
         .then(response => response.json())
@@ -39,19 +51,19 @@ export const server = function (serv: Server, settings: Options) {
     })
   }
 
-  serv.banUsername = async (username, reason) => {
+  serv.banUUID = async (username, reason) => {
     return serv.ban(username, reason)
   }
 
-  serv.banUUID = async (username, reason) => {
+  serv.banUsername = async (username, reason) => {
     return serv.getUUIDFromUsername(username).then(uuid => serv.ban(uuid, reason))
   }
 
-  serv.pardonUsername = async (username) => {
+  serv.pardonUUID = async (username) => {
     return pardon(username)
   }
 
-  serv.pardonUUID = async (username) => {
+  serv.pardonUsername = async (username) => {
     return serv.getUUIDFromUsername(username)
       .then(pardon)
   }
@@ -262,16 +274,14 @@ export const server = function (serv: Server, settings: Options) {
       }
     },
     action ({ IP, reason }, ctx) {
-      serv.banIP(IP, reason)
-        .then(result => {
-          if (result) {
-            if (ctx.player) ctx.player.chat(`IP ${IP} was banned ${reason ? '(' + reason + ')' : ''}`)
-            else serv.info(`IP ${IP} was banned ${reason ? '(' + reason + ')' : ''}`)
-          } else {
-            if (ctx.player) ctx.player.chat(`IP ${IP} is banned!`)
-            else serv.err(`IP ${IP} is banned!`)
-          }
-        })
+      const result = serv.banIP(IP, reason)
+      if (result) {
+        if (ctx.player) ctx.player.chat(`IP ${IP} was banned ${reason ? '(' + reason + ')' : ''}`)
+        else serv.info(`IP ${IP} was banned ${reason ? '(' + reason + ')' : ''}`)
+      } else {
+        if (ctx.player) ctx.player.chat(`IP ${IP} is banned!`)
+        else serv.err(`IP ${IP} is banned!`)
+      }
     }
   })
 
@@ -377,7 +387,7 @@ export const player = function (player: Player, serv: Server) {
     const uuid = player.uuid
     return serv.ban(uuid, reason)
   }
-  player.banUsername = reason => {
+  player.banUsername = async reason => {
     reason = reason || 'You were banned!'
     player.kick(reason)
     const nick = player.username
@@ -396,9 +406,9 @@ export const player = function (player: Player, serv: Server) {
 declare global {
   interface Server {
     /** Ban player given a uuid. If the player is online, using `player.ban()`. Bans with reason or `You are banned!`. */
-    "ban": (uuid: string, reason?: string) => Promise<boolean>
+    "ban": (uuid: string, reason?: string, kick?: boolean) => boolean
     /** @internal */
-    'banIP': (IP: string, reason?: string) => Promise<boolean>
+    'banIP': (IP: string, reason?: string, kick?: boolean) => boolean
     /** Gets UUID from username. Since it needs to fetch from mojang servers, it is not immediate.
      *
      * Arguments in format: `callback(uuid)`. `uuid` is null if no such username exists.
@@ -436,11 +446,11 @@ declare global {
     /** kicks player with `reason` */
     "kick": (reason?: string) => void
     /** @internal */
-    "banUUID": (reason: any) => Promise<boolean>
+    "banUUID": (reason: any) => boolean
     /** @internal */
     "banUsername": (reason: any) => Promise<boolean>
     /** @internal */
-    "banIP": (reason: any) => Promise<boolean>
+    "banIP": (reason: any) => boolean
     /** @internal */
     "pardonUUID": () => Promise<boolean>
     /** @internal */
