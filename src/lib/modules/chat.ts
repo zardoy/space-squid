@@ -6,7 +6,7 @@ export const server = function (serv: Server) {
     if (whitelist.type === 'player') whitelist = [whitelist]
 
     // Log the broadcast message
-    serv.log(`[${serv.color.blue}SERVER BROADCAST${serv.color.reset}]: ${message}`)
+    serv.log(`[SERVER BROADCAST]: ${message}`)
 
     whitelist.filter(w => blacklist.indexOf(w) === -1).forEach(player => {
       if (!system) player.chat(message)

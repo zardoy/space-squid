@@ -3,6 +3,7 @@ import UserError from '../user_error'
 export const server = function (serv: Server, settings: Options) {
   serv.ban = (uuid, reason, kick = true) => {
     if (!serv.bannedPlayers[uuid]) {
+      console.log('banning player', uuid, reason)
       reason ||= 'Your account is banned!'
       serv.bannedPlayers[uuid] = {
         time: Date.now(),
