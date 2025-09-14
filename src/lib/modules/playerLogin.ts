@@ -528,8 +528,7 @@ declare global {
     sendChunkWhenMove: () => void
     /** @internal */
     profileProperties: any
-    /** @internal */
-    loadedChunks: Record<string, number>
+    loadedChunks: Record<string, boolean>
     /** @internal */
     crouching: boolean
     /** @internal */

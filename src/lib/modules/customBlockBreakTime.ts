@@ -16,7 +16,7 @@ export const server = (serv: Server) => {
     // Send update to the player if they're online
     const player = serv.uuidToPlayer[uuid]
     if (player) {
-      sendBreakTimeConfig(player, serv)
+      player.sendBreakTimeConfig()
     }
   }
 
@@ -26,27 +26,9 @@ export const server = (serv: Server) => {
     // Send empty config to the player if they're online
     const player = serv.uuidToPlayer[uuid]
     if (player) {
-      sendBreakTimeConfig(player, serv)
+      player.sendBreakTimeConfig()
     }
   }
-}
-
-function sendBreakTimeConfig (player: Player, serv: Server) {
-  if (!serv.customPlayersBreakTime[player.uuid]) return
-
-  const config = serv.customPlayersBreakTime[player.uuid]
-  const data = {
-    customBreakTime: config?.blocks ?? {},
-    customBreakTimeToolAllowance: config?.toolNames ?? [],
-    ...config?.rawConfig
-  }
-
-  player._client.writeChannel(
-    CHANNEL_NAME,
-    {
-      newConfiguration: JSON.stringify(data)
-    }
-  )
 }
 
 export const player = async (player: Player, serv: Server) => {
@@ -75,8 +57,26 @@ export const player = async (player: Player, serv: Server) => {
 
   // Send initial configuration if it exists
   player.on('login', () => {
-    sendBreakTimeConfig(player, serv)
+    player.sendBreakTimeConfig()
   })
+
+  player.sendBreakTimeConfig = () => {
+    if (!serv.customPlayersBreakTime[player.uuid]) return
+
+    const config = serv.customPlayersBreakTime[player.uuid]
+    const data = {
+      customBreakTime: config?.blocks ?? {},
+      customBreakTimeToolAllowance: config?.toolNames ?? [],
+      ...config?.rawConfig
+    }
+
+    player._client.writeChannel(
+      CHANNEL_NAME,
+      {
+        newConfiguration: JSON.stringify(data)
+      }
+    )
+  }
 }
 
 export type BreakTimeConfig = {
@@ -99,5 +99,7 @@ declare global {
 
   interface Player {
     customGetBreakTime: (block: Block) => number | undefined
+    /** @internal */
+    sendBreakTimeConfig: () => void
   }
 }

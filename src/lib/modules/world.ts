@@ -8,7 +8,7 @@ import { level, Anvil as AnvilLoader } from 'prismarine-provider-anvil'
 import * as playerDat from '../playerDat'
 import { Chunk, World } from 'prismarine-world/types/world'
 import WorldLoader from 'prismarine-world'
-import ChunkLoader from 'prismarine-chunk'
+import ChunkLoader, { PCChunk } from 'prismarine-chunk'
 import RegistryLoader from 'prismarine-registry'
 import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
@@ -197,7 +197,7 @@ export const server: ServerModule = async function (serv, options) {
       serv.chunksUsed[id] = 0
     }
     serv.chunksUsed[id]++
-    player.loadedChunks[id] = 1
+    player.loadedChunks[id] = true
   }
   serv._unloadPlayerChunk = (chunkX, chunkZ, player) => {
     const id = chunkX + ',' + chunkZ
@@ -205,7 +205,8 @@ export const server: ServerModule = async function (serv, options) {
     if (serv.chunksUsed[id] > 0) {
       serv.chunksUsed[id]--
     }
-    if (!serv.chunksUsed[id]) {
+    if (!serv.chunksUsed[id] && player.world.storageProvider) {
+      // Never delete chunks when we do not have a storage provider! They will be lost
       player.world.unloadColumn(chunkX, chunkZ)
       return true
     }
@@ -423,7 +424,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
     }
   }
 
-  player.sendChunk = async (chunkX, chunkZ, column) => {
+  player.sendChunk = async (chunkX, chunkZ, column: any) => {
     await player.behavior('sendChunk', {
       x: chunkX,
       z: chunkZ,
@@ -539,10 +540,10 @@ export const player = function (player: Player, serv: Server, settings: Options)
           .then(() => {
             if (abortSignal?.aborted) return
             serv.abortSignal.throwIfAborted()
-            return player.world.getColumn(chunkX, chunkZ)
+            return player.world.getColumn(chunkX, chunkZ) as Promise<PCChunk>
           })
           .then((column) => {
-            if (abortSignal?.aborted) return
+            if (!column || abortSignal?.aborted) return
             return player.sendChunk(chunkX, chunkZ, column)
           })
         return group ? p.then(() => sleep(5)) : p
@@ -695,8 +696,7 @@ declare global {
     'save': () => Promise<any>
     /** @internal */
     "_unloadChunk": (chunkX: any, chunkZ: any) => void
-    /** @internal */
-    "sendChunk": (chunkX: any, chunkZ: any, column: any) => Promise<void>
+    "sendChunk": (chunkX: number, chunkZ: number, column: any) => Promise<void>
     /** @internal */
     "sendNearbyChunks": (viewDistance: any, group?, abortSignal?: AbortSignal) => Promise<any>
     /** @internal */
