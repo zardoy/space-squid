@@ -45,6 +45,31 @@ export const server = function (serv: Server, settings: Options) {
   let logStream: fs.WriteStream | null = null
   let logPath: string | null = null
 
+  // Log file size management
+  const checkLogFileSize = () => {
+    if (!logPath) return
+
+    const maxSize = settings.maxLogFileSize ?? 30 // Default to 30MB
+    if (!maxSize) return
+
+    try {
+      const stats = fs.statSync(logPath)
+      const fileSizeMB = stats.size / (1024 * 1024) // Convert to MB
+
+      if (fileSizeMB > maxSize) {
+        // Rotate log file by removing old lines
+        const lines = fs.readFileSync(logPath, 'utf8').split('\n')
+        const linesToKeep = Math.floor(lines.length * 0.7) // Keep 70% of lines
+        const newContent = lines.slice(-linesToKeep).join('\n')
+
+        fs.writeFileSync(logPath, newContent)
+        serv.info(`Log file rotated: ${fileSizeMB.toFixed(2)}MB -> ${(fs.statSync(logPath).size / (1024 * 1024)).toFixed(2)}MB`)
+      }
+    } catch (err) {
+      serv.warn(`Failed to check log file size: ${err.message}`)
+    }
+  }
+
   // Setup logging if enabled
   if (settings.logging) {
     try {
@@ -67,6 +92,18 @@ export const server = function (serv: Server, settings: Options) {
         // Ensure directory exists
         fs.mkdirSync(path.dirname(logPath), { recursive: true })
 
+        // Clear log file if requested
+        if (settings.clearLogOnStart) {
+          try {
+            if (fs.existsSync(logPath)) {
+              fs.writeFileSync(logPath, '')
+              serv.info(`Cleared existing log file: ${logPath}`)
+            }
+          } catch (err) {
+            serv.warn(`Failed to clear log file: ${err.message}`)
+          }
+        }
+
         // Create write stream
         logStream = fs.createWriteStream(logPath, {
           flags: 'a', // Append mode
@@ -83,6 +120,8 @@ export const server = function (serv: Server, settings: Options) {
           // Disable logging on error
           // logStream = null
         })
+
+        // serv.setInterval(checkLogFileSize, 5 * 60 * 1000) // 5 minutes
 
         serv.cleanupFunctions.push(() => {
           if (logStream) {
@@ -136,6 +175,11 @@ export const server = function (serv: Server, settings: Options) {
     // Write to log file if stream is available
     if (logStream?.writable) {
       logStream.write(plain + '\n')
+
+      // Check log file size periodically (every 100 log entries)
+      if (serv._logBuffer!.length % 100 === 0) {
+        checkLogFileSize()
+      }
     }
   }
 
@@ -155,13 +199,13 @@ export const server = function (serv: Server, settings: Options) {
   }
 
   if (isInNode) {
-    console.log = (function () {
-      const orig = console.log
+    // Helper function to create console method wrapper
+    const createConsoleWrapper = (originalMethod, prefix) => {
       return function () {
         readline.cursorTo(process.stdout, 0)
 
-        // Apply original console.log to stdout
-        orig.apply(console, arguments)
+        // Apply original method to stdout
+        originalMethod.apply(console, arguments)
 
         // Redirect to server log if enabled and not disabled
         if (!settings.noConsoleLogRedirect && logStream?.writable) {
@@ -170,9 +214,9 @@ export const server = function (serv: Server, settings: Options) {
             typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
           ).join(' ')
 
-          // Add timestamp and prefix for console.log entries
+          // Add timestamp and prefix for console entries
           const timestamp = new Date().toISOString()
-          const logEntry = `[${timestamp}] [CONSOLE]: ${message}\n`
+          const logEntry = `[${timestamp}] [CONSOLE ${prefix}]: ${message}\n`
 
           try {
             logStream.write(logEntry)
@@ -183,7 +227,58 @@ export const server = function (serv: Server, settings: Options) {
 
         rl.prompt(true)
       }
-    })()
+    }
+
+    // Patch console.log
+    console.log = createConsoleWrapper(console.log, 'LOG')
+
+    // Patch console.error
+    console.error = createConsoleWrapper(console.error, 'ERROR')
+
+    // Patch console.warn
+    console.warn = createConsoleWrapper(console.warn, 'WARN')
+
+    // Patch console.time and console.timeEnd
+    const originalTime = console.time
+    const originalTimeEnd = console.timeEnd
+    const timeLabels = new Map()
+
+    console.time = function (label) {
+      const startTime = Date.now()
+      timeLabels.set(label, startTime)
+      originalTime.call(console, label)
+
+      if (!settings.noConsoleLogRedirect && logStream?.writable) {
+        const timestamp = new Date().toISOString()
+        const logEntry = `[${timestamp}] [CONSOLE TIME]: Timer '${label}' started\n`
+        try {
+          logStream.write(logEntry)
+        } catch (err) {
+          // Silently fail if log writing fails to avoid infinite loops
+        }
+      }
+    }
+
+    console.timeEnd = function (label) {
+      const startTime = timeLabels.get(label)
+      if (startTime) {
+        const duration = Date.now() - startTime
+        timeLabels.delete(label)
+        originalTimeEnd.call(console, label)
+
+        if (!settings.noConsoleLogRedirect && logStream?.writable) {
+          const timestamp = new Date().toISOString()
+          const logEntry = `[${timestamp}] [CONSOLE TIME]: Timer '${label}' ended: ${duration}ms\n`
+          try {
+            logStream.write(logEntry)
+          } catch (err) {
+            // Silently fail if log writing fails to avoid infinite loops
+          }
+        }
+      } else {
+        originalTimeEnd.call(console, label)
+      }
+    }
   }
 
   // Return current log file path
@@ -250,5 +345,13 @@ declare global {
   interface Options {
     /** Whether to redirect console.log output to server log file. Defaults to true. */
     noConsoleLogRedirect?: boolean
+    logging?: boolean | string
+    /** Whether to clear the log file when server starts. Defaults to false. */
+    clearLogOnStart?: boolean
+    /**
+     * Maximum log file size in MB before rotation. When exceeded, keeps 70% of recent lines.
+     * @default 30
+     */
+    maxLogFileSize?: number
   }
 }
