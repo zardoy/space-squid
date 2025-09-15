@@ -11,11 +11,12 @@ const KNOCKBACK_MULTIPLIER = 8 // Horizontal knockback scaling
 export const player = function (player: Player, serv: Server) {
   let lastAttackTime = 0
 
-  function attackEntity (entityId) {
+  function attackEntity (entityId: string | number) {
     const attackedEntity = serv.entities[entityId]
-    const attackedPlayer = attackedEntity.type === 'player' ? attackedEntity as Player : undefined
     if (!attackedEntity) return
-    if (attackedPlayer && (attackedPlayer.gameMode === 1 || attackedPlayer.gameMode === 3 || attackedPlayer.invincible)) return
+    const attackedPlayer = attackedEntity.type === 'player' ? attackedEntity as Player : undefined
+    if (!attackedPlayer) return
+    if (attackedPlayer.gameMode === 1 || attackedPlayer.gameMode === 3 || attackedPlayer.invincible) return
 
     // Anti-cheat: Distance check
     const distance = player.position.distanceTo(attackedEntity.position)
