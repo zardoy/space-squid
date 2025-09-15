@@ -3,7 +3,14 @@ const SYNC_RESPONSE_CHANNEL = 'minecraft-web-client:sync-response'
 
 interface SyncResponse {
   requestId: number
-  entityIds: number[]
+  entities: Array<{
+    entityId: number
+    position: {
+      x: number
+      y: number
+      z: number
+    }
+  }>
 }
 
 // TODO add chunks sync
@@ -38,15 +45,22 @@ export const server = (serv: Server, options: Options) => {
         const isValidResponse = (obj: any): obj is SyncResponse => {
           return typeof obj === 'object' && obj !== null &&
             typeof obj.requestId === 'number' &&
-            Array.isArray(obj.entityIds) &&
-            obj.entityIds.every(id => typeof id === 'number')
+            Array.isArray(obj.entities) &&
+            obj.entities.every((entity: any) =>
+              typeof entity === 'object' && entity !== null &&
+              typeof entity.entityId === 'number' &&
+              typeof entity.position === 'object' && entity.position !== null &&
+              typeof entity.position.x === 'number' &&
+              typeof entity.position.y === 'number' &&
+              typeof entity.position.z === 'number'
+            )
         }
 
         if (!isValidResponse(parsed)) {
           throw new Error('Invalid response format')
         }
 
-        const { requestId, entityIds } = parsed
+        const { requestId, entities } = parsed
 
         // Verify this is a response to our last request
         const lastRequest = module.lastSyncRequests.get(player.uuid)
@@ -61,7 +75,7 @@ export const server = (serv: Server, options: Options) => {
         // Clean up the request
         module.lastSyncRequests.delete(player.uuid)
 
-        const trackedIds = new Set(entityIds)
+        const trackedIds = new Set(entities.map(e => e.entityId))
         const expectedIds = new Set<number>()
 
         // Find entities that should be visible to the player
@@ -77,6 +91,41 @@ export const server = (serv: Server, options: Options) => {
 
           if (distanceSquared <= viewDistance * viewDistance) {
             expectedIds.add(entity.id)
+          }
+        }
+
+        // Check position deltas and send teleport packets if needed
+        for (const clientEntity of entities) {
+          const entity = serv.entities[clientEntity.entityId]
+          if (!entity) continue
+
+          // Calculate position delta
+          const deltaX = Math.abs(entity.position.x - clientEntity.position.x)
+          const deltaY = Math.abs(entity.position.y - clientEntity.position.y)
+          const deltaZ = Math.abs(entity.position.z - clientEntity.position.z)
+          const maxDelta = Math.max(deltaX, deltaY, deltaZ)
+
+          // If delta is more than 3 blocks, send entity_teleport packet
+          if (maxDelta > 3) {
+            serv.warn(`Player ${player.username} entity ${clientEntity.entityId} position desync (delta: ${maxDelta.toFixed(2)}), sending teleport... (ping: ${latency}ms)`)
+
+            // Send entity_teleport packet to sync position
+            let entityPosition
+            if (serv.supportFeature('fixedPointPosition')) {
+              entityPosition = entity.position.scaled(32).floored()
+            } else if (serv.supportFeature('doublePosition')) {
+              entityPosition = entity.position
+            }
+
+            player.writePacket('entity_teleport', {
+              entityId: entity.id,
+              x: entityPosition.x,
+              y: entityPosition.y,
+              z: entityPosition.z,
+              yaw: entity.yaw,
+              pitch: entity.pitch,
+              onGround: entity.onGround
+            })
           }
         }
 
