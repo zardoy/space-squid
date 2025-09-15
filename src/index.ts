@@ -138,7 +138,7 @@ class MCServer extends EventEmitter {
     patchServer(server)
 
     const promises: Promise<any>[] = []
-    const coreModules = ['utils', 'communication', 'tick', 'settings', 'commands', 'tabComplete']
+    const coreModules = ['utils', 'communication', 'tick', 'settings', 'commands', 'tabComplete', 'log']
     server.modules = builtinModules.builtinPlugins
 
     // Sort modules so core modules are first in specified order
