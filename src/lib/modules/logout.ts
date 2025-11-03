@@ -27,7 +27,7 @@ export const player = function (player: Player, serv: Server, { worldFolder }: O
     if (!player.disconnected) {
       player._unloadAllChunks?.()
       if (player.username) {
-        serv.broadcast(serv.chatColor.yellow + player.username + ' left the game.')
+        serv.broadcast(serv.color.yellow + player.username + ' left the game.')
         player.bridge.player_info({
           action: {
             remove_player: true,
