@@ -337,7 +337,7 @@ export const server: ServerModule = async function (serv, options) {
         await serv.saveAllPlayerDataToDisk?.()
         // Broadcast a single "Server saved" message (no spam more than once per interval)
         const now = Date.now()
-        if (now - lastBroadcastTs > autosaveMs - 10_000 && serv.broadcastSaved !== false) {
+        if (now - lastBroadcastTs > autosaveMs - 10_000 && options.broadcastSaves) {
           serv.broadcast('§7[autosave] Server saved')
           lastBroadcastTs = now
         }
@@ -633,6 +633,14 @@ export const usedServerPathsV1 = [
 ]
 
 declare global {
+  interface Options {
+    /**
+     * @default false
+     * Whether to broadcast a message when the server saves.
+     */
+    broadcastSaves?: boolean
+  }
+
   interface Server {
     /** @internal */
     looseProtocolMode: any
@@ -668,7 +676,6 @@ declare global {
     /** Alias to serv.overworld.seed */
     seed: number,
     writeLevelDat: () => Promise<void>
-    broadcastSaved?: boolean
 
     /* For plugins accessing the original generator, returns chunk */
     "overworldOriginalGenerator": (chunkX: number, chunkZ: number) => any
