@@ -90,7 +90,7 @@ export const server: ServerModule = async function (serv, options) {
       }
       seed = serv.levelData?.RandomSeed?.[0] ?? newSeed
       if (serv.levelData?.Version?.Name !== worldSaveVersion) {
-        console.warn(`World save version mismatch: you select: ${serv.levelData?.Version?.Name} actual stored: ${worldSaveVersion}`)
+        console.warn(`World save version mismatch: you select: ${worldSaveVersion} actual stored: ${serv.levelData?.Version?.Name}`)
       }
       if (!serv.time && serv.levelData?.DayTime) serv.time = longArrayToNumber(serv.levelData?.DayTime)
       const parseBool = (x, defValue) => x ? x === 'false' : defValue
