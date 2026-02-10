@@ -41,6 +41,23 @@ export const server = function (serv: Server, options: Options) {
     }
   }
 
+  serv.setTitleTimes = (player: Player, fadeIn = 10, stay = 70, fadeOut = 20) => {
+    if (supportsNewTitle) {
+      player._client.write('set_title_time', {
+        fadeIn,
+        stay,
+        fadeOut
+      })
+    } else {
+      player._client.write('title', {
+        action: 2, // Set times
+        fadeIn,
+        stay,
+        fadeOut
+      })
+    }
+  }
+
   serv.sendActionBar = (player: Player, message: string) => {
     if (supportsNewTitle) {
       // 1.17+ has dedicated action bar packet
@@ -72,6 +89,7 @@ export const server = function (serv: Server, options: Options) {
 declare global {
   interface Server {
     sendTitle: (player: Player, title: string, subtitle?: string, fadeIn?: number, stay?: number, fadeOut?: number) => void
+    setTitleTimes: (player: Player, fadeIn?: number, stay?: number, fadeOut?: number) => void
     sendActionBar: (player: Player, message: string) => void
     clearTitle: (player: Player) => void
   }
