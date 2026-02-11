@@ -225,21 +225,55 @@ export const server = function (serv: Server, { version }: Options) {
     }
   })
 
-  // serv.commands.add({
-  //   base: 'title',
-  //   info: 'Shows a title to a player.',
-  //   usage: '/title <player> <title> [subtitle]',
-  //   tab: ['player', 'text', 'text'],
-  //   parse(str, ctx) {
-  //     // todo change validation
-  //     return str.match(/^([\w\d]+) (.+)$/) || false
-  //   },
-  //   action([target, title, subtitle], ctx) {
-  //     const players = serv.getPlayers(target, ctx.player)
-  //     if (players.length < 1) throw new UserError('Player not found')
-  //     players.forEach(player => player.showTitle(title, subtitle))
-  //   }
-  // })
+  serv.commands.add({
+    base: 'title',
+    info: 'Show a title, subtitle, or action bar.',
+    usage: '/title <targets> (title|subtitle|actionbar|times|clear|reset) <message>',
+    tab: ['selector', 'text'],
+    op: true,
+    parse (str) {
+      const match = str.match(/^(\S+)\s+(\S+)(?:\s+(.+))?$/)
+      if (!match) return false
+      return { target: match[1], mode: match[2], rest: match[3] ?? '' }
+    },
+    action ({ target, mode, rest }, ctx) {
+      if (!ctx.player) return
+      const players = serv.getPlayers(target, ctx.player)
+      if (players.length < 1) throw new UserError('Player not found')
+
+      const action = mode.toLowerCase()
+      if (action === 'clear' || action === 'reset') {
+        players.forEach(player => serv.clearTitle(player))
+        return 'Title cleared'
+      }
+
+      if (action === 'times') {
+        const [fadeInRaw, stayRaw, fadeOutRaw] = rest.split(/\s+/)
+        const fadeIn = parseInt(fadeInRaw, 10)
+        const stay = parseInt(stayRaw, 10)
+        const fadeOut = parseInt(fadeOutRaw, 10)
+        if ([fadeIn, stay, fadeOut].some(Number.isNaN)) throw new UserError('Times must be numbers')
+        players.forEach(player => serv.setTitleTimes(player, fadeIn, stay, fadeOut))
+        return 'Title times updated'
+      }
+
+      if (!rest) throw new UserError('Title text is required')
+      if (action === 'title') {
+        players.forEach(player => serv.sendTitle(player, rest))
+        return 'Title sent'
+      }
+      if (action === 'subtitle') {
+        players.forEach(player => serv.sendTitle(player, '', rest))
+        return 'Subtitle sent'
+      }
+      if (action === 'actionbar' || action === 'actionBar') {
+        players.forEach(player => serv.sendActionBar(player, rest))
+        return 'Action bar sent'
+      }
+
+      throw new UserError('Unknown title mode')
+    }
+  })
 }
 declare global {
   interface Server {
