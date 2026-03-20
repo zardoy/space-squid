@@ -13,6 +13,8 @@ export const server = function (serv: Server, options: Options) {
   const mcData = serv.mcData
   const mobsById = mcData.mobs
   const objectsById = mcData.objects
+  const entitiesById = mcData.entities
+  const livingEntityTypes = new Set(['mob', 'hostile', 'animal', 'ambient', 'passive', 'water_creature', 'living'])
 
   serv.initEntity = (type, entityType, world, position) => {
     if (Object.keys(serv.entities).length > options['max-entities']) { throw new Error('Too many mobs !') }
@@ -60,7 +62,7 @@ export const server = function (serv: Server, options: Options) {
     const object = serv.initEntity('object', type, world, position)
     object.uuid = UUID.v4()
     // TODO: don't use objectsById, it doesn't exist
-    object.name = objectsById[type] === undefined ? 'unknown' : objectsById[type].name
+    object.name = (objectsById[type] || entitiesById[type] || {}).name || 'unknown'
     object.data = data
     object.velocity = velocity
     object.pitch = pitch
@@ -109,7 +111,7 @@ export const server = function (serv: Server, options: Options) {
   serv.spawnMob = (type, world, position, { pitch = 0, yaw = 0, headPitch = 0, velocity = new Vec3(0, 0, 0), metadata = [] } = {}) => {
     const mob = serv.initEntity('mob', type, world, position)
     mob.uuid = UUID.v4()
-    mob.name = mobsById[type].name
+    mob.name = (mobsById[type] || entitiesById[type] || {}).name || 'unknown'
     mob.velocity = velocity
     mob.pitch = pitch
     mob.headPitch = headPitch
@@ -147,11 +149,11 @@ export const server = function (serv: Server, options: Options) {
       if (!entity) {
         return 'No entity named ' + name
       }
-      if (entity.type === 'mob') {
+      if (livingEntityTypes.has(entity.type)) {
         serv.spawnMob(entity.id, ctx.player.world, ctx.player.position, {
           velocity: new Vec3((Math.random() - 0.5) * 10, Math.random() * 10 + 10, (Math.random() - 0.5) * 10)
         })
-      } else if (entity.type === 'object') {
+      } else {
         serv.spawnObject(entity.id, ctx.player.world, ctx.player.position, {
           velocity: new Vec3((Math.random() - 0.5) * 10, Math.random() * 10 + 10, (Math.random() - 0.5) * 10)
         })
@@ -179,11 +181,11 @@ export const server = function (serv: Server, options: Options) {
       }
       const s = Math.floor(Math.sqrt(number))
       for (let i = 0; i < number; i++) {
-        if (entity.type === 'mob') {
+        if (livingEntityTypes.has(entity.type)) {
           serv.spawnMob(entity.id, ctx.player.world, ctx.player.position.offset(Math.floor(i / s * 10), 0, i % s * 10), {
             velocity: new Vec3((Math.random() - 0.5) * 10, Math.random() * 10 + 10, (Math.random() - 0.5) * 10)
           })
-        } else if (entity.type === 'object') {
+        } else {
           serv.spawnObject(entity.id, ctx.player.world, ctx.player.position.offset(Math.floor(i / s * 10), 0, i % s * 10), {
             velocity: new Vec3((Math.random() - 0.5) * 10, Math.random() * 10 + 10, (Math.random() - 0.5) * 10)
           })
@@ -208,16 +210,14 @@ export const server = function (serv: Server, options: Options) {
     action (entityTypes, ctx) {
       if (Object.keys(serv.entities).length > options['max-entities'] - entityTypes.length) { throw new UserError('Too many mobs !') }
       entityTypes.map(entity => {
-        if (entity.type === 'mob') {
+        if (livingEntityTypes.has(entity.type)) {
           return serv.spawnMob(entity.id, ctx.player.world, ctx.player.position, {
             velocity: new Vec3((Math.random() - 0.5) * 10, Math.random() * 10 + 10, (Math.random() - 0.5) * 10)
           })
-        } else if (entity.type === 'object') {
+        } else {
           return serv.spawnObject(entity.id, ctx.player.world, ctx.player.position, {
             velocity: new Vec3((Math.random() - 0.5) * 10, Math.random() * 10 + 10, (Math.random() - 0.5) * 10)
           })
-        } else {
-          return Promise.resolve()
         }
       })
         .reduce((prec, entity) => {
