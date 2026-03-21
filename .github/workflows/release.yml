@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      # remove package.json prepare script: parse json remvoe key
+      - run: |
+          packageJson=$(cat package.json)
+          echo "$packageJson" | jq 'del(.scripts.prepare)' > package.json
       - uses: pnpm/action-setup@v4.1.0
         with:
           run_install: |
