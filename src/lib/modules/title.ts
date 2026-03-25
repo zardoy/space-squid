@@ -22,19 +22,21 @@ export const server = function (serv: Server, options: Options) {
         fadeOut
       })
     } else {
-      // Pre-1.17 uses single title packet
+      player._client.write('title', {
+        action: 3,
+        fadeIn,
+        stay,
+        fadeOut
+      })
       if (title) {
         player._client.write('title', {
-          action: 0, // Set title
-          text: JSON.stringify({ text: title }),
-          fadeIn,
-          stay,
-          fadeOut
+          action: 0,
+          text: JSON.stringify({ text: title })
         })
       }
       if (subtitle) {
         player._client.write('title', {
-          action: 1, // Set subtitle
+          action: 1,
           text: JSON.stringify({ text: subtitle })
         })
       }
@@ -50,7 +52,7 @@ export const server = function (serv: Server, options: Options) {
       })
     } else {
       player._client.write('title', {
-        action: 2, // Set times
+        action: 3,
         fadeIn,
         stay,
         fadeOut
@@ -76,11 +78,23 @@ export const server = function (serv: Server, options: Options) {
   serv.clearTitle = (player: Player) => {
     if (supportsNewTitle) {
       player._client.write('clear_titles', {
+        reset: false
+      })
+    } else {
+      player._client.write('title', {
+        action: 4
+      })
+    }
+  }
+
+  serv.resetTitle = (player: Player) => {
+    if (supportsNewTitle) {
+      player._client.write('clear_titles', {
         reset: true
       })
     } else {
       player._client.write('title', {
-        action: 4 // Clear
+        action: 5
       })
     }
   }
@@ -92,5 +106,6 @@ declare global {
     setTitleTimes: (player: Player, fadeIn?: number, stay?: number, fadeOut?: number) => void
     sendActionBar: (player: Player, message: string) => void
     clearTitle: (player: Player) => void
+    resetTitle: (player: Player) => void
   }
 }

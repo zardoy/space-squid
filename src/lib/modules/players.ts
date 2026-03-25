@@ -242,9 +242,14 @@ export const server = function (serv: Server, { version }: Options) {
       if (players.length < 1) throw new UserError('Player not found')
 
       const action = mode.toLowerCase()
-      if (action === 'clear' || action === 'reset') {
+      if (action === 'clear') {
         players.forEach(player => serv.clearTitle(player))
         return 'Title cleared'
+      }
+
+      if (action === 'reset') {
+        players.forEach(player => serv.resetTitle(player))
+        return 'Title reset'
       }
 
       if (action === 'times') {
@@ -266,7 +271,7 @@ export const server = function (serv: Server, { version }: Options) {
         players.forEach(player => serv.sendTitle(player, '', rest))
         return 'Subtitle sent'
       }
-      if (action === 'actionbar' || action === 'actionBar') {
+      if (action === 'actionbar') {
         players.forEach(player => serv.sendActionBar(player, rest))
         return 'Action bar sent'
       }
