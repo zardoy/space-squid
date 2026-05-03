@@ -12,6 +12,7 @@ import ChunkLoader, { PCChunk } from 'prismarine-chunk'
 import RegistryLoader from 'prismarine-registry'
 import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
+import { makeTemplateGenerator } from '../worldGenerations/template'
 import { Vec3 } from 'vec3'
 import { generateSpiralMatrix } from '../../utils'
 import { longArrayToNumber, writeLevelDat } from '../../levelDat'
@@ -108,7 +109,8 @@ export const server: ServerModule = async function (serv, options) {
     ...generation.options,
     seed,
     version,
-    getRenamedData
+    getRenamedData,
+    baseY: options.baseY
   }
   serv.emit('seed', generationOptions.seed)
 
@@ -118,7 +120,12 @@ export const server: ServerModule = async function (serv, options) {
   }
 
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
-  const originalGenerator = generationModule(generationOptions)
+  const genOpts = generation.options as any
+  const originalGenerator = typeof options.chunkTemplate === 'string'
+    ? makeTemplateGenerator(options.chunkTemplate, generationOptions, options.blockMap)
+    : typeof genOpts.chunkTemplate === 'string'
+      ? makeTemplateGenerator(genOpts.chunkTemplate, generationOptions, genOpts.blockMap)
+      : generationModule(generationOptions)
   serv.overworldOriginalGenerator = originalGenerator
   serv.overworld = new World((chunkX, chunkZ) => {
     return serv.overworldGeneratorOverride ? serv.overworldGeneratorOverride(chunkX, chunkZ, generationOptions) : originalGenerator(chunkX, chunkZ, generationOptions)
