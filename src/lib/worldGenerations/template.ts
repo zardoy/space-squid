@@ -143,19 +143,37 @@ export function parseTemplate(templateStr: string): LayerData[] {
 // Chunk generator factory
 // ---------------------------------------------------------------------------
 
+/** X/Z offset inward from the (0, 0) corner used as the template spawn. */
+const SPAWN_OFFSET = 10
+
+/**
+ * Returns the deterministic spawn point for a chunk-template world.
+ * The player is placed one block above the Y0 floor (`baseY + 1`) at a
+ * fixed 10-block inset from the template's (0, 0) corner.
+ */
+export function getTemplateSpawnPoint(options: any): Vec3 {
+  const baseY: number = options.baseY ?? 64
+  return new Vec3(SPAWN_OFFSET, baseY + 1, SPAWN_OFFSET)
+}
+
 /**
  * Returns a `(chunkX, chunkZ) => Chunk` generator that paints the decoded
- * template structure into the world starting at (0, Y, 0).
+ * template structure into the world starting at (0, baseY, 0).
  *
- * Chunks that do not overlap the structure are still returned but contain
- * only air + full sky-light (compatible with every generator contract).
+ * A stone block is guaranteed directly below the spawn position so the
+ * player always has something solid to land on regardless of what the
+ * template has at that cell.
+ *
+ * Chunks that do not overlap the structure are returned as empty (air +
+ * full sky-light), compatible with every generator contract.
  *
  * @param templateStr  Encoded template string (see parseTemplate).
  * @param options      generationOptions forwarded from world.ts
- *                     (must include `version`, and may include `minY` /
- *                     `worldHeight`).
- * @param userBlockMap Optional extra / override mappings on top of
- *                     DEFAULT_BLOCK_MAP.  char → Minecraft block name.
+ *                     (must include `version`; may include `minY`,
+ *                     `worldHeight`, `baseY`).
+ * @param userBlockMap Optional extra / override char→name mappings on top
+ *                     of DEFAULT_BLOCK_MAP.  Accepts a string
+ *                     (`"C=cobblestone, G=glass"`) or a plain object.
  */
 export function makeTemplateGenerator(
   templateStr: string,
@@ -207,6 +225,13 @@ export function makeTemplateGenerator(
       }
     }
   }
+
+  // Guarantee a solid block directly below the spawn position so the player
+  // always has something to land on (stone at Y0 = baseY, spawn is at baseY+1).
+  const spawnPlatformId: number = theFlattening
+    ? mcData.blocksByName.stone.minStateId
+    : mcData.blocksByName.stone.id
+  blockGrid.set(`${SPAWN_OFFSET},${baseY},${SPAWN_OFFSET}`, spawnPlatformId)
 
   return (chunkX: number, chunkZ: number) => {
     const chunk = new Chunk({ minY, worldHeight })

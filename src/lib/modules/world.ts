@@ -12,7 +12,7 @@ import ChunkLoader, { PCChunk } from 'prismarine-chunk'
 import RegistryLoader from 'prismarine-registry'
 import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
-import { makeTemplateGenerator } from '../worldGenerations/template'
+import { makeTemplateGenerator, getTemplateSpawnPoint } from '../worldGenerations/template'
 import { Vec3 } from 'vec3'
 import { generateSpiralMatrix } from '../../utils'
 import { longArrayToNumber, writeLevelDat } from '../../levelDat'
@@ -121,11 +121,17 @@ export const server: ServerModule = async function (serv, options) {
 
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
   const genOpts = generation.options as any
-  const originalGenerator = typeof options.chunkTemplate === 'string'
-    ? makeTemplateGenerator(options.chunkTemplate, generationOptions, options.blockMap)
-    : typeof genOpts.chunkTemplate === 'string'
-      ? makeTemplateGenerator(genOpts.chunkTemplate, generationOptions, genOpts.blockMap)
-      : generationModule(generationOptions)
+  const templateStr: string | undefined =
+    typeof options.chunkTemplate === 'string' ? options.chunkTemplate
+      : typeof genOpts.chunkTemplate === 'string' ? genOpts.chunkTemplate
+        : undefined
+  const templateBlockMap = options.blockMap ?? genOpts.blockMap
+  const originalGenerator = templateStr !== undefined
+    ? makeTemplateGenerator(templateStr, generationOptions, templateBlockMap)
+    : generationModule(generationOptions)
+  if (templateStr !== undefined) {
+    serv.spawnPoint = getTemplateSpawnPoint(generationOptions)
+  }
   serv.overworldOriginalGenerator = originalGenerator
   serv.overworld = new World((chunkX, chunkZ) => {
     return serv.overworldGeneratorOverride ? serv.overworldGeneratorOverride(chunkX, chunkZ, generationOptions) : originalGenerator(chunkX, chunkZ, generationOptions)
