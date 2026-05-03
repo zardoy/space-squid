@@ -92,10 +92,17 @@ declare global {
      * If provided, this encoded string completely replaces the normal chunk
      * generator for the overworld.  Every chunk is filled from the decoded
      * structure; chunks outside the structure bounds are empty (air + sky
-     * light).
+     * light).  Player spawn is forced to a fixed point on top of the
+     * template (see `getTemplateSpawnPoint`).
      *
-     * Strict format:
-     *   Y<n>: row0 | row1 | … | rowN-1  Y<n>: …
+     * **Built-in examples** — pass `"[name]"` to load one of the bundled
+     * templates.
+     *  - Builds: `[castle]`, `[pyramid]`, `[rocket]`, `[lighthouse]`,
+     *    `[skyscraper]`, `[pirate_ship]`
+     *  - Map starters: `[skyblock]`, `[void_platform]`, `[one_block]`
+     *
+     * **Custom format** — strict layer encoding:
+     *   `Y<n>: row0 | row1 | … | rowN-1  Y<n>: …`
      *
      * - `<n>` is a 0-based floor index (Y0 = ground, Y1 = one block up, …).
      * - Rows are separated by `|`; each row is one Z-slice of the floor.
@@ -104,8 +111,8 @@ declare global {
      * - Single characters map to block names via `blockMap` (see below).
      * - Width and depth are inferred from the decoded row lengths.
      *
-     * @example
-     * "Y0: 16C | 16C  Y1: C14AC | C14AC"
+     * @example "[skyblock]"
+     * @example "Y0: 16C | 16C  Y1: C14AC | C14AC"
      */
     chunkTemplate?: string
     /**

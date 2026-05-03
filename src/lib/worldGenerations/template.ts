@@ -1,4 +1,5 @@
 import { Vec3 } from 'vec3'
+import { resolveTemplate } from './templateExamples'
 
 /**
  * Default single-character → Minecraft block-name mapping used by the
@@ -32,6 +33,13 @@ export const DEFAULT_BLOCK_MAP: Record<string, string> = {
   Q: 'quartz_block',
   U: 'sea_lantern',
   V: 'stone_slab',
+  // Lowercase additions — natural / map-starter blocks
+  g: 'grass_block',
+  l: 'oak_leaves',
+  c: 'chest',
+  w: 'water',
+  v: 'lava',
+  s: 'sand',
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +193,9 @@ export function makeTemplateGenerator(
   const mcData = require('minecraft-data')(options.version)
   /* eslint-enable @typescript-eslint/no-require-imports */
 
+  // Resolve `[example_name]` shorthand to the full template string.
+  templateStr = resolveTemplate(templateStr)
+
   const minY: number = options.minY ?? 0
   const worldHeight: number = options.worldHeight ?? 256
   const baseY: number = options.baseY ?? 64
@@ -227,11 +238,15 @@ export function makeTemplateGenerator(
   }
 
   // Guarantee a solid block directly below the spawn position so the player
-  // always has something to land on (stone at Y0 = baseY, spawn is at baseY+1).
-  const spawnPlatformId: number = theFlattening
-    ? mcData.blocksByName.stone.minStateId
-    : mcData.blocksByName.stone.id
-  blockGrid.set(`${SPAWN_OFFSET},${baseY},${SPAWN_OFFSET}`, spawnPlatformId)
+  // always has something to land on, but defer to whatever the template
+  // intended at that exact cell (e.g. skyblock places grass there).
+  const spawnPlatformKey = `${SPAWN_OFFSET},${baseY},${SPAWN_OFFSET}`
+  if (!blockGrid.has(spawnPlatformKey)) {
+    const spawnPlatformId: number = theFlattening
+      ? mcData.blocksByName.stone.minStateId
+      : mcData.blocksByName.stone.id
+    blockGrid.set(spawnPlatformKey, spawnPlatformId)
+  }
 
   return (chunkX: number, chunkZ: number) => {
     const chunk = new Chunk({ minY, worldHeight })
