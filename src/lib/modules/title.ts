@@ -2,18 +2,19 @@ import { versionToNumber } from '../../utils'
 
 export const server = function (serv: Server, options: Options) {
   const supportsNewTitle = versionToNumber(options.version) >= versionToNumber('1.17')
+  const titleText = (text: any) => serv._createNetworkEncodedChatComponent?.(text) ?? JSON.stringify(typeof text === 'string' ? { text } : text)
 
-  serv.sendTitle = (player: Player, title: string, subtitle?: string, fadeIn = 10, stay = 70, fadeOut = 20) => {
+  serv.sendTitle = (player: Player, title: any, subtitle?: any, fadeIn = 10, stay = 70, fadeOut = 20) => {
     if (supportsNewTitle) {
       // 1.17+ uses separate packets
       if (title) {
         player._client.write('set_title_text', {
-          text: JSON.stringify({ text: title })
+          text: titleText(title)
         })
       }
       if (subtitle) {
         player._client.write('set_title_subtitle', {
-          text: JSON.stringify({ text: subtitle })
+          text: titleText(subtitle)
         })
       }
       player._client.write('set_title_time', {
@@ -31,13 +32,13 @@ export const server = function (serv: Server, options: Options) {
       if (title) {
         player._client.write('title', {
           action: 0,
-          text: JSON.stringify({ text: title })
+          text: titleText(title)
         })
       }
       if (subtitle) {
         player._client.write('title', {
           action: 1,
-          text: JSON.stringify({ text: subtitle })
+          text: titleText(subtitle)
         })
       }
     }
@@ -60,17 +61,17 @@ export const server = function (serv: Server, options: Options) {
     }
   }
 
-  serv.sendActionBar = (player: Player, message: string) => {
+  serv.sendActionBar = (player: Player, message: any) => {
     if (supportsNewTitle) {
       // 1.17+ has dedicated action bar packet
       player._client.write('action_bar', {
-        text: JSON.stringify({ text: message })
+        text: titleText(message)
       })
     } else {
       // Pre-1.17 uses title packet with action 2
       player._client.write('title', {
         action: 2, // Action bar
-        text: JSON.stringify({ text: message })
+        text: titleText(message)
       })
     }
   }
@@ -102,9 +103,9 @@ export const server = function (serv: Server, options: Options) {
 
 declare global {
   interface Server {
-    sendTitle: (player: Player, title: string, subtitle?: string, fadeIn?: number, stay?: number, fadeOut?: number) => void
+    sendTitle: (player: Player, title: any, subtitle?: any, fadeIn?: number, stay?: number, fadeOut?: number) => void
     setTitleTimes: (player: Player, fadeIn?: number, stay?: number, fadeOut?: number) => void
-    sendActionBar: (player: Player, message: string) => void
+    sendActionBar: (player: Player, message: any) => void
     clearTitle: (player: Player) => void
     resetTitle: (player: Player) => void
   }
