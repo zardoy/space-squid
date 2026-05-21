@@ -266,11 +266,13 @@ export const server = function (serv: Server, { version }: Options) {
 
       const action = mode.toLowerCase()
       if (action === 'clear') {
+        if (rest.trim()) throw new UserError('Clear does not accept extra arguments')
         players.forEach(player => serv.clearTitle(player))
         return 'Title cleared'
       }
 
       if (action === 'reset') {
+        if (rest.trim()) throw new UserError('Reset does not accept extra arguments')
         players.forEach(player => serv.resetTitle(player))
         return 'Title reset'
       }
@@ -287,11 +289,11 @@ export const server = function (serv: Server, { version }: Options) {
 
       const message = parseTitleMessage(rest)
       if (action === 'title') {
-        players.forEach(player => serv.sendTitle(player, message))
+        players.forEach(player => serv.sendTitleText(player, message))
         return 'Title sent'
       }
       if (action === 'subtitle') {
-        players.forEach(player => serv.sendTitle(player, '', message))
+        players.forEach(player => serv.sendSubtitle(player, message))
         return 'Subtitle sent'
       }
       if (action === 'actionbar') {

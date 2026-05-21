@@ -8,14 +8,10 @@ export const server = function (serv: Server, options: Options) {
     if (supportsNewTitle) {
       // 1.17+ uses separate packets
       if (title) {
-        player._client.write('set_title_text', {
-          text: titleText(title)
-        })
+        serv.sendTitleText(player, title)
       }
       if (subtitle) {
-        player._client.write('set_title_subtitle', {
-          text: titleText(subtitle)
-        })
+        serv.sendSubtitle(player, subtitle)
       }
       player._client.write('set_title_time', {
         fadeIn,
@@ -30,17 +26,37 @@ export const server = function (serv: Server, options: Options) {
         fadeOut
       })
       if (title) {
-        player._client.write('title', {
-          action: 0,
-          text: titleText(title)
-        })
+        serv.sendTitleText(player, title)
       }
       if (subtitle) {
-        player._client.write('title', {
-          action: 1,
-          text: titleText(subtitle)
-        })
+        serv.sendSubtitle(player, subtitle)
       }
+    }
+  }
+
+  serv.sendTitleText = (player: Player, title: any) => {
+    if (supportsNewTitle) {
+      player._client.write('set_title_text', {
+        text: titleText(title)
+      })
+    } else {
+      player._client.write('title', {
+        action: 0,
+        text: titleText(title)
+      })
+    }
+  }
+
+  serv.sendSubtitle = (player: Player, subtitle: any) => {
+    if (supportsNewTitle) {
+      player._client.write('set_title_subtitle', {
+        text: titleText(subtitle)
+      })
+    } else {
+      player._client.write('title', {
+        action: 1,
+        text: titleText(subtitle)
+      })
     }
   }
 
@@ -104,6 +120,8 @@ export const server = function (serv: Server, options: Options) {
 declare global {
   interface Server {
     sendTitle: (player: Player, title: any, subtitle?: any, fadeIn?: number, stay?: number, fadeOut?: number) => void
+    sendTitleText: (player: Player, title: any) => void
+    sendSubtitle: (player: Player, subtitle: any) => void
     setTitleTimes: (player: Player, fadeIn?: number, stay?: number, fadeOut?: number) => void
     sendActionBar: (player: Player, message: any) => void
     clearTitle: (player: Player) => void
