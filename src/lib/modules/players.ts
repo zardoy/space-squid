@@ -2,6 +2,30 @@ import UserError from '../user_error'
 import { skipMcPrefix } from '../utils'
 import PrismarineItem from 'prismarine-item'
 
+export const parseTitleMessage = (message: string) => {
+  const trimmed = message.trim()
+  if (!trimmed) throw new UserError('Title text is required')
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return message
+
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    throw new UserError('Title text must be valid JSON')
+  }
+}
+
+export const parseTitleTimes = (value: string) => {
+  const parts = value.trim().split(/\s+/)
+  if (parts.length !== 3) throw new UserError('Expected fadeIn, stay, and fadeOut')
+  if (parts.some(part => !/^\d+$/.test(part))) throw new UserError('Times must be numbers')
+  const times = parts.map(part => parseInt(part, 10))
+  return {
+    fadeIn: times[0],
+    stay: times[1],
+    fadeOut: times[2]
+  }
+}
+
 export const server = function (serv: Server, { version }: Options) {
   const mcData = serv.mcData
   const Item = PrismarineItem(version)
@@ -228,7 +252,7 @@ export const server = function (serv: Server, { version }: Options) {
   serv.commands.add({
     base: 'title',
     info: 'Show a title, subtitle, or action bar.',
-    usage: '/title <targets> (title|subtitle|actionbar|times|clear|reset) <message>',
+    usage: '/title <targets> (title|subtitle|actionbar|times|clear|reset) <message|times>',
     tab: ['selector', 'text'],
     op: true,
     parse (str) {
@@ -237,7 +261,6 @@ export const server = function (serv: Server, { version }: Options) {
       return { target: match[1], mode: match[2], rest: match[3] ?? '' }
     },
     action ({ target, mode, rest }, ctx) {
-      if (!ctx.player) return
       const players = serv.getPlayers(target, ctx.player)
       if (players.length < 1) throw new UserError('Player not found')
 
@@ -253,30 +276,28 @@ export const server = function (serv: Server, { version }: Options) {
       }
 
       if (action === 'times') {
-        const [fadeInRaw, stayRaw, fadeOutRaw] = rest.split(/\s+/)
-        const fadeIn = parseInt(fadeInRaw, 10)
-        const stay = parseInt(stayRaw, 10)
-        const fadeOut = parseInt(fadeOutRaw, 10)
-        if ([fadeIn, stay, fadeOut].some(Number.isNaN)) throw new UserError('Times must be numbers')
+        const { fadeIn, stay, fadeOut } = parseTitleTimes(rest)
         players.forEach(player => serv.setTitleTimes(player, fadeIn, stay, fadeOut))
         return 'Title times updated'
       }
 
-      if (!rest) throw new UserError('Title text is required')
+      if (!['title', 'subtitle', 'actionbar'].includes(action)) {
+        throw new UserError('Unknown title mode')
+      }
+
+      const message = parseTitleMessage(rest)
       if (action === 'title') {
-        players.forEach(player => serv.sendTitle(player, rest))
+        players.forEach(player => serv.sendTitle(player, message))
         return 'Title sent'
       }
       if (action === 'subtitle') {
-        players.forEach(player => serv.sendTitle(player, '', rest))
+        players.forEach(player => serv.sendTitle(player, '', message))
         return 'Subtitle sent'
       }
       if (action === 'actionbar') {
-        players.forEach(player => serv.sendActionBar(player, rest))
+        players.forEach(player => serv.sendActionBar(player, message))
         return 'Action bar sent'
       }
-
-      throw new UserError('Unknown title mode')
     }
   })
 }
