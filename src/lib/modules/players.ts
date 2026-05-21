@@ -23,7 +23,7 @@ export const server = function (serv: Server, { version }: Options) {
     aliases: ['/gm'],
     info: 'to change game mode',
     usage: '/gamemode <mode> [player]',
-    // op: true,
+    op: true,
     parse (str, ctx) {
       const paramsSplit = str.split(' ')
       if (paramsSplit[0] === '') {
@@ -47,8 +47,7 @@ export const server = function (serv: Server, { version }: Options) {
         adventure: 2,
         spectator: 3
       }
-      // const target = str[2]?.trim()
-      const target = '@s'
+      const target = str[2]?.trim()
       const gamemodesReverse = Object.assign({}, ...Object.entries(gamemodes).map(([k, v]) => ({ [v]: k })))
       const gamemode = gamemodes[str[1]] || parseInt(str[1], 10)
       const mode = !isNaN(parseInt(str[1], 10)) ? gamemodesReverse[parseInt(str[1], 10)] : str[1]
@@ -226,21 +225,73 @@ export const server = function (serv: Server, { version }: Options) {
     }
   })
 
-  // serv.commands.add({
-  //   base: 'title',
-  //   info: 'Shows a title to a player.',
-  //   usage: '/title <player> <title> [subtitle]',
-  //   tab: ['player', 'text', 'text'],
-  //   parse(str, ctx) {
-  //     // todo change validation
-  //     return str.match(/^([\w\d]+) (.+)$/) || false
-  //   },
-  //   action([target, title, subtitle], ctx) {
-  //     const players = serv.getPlayers(target, ctx.player)
-  //     if (players.length < 1) throw new UserError('Player not found')
-  //     players.forEach(player => player.showTitle(title, subtitle))
-  //   }
-  // })
+  serv.commands.add({
+    base: 'title',
+    info: 'Show a title, subtitle, or action bar.',
+    usage: '/title <targets> (title|subtitle|actionbar|times|clear|reset) <message>',
+    tab: ['selector', 'text'],
+    op: true,
+    parse (str) {
+      const match = str.match(/^(\S+)\s+(\S+)(?:\s+(.+))?$/)
+      if (!match) return false
+      return { target: match[1], mode: match[2], rest: match[3] ?? '' }
+    },
+    action ({ target, mode, rest }, ctx) {
+      const players = serv.getPlayers(target, ctx.player)
+      if (players.length < 1) throw new UserError('Player not found')
+
+      const action = mode.toLowerCase()
+      if (action === 'clear') {
+        players.forEach(player => serv.clearTitle(player))
+        return 'Title cleared'
+      }
+
+      if (action === 'reset') {
+        players.forEach(player => serv.resetTitle(player))
+        return 'Title reset'
+      }
+
+      if (action === 'times') {
+        const [fadeInRaw, stayRaw, fadeOutRaw] = rest.split(/\s+/)
+        const fadeIn = parseInt(fadeInRaw, 10)
+        const stay = parseInt(stayRaw, 10)
+        const fadeOut = parseInt(fadeOutRaw, 10)
+        if ([fadeIn, stay, fadeOut].some(Number.isNaN)) throw new UserError('Times must be numbers')
+        players.forEach(player => serv.setTitleTimes(player, fadeIn, stay, fadeOut))
+        return 'Title times updated'
+      }
+
+      if (!rest) throw new UserError('Title text is required')
+
+      const parseMessage = (msg: string): string | Record<string, any> => {
+        const trimmed = msg.trim()
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try {
+            return JSON.parse(trimmed)
+          } catch {
+            return msg
+          }
+        }
+        return msg
+      }
+
+      const message = parseMessage(rest)
+      if (action === 'title') {
+        players.forEach(player => serv.sendTitle(player, message))
+        return 'Title sent'
+      }
+      if (action === 'subtitle') {
+        players.forEach(player => serv.sendTitle(player, '', message))
+        return 'Subtitle sent'
+      }
+      if (action === 'actionbar') {
+        players.forEach(player => serv.sendActionBar(player, message))
+        return 'Action bar sent'
+      }
+
+      throw new UserError('Unknown title mode')
+    }
+  })
 }
 declare global {
   interface Server {
