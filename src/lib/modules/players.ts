@@ -319,3 +319,55 @@ declare global {
     "getPlayers": (selector: any, ctxPlayer: any) => Player[]
   }
 }
+
+
+  serv.commands.add({
+    base: 'title',
+    info: 'Displays a title on the screen',
+    usage: '/title <player> <title|subtitle|actionbar|clear|reset|times> ...',
+    onlyPlayer: false,
+    parse(str) {
+      const match = str.match(/^([^ ]+) (title|subtitle|actionbar|clear|reset|times)(?: (.*))?$/)
+      if (!match) return false
+      return { player: match[1], action: match[2], text: match[3] }
+    },
+    action(action, ctx) {
+      if (!ctx.player) return
+
+      const targets = serv.getPlayers(action.player, ctx.player)
+      
+      targets.forEach(target => {
+        let position = 0
+        if (action.action === 'title') position = 0
+        else if (action.action === 'subtitle') position = 1
+        else if (action.action === 'actionbar') position = 2
+
+        if (['title', 'subtitle', 'actionbar'].includes(action.action)) {
+            // Note: space-squid uses raw node-minecraft-protocol packets for this logic
+            try {
+                const packet = {
+                    action: position,
+                    text: JSON.stringify({text: action.text || ""})
+                }
+                target._client.write('title', packet)
+            } catch(e) {}
+        } else if (action.action === 'clear') {
+            try { target._client.write('title', { action: 4 }) } catch(e) {}
+        } else if (action.action === 'reset') {
+            try { target._client.write('title', { action: 5 }) } catch(e) {}
+        } else if (action.action === 'times') {
+            const times = action.text.split(' ')
+            if(times.length >= 3) {
+                try {
+                    target._client.write('title', {
+                        action: 3,
+                        fadeIn: parseInt(times[0]),
+                        stay: parseInt(times[1]),
+                        fadeOut: parseInt(times[2])
+                    })
+                } catch(e) {}
+            }
+        }
+      })
+    }
+  })
