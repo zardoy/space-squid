@@ -50,6 +50,23 @@ test('sendActionBar writes JSON components using legacy title packets', () => {
   ])
 })
 
+test('sendActionBar uses chat packets on pre-1.11 clients', () => {
+  const { serv, player, writes } = createHarness('1.10.2')
+
+  serv.sendActionBar(player, { text: 'Ready', color: 'green' })
+
+  expect(writes).toEqual([
+    {
+      name: 'chat',
+      params: {
+        message: '{"text":"Ready","color":"green"}',
+        position: 2,
+        sender: '0'
+      }
+    }
+  ])
+})
+
 test('sendTitleText writes text without resetting title times', () => {
   const { serv, player, writes } = createHarness('1.20.4')
 
@@ -115,4 +132,50 @@ test('title command rejects extra arguments for clear and reset', () => {
 
   expect(() => commands.title.action(commands.title.parse('@a clear extra'), {})).toThrow('Clear does not accept extra arguments')
   expect(() => commands.title.action(commands.title.parse('@a reset extra'), {})).toThrow('Reset does not accept extra arguments')
+})
+
+test('legacy title packets use pre-1.11 action ids for times, clear, and reset', () => {
+  const { serv, player, writes } = createHarness('1.10.2')
+
+  serv.setTitleTimes(player, 1, 2, 3)
+  serv.clearTitle(player)
+  serv.resetTitle(player)
+
+  expect(writes).toEqual([
+    {
+      name: 'title',
+      params: { action: 2, fadeIn: 1, stay: 2, fadeOut: 3 }
+    },
+    {
+      name: 'title',
+      params: { action: 3 }
+    },
+    {
+      name: 'title',
+      params: { action: 4 }
+    }
+  ])
+})
+
+test('legacy title packets switch action ids at 1.11', () => {
+  const { serv, player, writes } = createHarness('1.11')
+
+  serv.setTitleTimes(player, 1, 2, 3)
+  serv.clearTitle(player)
+  serv.resetTitle(player)
+
+  expect(writes).toEqual([
+    {
+      name: 'title',
+      params: { action: 3, fadeIn: 1, stay: 2, fadeOut: 3 }
+    },
+    {
+      name: 'title',
+      params: { action: 4 }
+    },
+    {
+      name: 'title',
+      params: { action: 5 }
+    }
+  ])
 })
