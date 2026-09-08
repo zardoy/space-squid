@@ -36,6 +36,8 @@ export const entity = function (entity: Entity, serv: Server) {
   entity.addEffect = (effectId, opt = {}) => {
     const amp = typeof opt.amplifier === 'undefined' ? 0 : opt.amplifier
     if (!entity.effects[effectId] || opt.override || amp < entity.effects[effectId].amplifier) {
+      const previousEffect = entity.effects[effectId]
+      if (previousEffect?.timeout) clearTimeout(previousEffect.timeout)
       entity.effects[effectId] = {
         amplifier: opt.amplifier || 0,
         duration: opt.duration || 30 * 20,
