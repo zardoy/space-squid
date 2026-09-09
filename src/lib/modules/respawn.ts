@@ -11,8 +11,8 @@ export const player = function (player: Player, serv: Server) {
     }
 
     if (actionId === 0) {
-      player.position = player.spawnPoint
       player.behavior('requestRespawn', {}, () => {
+        player.position = player.spawnPoint
         player._client.write('respawn', {
           previousGameMode: player.prevGameMode,
           dimension: serv.supportFeature('dimensionIsAWorld') ? {
