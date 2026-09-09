@@ -51,30 +51,29 @@ export const server = (serv: Server, { version }: Options) => {
   }
 
   if (serv.supportFeature('theFlattening')) {
-    const parseValue = (value, state) => {
-      if (state.type === 'enum') {
-        return state.values.indexOf(value)
-      }
-      if (state.type === 'bool') {
-        return value ? 0 : 1
-      }
-      return parseInt(value, 10)
-    }
-
     serv.setBlockDataProperties = (baseData, states, properties) => {
-      let data = 0
-      let offset = 1
+      let encodedData = 0
+      let stride = 1
       for (let i = states.length - 1; i >= 0; i--) {
-        const prop = states[i]
-        let value = baseData % prop.num_values
-        baseData = Math.floor(baseData / prop.num_values)
-        if (properties[prop.name]) {
-          value = parseValue(properties[prop.name], prop)
+        const state = states[i]
+        const replacement = properties[state.name]
+        let stateIndex = Math.floor(baseData / stride) % state.num_values
+        if (replacement !== undefined) {
+          switch (state.type) {
+            case 'enum':
+              stateIndex = state.values.indexOf(replacement)
+              break
+            case 'bool':
+              stateIndex = replacement ? 0 : 1
+              break
+            default:
+              stateIndex = parseInt(replacement, 10)
+          }
         }
-        data += offset * value
-        offset *= prop.num_values
+        encodedData += stride * stateIndex
+        stride *= state.num_values
       }
-      return data
+      return encodedData
     }
 
     // Register default handlers for item -> block conversion
