@@ -14,6 +14,15 @@ export const server = (serv: Server) => {
     action (args, ctx) {
       // todo use position of command block
       const selectorString = ctx.player ? ctx.player.selectorString : serv.selectorString
+      
+      // Handle single argument case: /tp <target> - teleport player to target
+      if (args.length === 1 && ctx.player) {
+        const entityTo = selectorString(args[0])[0]
+        if (!entityTo) throw new UserError('Invalid target')
+        ctx.player.teleport(entityTo.position)
+        return
+      }
+      
       if (args.length === 2) {
         const entitiesFrom = selectorString(args[0])
         const entityTo = selectorString(args[1])[0]
@@ -40,9 +49,9 @@ export const server = (serv: Server) => {
           // Vanilla behavior: teleport to center of block if decimal not specified
 
           // note pos can be negative
-          if (args[0].indexOf('.') === -1) x += 0.5 * (Math.sign(x) || 1)
-          if (args[1].indexOf('.') === -1) y += 0.5 * (Math.sign(y) || 1)
-          if (args[2].indexOf('.') === -1) z += 0.5 * (Math.sign(z) || 1)
+          if (posArgs[0].indexOf('.') === -1) x += 0.5 * (Math.sign(x) || 1)
+          if (posArgs[1].indexOf('.') === -1) y += 0.5 * (Math.sign(y) || 1)
+          if (posArgs[2].indexOf('.') === -1) z += 0.5 * (Math.sign(z) || 1)
           e.teleport(new Vec3(x, y, z))
         }
       }
