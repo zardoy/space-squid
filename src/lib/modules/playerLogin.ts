@@ -8,6 +8,7 @@ import * as convertInventorySlotId from '../convertInventorySlotId'
 import { skipMcPrefix } from '../utils'
 import { dimensionOverworld, getDimensionCodec } from './dimensionCodec'
 import { Client } from 'minecraft-protocol'
+import { getTimePacket } from './daycycle'
 
 export const server = function (serv: Server, options: Options) {
   serv.players ??= []
@@ -335,10 +336,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   function updateTime () {
-    player._client.write('update_time', {
-      age: [0, 0],
-      time: [0, serv.time]
-    })
+    player._client.write('update_time', getTimePacket(serv))
   }
 
   player.setGameMode = (gameMode) => {

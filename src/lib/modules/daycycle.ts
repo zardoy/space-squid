@@ -1,10 +1,23 @@
+import Long from 'long'
+
+const isDaylightCycleEnabled = (serv: Server) => {
+  const rule = serv.gamerules?.doDaylightCycle
+  return serv.doDaylightCycle && (rule === undefined || Boolean(rule))
+}
+
+export const getTimePacket = (serv: Server) => {
+  // Negative time freezes the client clock; zero needs the -1 sentinel.
+  const time = Long.fromNumber(isDaylightCycleEnabled(serv) ? serv.time : -Math.max(1, serv.time))
+  return {
+    age: [0, 0], // TODO
+    time: [time.high, time.low]
+  }
+}
+
 export const server = function (serv: Server) {
   serv.setTime = (time) => {
     serv.time = time
-    serv._writeAll('update_time', {
-      age: [0, 0], // TODO
-      time: [0, serv.time]
-    })
+    serv._writeAll('update_time', getTimePacket(serv))
   }
 
   serv.doDaylightCycle ??= true
@@ -12,10 +25,7 @@ export const server = function (serv: Server) {
   serv.time ??= 0
 
   serv.on('tick', (delta, count) => {
-    // TODO
-    // const disabledByGamerule = 'doDayLightCycle doDayLightcycle DayNightCycle'
-    const disabledByGamerule = !serv.gamerules.doDaylightCycle && serv.gamerules.doDaylightCycle !== undefined
-    const changeTime = serv.doDaylightCycle && !disabledByGamerule
+    const changeTime = isDaylightCycleEnabled(serv)
     if (count % 20 === 0) {
       serv.behavior('changeTime', {
         old: serv.time,
