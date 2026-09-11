@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Vec3 } from 'vec3'
 import { player as installPvpPlayer } from '../src/lib/modules/pvp'
 
@@ -35,7 +35,9 @@ function installTarget (overrides: any = {}) {
 }
 
 describe('player melee attacks', () => {
+  afterEach(() => vi.useRealTimers())
   it('routes a spawned mob hit through the existing attack behavior', () => {
+    vi.useFakeTimers()
     const { target, behavior, attack } = installTarget()
 
     vi.setSystemTime(1000)
@@ -57,6 +59,7 @@ describe('player melee attacks', () => {
   })
 
   it('continues to protect creative, spectator, and invincible players', () => {
+    vi.useFakeTimers()
     for (const overrides of [
       { type: 'player', gameMode: 1 },
       { type: 'player', gameMode: 3 },
