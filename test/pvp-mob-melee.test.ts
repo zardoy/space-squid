@@ -50,6 +50,7 @@ describe('player melee attacks', () => {
   })
 
   it('continues to ignore object entities', () => {
+    vi.useFakeTimers()
     const { behavior, attack } = installTarget({ type: 'object' })
 
     vi.setSystemTime(1000)
