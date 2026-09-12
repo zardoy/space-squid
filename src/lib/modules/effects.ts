@@ -1,6 +1,7 @@
 import { pascalCase } from 'change-case'
 import UserError from '../user_error'
 import { skipMcPrefix } from '../utils'
+import { normalizeEffectTicks, ticksFromEffectSeconds } from './effect-duration'
 
 const isPlayer = (entity: Entity): entity is Player => entity.type === 'player'
 
@@ -38,12 +39,13 @@ export const entity = function (entity: Entity, serv: Server) {
     if (!entity.effects[effectId] || opt.override || amp < entity.effects[effectId].amplifier) {
       const previousEffect = entity.effects[effectId]
       if (previousEffect?.timeout) clearTimeout(previousEffect.timeout)
+      const durationTicks = normalizeEffectTicks(opt.duration)
       entity.effects[effectId] = {
         amplifier: opt.amplifier || 0,
-        duration: opt.duration || 30 * 20,
-        particles: opt.particles || true,
-        end: Date.now() + (opt.duration || 30 * 20) * 1000 / 20, // 1000/20 === convert from ticks to milliseconds,
-        timeout: opt.duration === -1 ? undefined : setTimeout(() => entity.removeEffect(effectId, {}), (opt.duration || 30 * 20) * 1000 / 20)
+        duration: durationTicks,
+        particles: opt.particles ?? true,
+        end: Date.now() + durationTicks * 1000 / 20, // 1000/20 === convert from ticks to milliseconds,
+        timeout: durationTicks < 0 ? undefined : setTimeout(() => entity.removeEffect(effectId, {}), durationTicks * 1000 / 20)
       }
       if (isPlayer(entity)) {
         entity.sendEffect(effectId, { ...opt, whitelist: [entity] })
@@ -91,9 +93,12 @@ export const server = function (serv: Server, options: Options) {
           if (e.effects[effId]) {
             e.removeEffect(effId)
           }
+          const seconds = params[3] === undefined || params[3] === ''
+            ? undefined
+            : parseInt(params[3], 10)
           e.addEffect(effId, {
             amplifier: parseInt(params[4]) || 0,
-            duration: parseInt(params[3]) * 20 || 30 * 20,
+            duration: ticksFromEffectSeconds(seconds),
             particles: params[5] !== 'true' // hidesParticles vs particles (i.e. "showParticles")
           })
         })
@@ -105,10 +110,10 @@ export const server = function (serv: Server, options: Options) {
       } else {
         if (ctx.player) {
           ctx.player.chat('Gave ' + chatSelect + ' effect ' + params[2] + '(' + (params[4] || 0) + ') for ' +
-            (parseInt(params[3]) || 30) + ' seconds')
+            (params[3] === undefined || params[3] === '' || Number.isNaN(parseInt(params[3], 10)) ? 30 : parseInt(params[3], 10)) + ' seconds')
         } else {
           serv.info('Gave ' + chatSelect + ' effect ' + params[2] + '(' + (params[4] || 0) + ') for ' +
-            (parseInt(params[3]) || 30) + ' seconds')
+            (params[3] === undefined || params[3] === '' || Number.isNaN(parseInt(params[3], 10)) ? 30 : parseInt(params[3], 10)) + ' seconds')
         }
       }
     }
