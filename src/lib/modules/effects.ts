@@ -3,6 +3,8 @@ import UserError from '../user_error'
 import { skipMcPrefix } from '../utils'
 import { normalizeEffectTicks, ticksFromEffectSeconds } from './effect-duration'
 
+export const unknownEffectMessage = (name: string) => `Unknown effect ${name}`
+
 const isPlayer = (entity: Entity): entity is Player => entity.type === 'player'
 
 export const entity = function (entity: Entity, serv: Server) {
@@ -87,7 +89,7 @@ export const server = function (serv: Server, options: Options) {
             const mcData = require('minecraft-data')(options.version)
             const effectNamePascal = pascalCase(skipMcPrefix(params[2]))
             const effect = mcData.effectsByName[effectNamePascal]
-            if (!effect) throw new UserError(`Unknown effect ${params[2]}}`)
+            if (!effect) throw new UserError(unknownEffectMessage(params[2]))
             effId = effect.id
           }
           if (e.effects[effId]) {

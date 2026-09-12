@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { entity as installEffects } from './effects'
+import { entity as installEffects, unknownEffectMessage } from './effects'
 import { normalizeEffectTicks, ticksFromEffectSeconds } from './effect-duration'
 
 test('ticksFromEffectSeconds keeps an explicit 0 instead of the 30s default', () => {
@@ -27,6 +27,11 @@ test('addEffect with duration 0 expires immediately', () => {
   vi.advanceTimersByTime(0)
   expect(target.effects[1]).toBeNull()
   vi.useRealTimers()
+})
+
+test('unknownEffectMessage has no stray closing brace', () => {
+  expect(unknownEffectMessage('speed')).toBe('Unknown effect speed')
+  expect(unknownEffectMessage('speed').endsWith('}}')).toBe(false)
 })
 
 afterEach(() => {
