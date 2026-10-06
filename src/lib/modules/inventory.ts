@@ -363,34 +363,85 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   })
 
   player.collect = (collectEntity) => {
-    // Add it to a stack already in the player's inventory if possible
-    for (let slot = 0; slot < player.inventory.slots.length; slot++) {
+    const initialCount = collectEntity.itemCount ?? 1
+    if (initialCount <= 0) return
+
+    let remainingCount = initialCount
+    const targetDamage = collectEntity.damage ?? collectEntity.itemDamage ?? 0
+
+    // 1. Add to existing compatible stacks in player inventory
+    const start = player.inventory.inventoryStart ?? 9
+    const end = player.inventory.inventoryEnd ?? (player.inventory.slots.length - 1)
+    for (let slot = start; slot <= end && remainingCount > 0; slot++) {
       const item = player.inventory.slots[slot]
-      if (item && (item.type === collectEntity.itemId) && (item.count < item.stackSize)) {
-        item.count += 1
-        player.inventory.updateSlot(slot, item)
-        collectEntity._writeOthersNearby('collect', {
-          collectedEntityId: collectEntity.id,
-          collectorEntityId: player.id
-        })
-        player.playSoundAtSelf('random.pop')
-        collectEntity.destroy()
-        return
+      if (
+        item &&
+        item.type === collectEntity.itemId &&
+        (item.metadata === undefined || item.metadata === targetDamage) &&
+        item.count < item.stackSize
+      ) {
+        const canAdd = Math.min(item.stackSize - item.count, remainingCount)
+        if (canAdd > 0) {
+          item.count += canAdd
+          remainingCount -= canAdd
+          player.inventory.updateSlot(slot, item)
+        }
       }
     }
 
-    // If we couldn't add it to a already existing stack, put it in a new stack if the inventory has room
-    const emptySlot = player.inventory.firstEmptyInventorySlot()
-    if (emptySlot) {
+    // 2. Put remainder into new empty inventory slots if room is available
+    while (remainingCount > 0) {
+      const emptySlot = player.inventory.firstEmptyInventorySlot()
+      if (emptySlot === null || emptySlot === undefined) {
+        break
+      }
+      const sampleItem = new Item(collectEntity.itemId, 1, targetDamage)
+      const maxStack = sampleItem.stackSize ?? 64
+      const toAdd = Math.min(maxStack, remainingCount)
+      const newItem = new Item(collectEntity.itemId, toAdd, targetDamage)
+      player.inventory.updateSlot(emptySlot, newItem)
+      remainingCount -= toAdd
+    }
+
+    const collectedCount = initialCount - remainingCount
+
+    // 3. If any items were collected, notify nearby players and play pickup sound
+    if (collectedCount > 0) {
       collectEntity._writeOthersNearby('collect', {
         collectedEntityId: collectEntity.id,
         collectorEntityId: player.id
       })
       player.playSoundAtSelf('random.pop')
 
-      const newItem = new Item(collectEntity.itemId, 1, collectEntity.damage)
-      player.inventory.updateSlot(emptySlot, newItem)
-      collectEntity.destroy()
+      if (remainingCount <= 0) {
+        collectEntity.itemCount = 0
+        collectEntity.destroy()
+      } else {
+        collectEntity.itemCount = remainingCount
+        if (typeof collectEntity.sendMetadata === 'function') {
+          if (serv.supportFeature?.('theFlattening')) {
+            collectEntity.sendMetadata([{
+              key: 6,
+              type: 6,
+              value: {
+                present: true,
+                itemId: collectEntity.itemId,
+                itemCount: remainingCount
+              }
+            }])
+          } else {
+            collectEntity.sendMetadata([{
+              key: 10,
+              type: 5,
+              value: {
+                blockId: collectEntity.itemId,
+                itemDamage: targetDamage,
+                itemCount: remainingCount
+              }
+            }])
+          }
+        }
+      }
     }
   }
 }
@@ -513,7 +564,7 @@ declare global {
     heldItem: Item
     inventory: Window
     customWindow: CustomWindow | undefined
-    "collect": (collectEntity: Entity & { itemId: number, damage: number }) => void
+    "collect": (collectEntity: Entity & { itemId: number, damage?: number, itemDamage?: number, itemCount?: number, sendMetadata?: (data: any) => void }) => void
 
     openCustomWindow: (options: OpenCustomWindowOptions) => CustomWindow
   }
