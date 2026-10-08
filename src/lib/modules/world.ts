@@ -119,6 +119,34 @@ export const server: ServerModule = async function (serv, options) {
     world['height'] = generation.options.worldHeight
   }
 
+  /**
+   * `World#getColumn` (prismarine-world) does `await Promise.resolve()` and only then checks
+   * `this.columns[key]` before deciding to invoke the chunk generator. If two callers ask for the
+   * same chunk before either has reached that point — e.g. our own world-gen code writing custom
+   * blocks into a spawn-adjacent chunk racing the player's own chunk-loading requesting the same
+   * chunk — BOTH calls see no cached column and BOTH invoke the generator. Whichever `setColumn`
+   * resolves last silently replaces `this.columns[key]`, discarding any edits already made to the
+   * other (now-orphaned) chunk instance. This wraps `getColumn` so concurrent requests for the same
+   * (chunkX, chunkZ) share a single in-flight generation instead of racing.
+   */
+  const dedupeGetColumn = (world: World) => {
+    const pending = new Map<string, Promise<any>>()
+    const original = world.getColumn.bind(world)
+    world.getColumn = (chunkX: number, chunkZ: number) => {
+      const loaded = world.getLoadedColumn(chunkX, chunkZ)
+      if (loaded) return Promise.resolve(loaded)
+      const key = `${chunkX},${chunkZ}`
+      let promise = pending.get(key)
+      if (!promise) {
+        promise = original(chunkX, chunkZ).finally(() => {
+          pending.delete(key)
+        })
+        pending.set(key, promise)
+      }
+      return promise
+    }
+  }
+
   const generationModule: (options) => any = generations[generation.name] ? generations[generation.name] : require(generation.name)
   const genOpts = generation.options as any
   const templateStr: string | undefined =
@@ -139,8 +167,10 @@ export const server: ServerModule = async function (serv, options) {
   serv.overworld.seed = serv.seed = generationOptions.seed
   serv.overworld.generatorName = generation.name
   patchWorld(serv.overworld)
+  dedupeGetColumn(serv.overworld)
   serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
   patchWorld(serv.netherworld)
+  dedupeGetColumn(serv.netherworld)
   serv.netherworld.seed = generationOptions.seed
   serv.netherworld.generatorName = 'nether'
   // serv.endworld = new World(generations["end"]({}));
