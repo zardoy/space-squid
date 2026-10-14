@@ -12,6 +12,10 @@ const materialToSound = {
   wood: 'wood'
 }
 
+export type WorldBlock = Block & {
+  databaseStore: Record<string, any>
+}
+
 export const server = (serv: Server, { version }: Options) => {
   const mcData = serv.mcData
 
@@ -300,6 +304,6 @@ declare global {
      *
      * The argument given to the handler is an object containing the clicked block and the player. It should return true if the block interaction occurred and the block placement should be cancelled.
      */
-    'onBlockInteraction': (name: string, handler: (data: { block: Block, player: Player }) => boolean | Promise<boolean>) => void
+    'onBlockInteraction': (name: string, handler: (data: { block: WorldBlock, player: Player }) => boolean | Promise<boolean>) => void
   }
 }

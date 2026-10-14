@@ -174,7 +174,8 @@ export const server: ServerModule = async function (serv, options) {
     return Promise.all(promises)
   }
 
-  serv.setBlock = async (world, position, stateId) => {
+  serv.setBlock = async (world, position, stateIdOrName: number | string) => {
+    const stateId = typeof stateIdOrName === 'string' ? registry.blocksByName[stateIdOrName].id : stateIdOrName
     serv.players
       .filter(p => p.world === world)
       .forEach(player => player.sendBlock(position, stateId))
@@ -673,7 +674,7 @@ declare global {
     /** @internal */
     "pregenWorld": (world: CustomWorld, size?: number) => Promise<Chunk[]>
     /** Saves block in world and sends block update to all players of the same world. */
-    "setBlock": (world: CustomWorld, position: Vec3, stateId: number) => Promise<void>
+    "setBlock": (world: CustomWorld, position: Vec3, stateIdOrName: number | string) => Promise<void>
     /** @internal */
     "setBlockType": (world: CustomWorld, position: Vec3, id: number) => Promise<void>
     /** Sends a block action to all players of the same world. */
