@@ -2,7 +2,7 @@ import { IndexedData } from 'minecraft-data'
 import { RecipeItem } from 'minecraft-data'
 import PrismarineItem, { Item } from 'prismarine-item'
 import PrismarineWindows, { Window } from 'prismarine-windows'
-import { splitEvery, equals } from 'rambda'
+import { equals } from 'rambda'
 
 export const server = (serv: Server, { version }: Options) => {
   const Item = PrismarineItem(version)
@@ -77,25 +77,22 @@ export const server = (serv: Server, { version }: Options) => {
   })
 }
 
-const getResultingRecipe = (mcData: IndexedData, slots: Array<Item | null>, gridRows: number) => {
+export const getResultingRecipe = (mcData: IndexedData, slots: Array<Item | null>, gridRows: number) => {
   const PItem = PrismarineItem(mcData.version.minecraftVersion!)
 
   const inputSlotsItems = slots.map(blockSlot => blockSlot?.type)
-  let currentShape = splitEvery(gridRows, inputSlotsItems as Array<number | undefined | null>)
-  // todo rewrite with candidates search
-  if (currentShape.length > 1) {
-    // eslint-disable-next-line @typescript-eslint/no-for-in-array
-    for (const slotX in currentShape[0]) {
-      if (currentShape[0][slotX] !== undefined) {
-        for (const [otherY] of Array.from({ length: gridRows }).entries()) {
-          if (currentShape[otherY]?.[slotX] === undefined) {
-            currentShape[otherY]![slotX] = null
-          }
-        }
-      }
-    }
-  }
-  currentShape = currentShape.map(arr => arr.filter(x => x !== undefined)).filter(x => x.length !== 0)
+  const occupied = inputSlotsItems.flatMap((type, index) => type === undefined ? [] : [index])
+  if (occupied.length === 0) return
+  const rows = occupied.map(index => Math.floor(index / gridRows))
+  const columns = occupied.map(index => index % gridRows)
+  const top = Math.min(...rows)
+  const bottom = Math.max(...rows)
+  const left = Math.min(...columns)
+  const right = Math.max(...columns)
+  // Trim only the empty border. Gaps inside the recipe must retain their positions.
+  const currentShape = Array.from({ length: bottom - top + 1 }, (_, row) =>
+    Array.from({ length: right - left + 1 }, (_, column) =>
+      inputSlotsItems[(top + row) * gridRows + left + column] ?? null))
 
   // todo rewrite
   // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
