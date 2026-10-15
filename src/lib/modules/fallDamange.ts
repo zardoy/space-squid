@@ -25,13 +25,14 @@ export const server = function (serv: Server) {
       }
       const getPosition = () => entity.position
       const takeDamage = (hearts: number) => {
+      }
+      const takeDamage = (hearts: number) => {
         if (isPlayer(entity)) {
-          const boots = entity.inventory.slots.find(slot => slot?.type === 36)
+          const bootsSlot = entity.inventory.slots[8]
+          const boots = bootsSlot?.name.endsWith('_boots') ? bootsSlot : null
           if (boots) {
             hearts -= calculateBootsTypeSaveHearts(boots.name)
             // todo update dmg
-          }
-        }
         if (hearts > 0) {
           entity.takeDamage({ damage: hearts })
         }
