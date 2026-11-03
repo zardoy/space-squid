@@ -91,6 +91,8 @@ export const player = function (player: Player, serv: Server) {
           copyMetadata: false
         })
         player.sendSelfPosition()
+        player.food = 20
+        player.foodSaturation = 5
         player.updateHealth(20)
         player.nearbyEntities = []
         player.updateAndSpawn()
