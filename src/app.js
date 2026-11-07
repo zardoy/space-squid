@@ -34,6 +34,15 @@ const argv = yargs
     description: 'The version of the server to run (for clients and world)',
     type: 'string',
   })
+  .option('generation', {
+    alias: 'g',
+    description: 'World generator name (noise, superflat, empty, ...); env GENERATION also works',
+    type: 'string',
+  })
+  .option('seed', {
+    description: 'World seed (decimal string, 64-bit ok)',
+    type: 'string',
+  })
   .option('world', {
     description: 'Path to Java world save folder',
     type: 'string',
@@ -58,6 +67,15 @@ if (argv.log) settings.logging = true
 if (argv.op) settings['everybody-op'] = true
 if (argv.port) settings.port = +argv.port
 if (argv.ver) settings.version = argv.ver
+const generationName = argv.generation ?? process.env.GENERATION
+if (generationName) {
+  settings.generation = { ...settings.generation, name: generationName, options: { ...settings.generation?.options } }
+}
+const seedArg = argv.seed ?? process.env.SEED
+if (seedArg !== undefined) {
+  settings.generation = settings.generation ?? { name: 'noise', options: {} }
+  settings.generation.options = { ...settings.generation.options, seed: seedArg }
+}
 if (argv.world) settings.worldFolder = argv.world === 'false' ? false : argv.world
 
 if (!require('./lib/version').supportedVersions.includes(settings.version)) {

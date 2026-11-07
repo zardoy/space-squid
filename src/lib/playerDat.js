@@ -118,6 +118,15 @@ function playerInventoryToNBT (playerInventory, theFlattening) {
  * @param {boolean} theFlattening
  * @param {boolean} useInMemoryStorage
  */
+/** Dimension tag of the world the player is in: vanilla ids, `flyingsquid:<name>` for extra worlds */
+function dimensionOf (player) {
+  const w = player.world
+  if (!w || w.worldName === 'overworld' || !w.worldName) return 'minecraft:overworld'
+  if (w.worldName === 'nether' && w.environment === 'nether') return 'minecraft:the_nether'
+  if (w.worldName === 'end' && w.environment === 'end') return 'minecraft:the_end'
+  return `flyingsquid:${w.worldName}`
+}
+
 async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryStorage) {
   if (worldFolder === undefined) {
     if (useInMemoryStorage) {
@@ -128,7 +137,7 @@ async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryS
           gameMode: player.gameMode,
           xp: player.xp,
           heldItemSlot: player.heldItemSlot,
-          dimension: player.dimension ?? 0,
+          dimension: dimensionOf(player),
           position: player.position,
           yaw: player.yaw,
           pitch: player.pitch,
@@ -153,7 +162,7 @@ async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryS
     newUncompressedData.value.playerGameType.value = player.gameMode
     newUncompressedData.value.XpTotal.value = player.xp
     newUncompressedData.value.SelectedItemSlot.value = player.heldItemSlot
-    newUncompressedData.value.Dimension.value = player.dimension ?? 0
+    newUncompressedData.value.Dimension = { type: 'string', value: dimensionOf(player) }
     newUncompressedData.value.Pos.value.value = [player.position.x, player.position.y, player.position.z]
     newUncompressedData.value.Rotation.value.value = [player.yaw, player.pitch]
     newUncompressedData.value.OnGround.value = Number(player.onGround)

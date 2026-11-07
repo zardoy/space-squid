@@ -12,24 +12,28 @@ import ChunkLoader, { PCChunk } from 'prismarine-chunk'
 import RegistryLoader from 'prismarine-registry'
 import { LevelDatFull } from 'prismarine-provider-anvil/src/level'
 import generations from '../generations'
+import { dimensionNbt } from './dimensionCodec'
+import { fixSetBiome } from '../worldGenerations/biomeFix'
 import { makeTemplateGenerator, getTemplateSpawnPoint } from '../worldGenerations/template'
 import { Vec3 } from 'vec3'
+import UserError from '../user_error'
 import { generateSpiralMatrix } from '../../utils'
-import { longArrayToNumber, writeLevelDat } from '../../levelDat'
+import { longArrayToNumber, numberToLongArray, writeLevelDat } from '../../levelDat'
 import { getRenamedData } from '../../blockRenames'
+import { parseWorldSeed, seedFromLevelDat } from 'minecraft-worldgen/dist/rng/random'
 
 const fsStat = promisify(fs.stat)
 const fsMkdir = promisify(fs.mkdir)
 
 export const server: ServerModule = async function (serv, options) {
   const { version, worldSaveVersion: _worldSaveVersion, worldFolder, noWorldRegion, generation: _generation } = options
-  let generation = _generation ?? { name: 'diamond_square', options: {} }
+  let generation = _generation ?? { name: 'noise', options: {} }
 
   if (generation.name === 'flat') {
     generation.name = 'superflat'
   }
-  if (generation.name === 'default') {
-    generation.name = 'diamond_square'
+  if (generation.name === 'default' || generation.name === 'diamond_square') {
+    generation.name = 'noise'
   }
 
   // Detect world type from level.dat
@@ -50,11 +54,13 @@ export const server: ServerModule = async function (serv, options) {
       if (levelData.generatorName) {
         if (levelData.generatorName === 'flat') {
           generation.name = 'superflat'
+        } else if (levelData.generatorName === 'default' || levelData.generatorName === 'diamond_square') {
+          generation.name = 'noise'
         } else if (generations[levelData.generatorName]) {
           generation.name = levelData.generatorName
         } else {
           console.warn(`Unsupported world chunks generator type: ${levelData.generatorName}`)
-          generation.name = 'diamond_square'
+          generation.name = 'noise'
         }
       }
     } catch (err) {
@@ -72,7 +78,11 @@ export const server: ServerModule = async function (serv, options) {
   const worldSaveVersion = _worldSaveVersion ?? version
   const Anvil = worldFolder ? AnvilLoader(worldSaveVersion) : undefined
 
-  const newSeed = serv.seed ?? (generation.options.seed || Math.floor(Math.random() * Math.pow(2, 31)))
+  const newSeed = parseWorldSeed(serv.seed ?? generation.options.seed)
+  const worldsFile = worldFolder && !noWorldRegion ? `${worldFolder}/flyingsquid-worlds.json` : undefined
+  // read (async fs: browser file systems have no sync calls) before any world is created, creating worlds rewrites the file; no await may be added between the
+  // `setTimeout(() => serv.writeLevelDat())` below and the end of this module (it would run before the seed exists)
+  const savedSpecs: WorldSpec[] = await (async () => { try { return worldsFile ? JSON.parse(await fs.promises.readFile(worldsFile, 'utf8') as string) : [] } catch { return [] } })()
   let seed
   let regionFolder
   if (worldFolder && !noWorldRegion) {
@@ -89,7 +99,7 @@ export const server: ServerModule = async function (serv, options) {
       if ([SpawnY, SpawnX, SpawnZ].every(x => x !== undefined)) {
         serv.spawnPoint ??= new Vec3(SpawnX!, SpawnY!, SpawnZ!)
       }
-      seed = serv.levelData?.RandomSeed?.[0] ?? newSeed
+      seed = seedFromLevelDat(serv.levelData?.RandomSeed) ?? newSeed
       if (serv.levelData?.Version?.Name !== worldSaveVersion) {
         console.warn(`World save version mismatch: you select: ${worldSaveVersion} actual stored: ${serv.levelData?.Version?.Name}`)
       }
@@ -130,19 +140,22 @@ export const server: ServerModule = async function (serv, options) {
    * (chunkX, chunkZ) share a single in-flight generation instead of racing.
    */
   const dedupeGetColumn = (world: World) => {
+    // prismarine-world stores whatever the chunk generator returned: an async generator (noise) would leave a Promise in `columns`, which then reaches the Anvil
+    // storage (toNBT(Promise): "Cannot convert undefined or null to object") and nothing is ever saved. Store the resolved chunk.
+    const originalSetColumn = world.setColumn.bind(world)
+    world.setColumn = async (chunkX: number, chunkZ: number, chunk: any, save?: boolean) => originalSetColumn(chunkX, chunkZ, await chunk, save)
     const pending = new Map<string, Promise<any>>()
     const original = world.getColumn.bind(world)
-    world.getColumn = (chunkX: number, chunkZ: number) => {
+    world.getColumn = (chunkX: number, chunkZ: number): Promise<any> => {
       const loaded = world.getLoadedColumn(chunkX, chunkZ)
       if (loaded) return Promise.resolve(loaded)
       const key = `${chunkX},${chunkZ}`
-      let promise = pending.get(key)
-      if (!promise) {
-        promise = original(chunkX, chunkZ).finally(() => {
-          pending.delete(key)
-        })
-        pending.set(key, promise)
-      }
+      const existing = pending.get(key)
+      if (existing) return existing
+      const promise: Promise<any> = Promise.resolve(original(chunkX, chunkZ)).finally(() => {
+        pending.delete(key)
+      })
+      pending.set(key, promise)
       return promise
     }
   }
@@ -168,31 +181,142 @@ export const server: ServerModule = async function (serv, options) {
   serv.overworld.generatorName = generation.name
   patchWorld(serv.overworld)
   dedupeGetColumn(serv.overworld)
-  serv.netherworld = new World(generations.nether(generationOptions)) as CustomWorld
-  patchWorld(serv.netherworld)
-  dedupeGetColumn(serv.netherworld)
-  serv.netherworld.seed = generationOptions.seed
-  serv.netherworld.generatorName = 'nether'
-  // serv.endworld = new World(generations["end"]({}));
+  // ---- world registry (Multiverse-style): any number of worlds; each has an environment (= client dimension type) and a generator
+  const ENV_DIMENSION: Record<WorldEnvironment, number> = { normal: 0, nether: -1, end: 1 }
+  const ENV_NOISE_DIM: Record<WorldEnvironment, string> = { normal: 'overworld', nether: 'nether', end: 'end' }
+  const baseGeneratorName = generation.name
+  const ChunkClass = ChunkLoader(version)
+  /** per-world Anvil storage: nether `DIM-1`, end `DIM1`, other worlds `dimensions/flyingsquid/<name>`. Chunks of non-overworld sizes are converted on load (Anvil always yields -64..320 columns). */
+  const regionDirOf = (name: string, environment: WorldEnvironment) => !worldFolder || noWorldRegion ? undefined
+    : name === 'nether' && environment === 'nether' ? `${worldFolder}/DIM-1/region`
+      : name === 'end' && environment === 'end' ? `${worldFolder}/DIM1/region`
+        : `${worldFolder}/dimensions/flyingsquid/${name}/region`
+  /** deletes the saved chunks of an extra world (used when a world is regenerated from another recipe) */
+  serv.deleteWorldData = (name: string) => {
+    const dir = regionDirOf(name, 'normal')
+    if (dir) try { fs.rmSync(dir, { recursive: true, force: true }) } catch (e) { serv.warn(`Could not delete saved chunks of '${name}': ${(e as Error).message}`) }
+  }
+  const storageFor = (name: string, environment: WorldEnvironment, minY: number, height: number) => {
+    if (!worldFolder || noWorldRegion || !Anvil) return null
+    const dir = regionDirOf(name, environment)!
+    // browser file systems (IndexedDB) only have the async fs calls: the directory is created before the first load / save instead of synchronously here
+    const ready: Promise<boolean> = fsMkdir(dir, { recursive: true }).then(() => true, async () => {
+      const exists = await fsStat(dir).then(() => true, () => false)
+      if (!exists) serv.warn?.(`No storage for world '${name}' (cannot create ${dir}); it will not be saved`)
+      return exists
+    })
+    const anvil: any = new Anvil(dir)
+    const sameSize = minY === generation.options.minY && height === generation.options.worldHeight
+    return {
+      save: async (x: number, z: number, chunk: any) => { if (await ready) await anvil.save(x, z, chunk) },
+      load: async (x: number, z: number) => {
+        if (!await ready) return null
+        const c = await anvil.load(x, z)
+        if (!c || sameSize || (c.minY === minY && c.worldHeight === height)) return c
+        const out = fixSetBiome(new (ChunkClass as any)({ minY, worldHeight: height }))
+        const pos = new Vec3(0, 0, 0)
+        for (let y = Math.max(minY, c.minY); y < Math.min(minY + height, c.minY + c.worldHeight); y++) {
+          pos.y = y
+          for (let zz = 0; zz < 16; zz++) {
+            pos.z = zz
+            for (let xx = 0; xx < 16; xx++) {
+              pos.x = xx
+              const id = c.getBlockStateId(pos)
+              if (id !== 0) out.setBlockStateId(pos, id)
+              out.setSkyLight(pos, 15); out.setBlockLight(pos, 15)
+              if ((y & 3) === 0 && (xx & 3) === 0 && (zz & 3) === 0) out.setBiome(pos, c.getBiome(pos))
+            }
+          }
+        }
+        return out
+      }
+    }
+  }
+  let loadingSaved = true
+  const saveWorldSpecs = () => {
+    if (loadingSaved) return
+    if (!worldsFile) return
+    const extra = Object.values(serv.worldSpecs).filter(sp => !['overworld', 'nether', 'end'].includes(sp.name))
+    fs.promises.writeFile(worldsFile, JSON.stringify(extra, (_k, v) => typeof v === 'bigint' ? v.toString() : v, 2)).catch((e: Error) => serv.warn('Could not save worlds: ' + e.message))
+  }
+  const createWorld = (spec: WorldSpec): CustomWorld => {
+    if (serv.worlds[spec.name]) throw new UserError(`World '${spec.name}' already exists`)
+    const environment = spec.environment ?? 'normal'
+    if (!(environment in ENV_DIMENSION)) throw new UserError(`Unknown environment '${environment}' (normal | nether | end)`)
+    // default generator: the server's generator for the overworld; the noise generator also builds nether / end, others fall back to the simple ones
+    const genName = spec.generator ?? (environment === 'normal' || baseGeneratorName === 'noise' ? baseGeneratorName : environment === 'nether' ? 'nether' : 'empty')
+    const module: (options) => any = generations[genName] ?? require(genName)
+    const worldSeed = spec.seed === undefined ? generationOptions.seed : parseWorldSeed(spec.seed)
+    const tall = environment === 'normal'
+    const opts = {
+      ...generationOptions,
+      ...spec.options,
+      seed: worldSeed,
+      dimension: ENV_NOISE_DIM[environment],
+      preset: spec.preset,
+      recipe: spec.recipe,
+      minY: tall ? generation.options.minY : 0,
+      worldHeight: tall ? generation.options.worldHeight : 256
+    }
+    const generator = module(opts)
+    const world = new World(generator, storageFor(spec.name, environment, opts.minY as number, opts.worldHeight as number), options.savingInterval as any) as CustomWorld
+    world['min_y'] = opts.minY
+    world.disposeGenerator = generator?.dispose
+    world['height'] = opts.worldHeight
+    dedupeGetColumn(world)
+    world.seed = worldSeed
+    world.generatorName = genName
+    world.environment = environment
+    world.dimensionId = ENV_DIMENSION[environment]
+    world.worldName = spec.name
+    world.blockEntityData = {}
+    world.portals = []
+    serv.worlds[spec.name] = world
+    serv.worldSpecs[spec.name] = { ...spec, environment, generator: genName }
+    saveWorldSpecs()
+    serv.emit('worldCreated' as any, world)
+    return world
+  }
+  serv.worldSpecs = {}
+  serv.worlds = { overworld: serv.overworld }
+  serv.overworld.environment = 'normal'
+  serv.overworld.dimensionId = 0
+  serv.overworld.worldName = 'overworld'
+  serv.worldSpecs.overworld = { name: 'overworld', environment: 'normal', generator: generation.name, seed: generationOptions.seed }
+  serv.createWorld = createWorld
+  serv.netherworld = createWorld({ name: 'nether', environment: 'nether' })
+  serv.endworld = createWorld({ name: 'end', environment: 'end' })
+  // worlds created at runtime (/mv create) in an earlier session, then the ones declared in the options
+  for (const spec of [...savedSpecs, ...(options.worlds ?? [])]) {
+    if (serv.worlds[spec.name]) continue
+    try { createWorld(spec) } catch (e) { serv.warn(`Could not create world '${spec.name}': ${(e as Error).message}`) }
+  }
+  loadingSaved = false
+  saveWorldSpecs()
 
-  serv.worlds = {
-    'overworld': serv.overworld,
-    'nether': serv.netherworld
-    // 'end': serv.endworld
+  serv.removeWorld = async (name: string) => {
+    const world = serv.worlds[name]
+    if (!world) throw new UserError(`World '${name}' does not exist`)
+    if (world === serv.overworld || world === serv.netherworld || world === serv.endworld) throw new UserError(`World '${name}' is a core world and cannot be removed`)
+    for (const player of serv.players.filter(p => p.world === world)) {
+      await player.changeWorld(serv.overworld, { dimension: 0 })
+    }
+    world.stopSaving()
+    try { await world.disposeGenerator?.() } catch {}
+    delete serv.worlds[name]
+    delete serv.worldSpecs[name]
+    saveWorldSpecs()
+    serv.emit('worldRemoved' as any, name)
   }
 
   serv.dimensionNames = {
-    '-1': 'minecraft:nether',
-    0: 'minecraft:overworld'
-    // 1: 'minecraft:end'
+    '-1': 'minecraft:the_nether',
+    0: 'minecraft:overworld',
+    1: 'minecraft:the_end'
   }
 
-  // WILL BE REMOVED WHEN ACTUALLY IMPLEMENTED
   serv.overworld.blockEntityData = {}
-  serv.netherworld.blockEntityData = {}
   serv.overworld.portals = []
-  serv.netherworld.portals = []
-  /// ///////////
 
   serv.pregenWorld = (world, size = 3) => {
     const promises: Promise<Chunk>[] = []
@@ -261,12 +385,13 @@ export const server: ServerModule = async function (serv, options) {
   serv.commands.add({
     base: 'changeworld',
     info: 'to change world',
-    usage: '/changeworld overworld|nether',
+    usage: '/changeworld <world> (overworld | nether | end | any world created with /mv create)',
     onlyPlayer: true,
     op: true,
-    action (world, ctx) {
-      if (world === 'nether') ctx.player.changeWorld(serv.netherworld, { dimension: -1 })
-      if (world === 'overworld') ctx.player.changeWorld(serv.overworld, { dimension: 0 })
+    action (name, ctx) {
+      const world = serv.worlds[String(name).trim()]
+      if (!world) throw new UserError(`Unknown world '${name}'. Worlds: ${Object.keys(serv.worlds).join(', ')}`)
+      return ctx.player.changeWorld(world, { dimension: world.dimensionId })
     }
   })
   serv.commands.add({
@@ -360,6 +485,10 @@ export const server: ServerModule = async function (serv, options) {
 
   if (!worldFolder) {
     serv.writeLevelDat()
+  } else if (!noWorldRegion && !serv.levelData) {
+    // a new world folder: write level.dat right away. It used to appear only with the first autosave (60 s), a world closed earlier had chunks but no level.dat
+    // and was listed as broken (and not loadable) by the web client.
+    setTimeout(() => { serv.writeLevelDat().catch((e: Error) => serv.warn(`Could not write level.dat: ${e.message}`)) })
   }
 
   console.log('worlds init done')
@@ -406,13 +535,13 @@ const levelDatWriter = (serv: Server, options: Options) => {
     const getGeneratorName = (world: string) => {
       const original = serv.worlds[world].generatorName
       if (original === 'superflat') return 'flat'
-      if (original === 'diamond_square') return 'default'
+      if (original === 'noise') return 'default'
       if (original === 'customized') return 'customized'
       return original
     }
 
     const newLevelDat = {
-      RandomSeed: serv.levelData?.RandomSeed ?? [serv.seed, 0],
+      RandomSeed: numberToLongArray(serv.seed),
       Version: serv.levelData?.Version ?? { Name: options.version },
       generatorName: serv.levelData?.generatorName ?? getGeneratorName('overworld'),
       // WorldGenSettings: {
@@ -504,11 +633,11 @@ export const player = function (player: Player, serv: Server, settings: Options)
         }, // FIXME: fake heightmap
         chunkData: chunkBuffer,
         blockEntities: [],
-        skyLightMask: chunk.skyLightMask,
-        // skyLightMask: [chunk.skyLightMask.data],
-        emptySkyLightMask: chunk.emptySkyLightMask,
-        blockLightMask: chunk.blockLightMask,
-        emptyBlockLightMask: chunk.emptyBlockLightMask,
+        // long-array masks (dumpLight): the BitArray objects of the column are not what the client / serializer expect (in-process clients got no light at all)
+        skyLightMask: dumpedLights.skyLightMask ?? chunk.skyLightMask,
+        emptySkyLightMask: dumpedLights.emptySkyLightMask ?? chunk.emptySkyLightMask,
+        blockLightMask: dumpedLights.blockLightMask ?? chunk.blockLightMask,
+        emptyBlockLightMask: dumpedLights.emptyBlockLightMask ?? chunk.emptyBlockLightMask,
         ...newLightsData
       })
       if (serv.supportFeature('lightSentSeparately') && !serv.supportFeature('newLightingDataFormat')) {
@@ -516,10 +645,10 @@ export const player = function (player: Player, serv: Server, settings: Options)
           chunkX: x,
           chunkZ: z,
           trustEdges: true, // should be false when a chunk section is updated instead of the whole chunk being overwritten, do we ever do that?
-          skyLightMask: chunk.skyLightMask,
-          blockLightMask: chunk.blockLightMask,
-          emptySkyLightMask: chunk.emptySkyLightMask,
-          emptyBlockLightMask: chunk.emptyBlockLightMask,
+          skyLightMask: dumpedLights.skyLightMask ?? chunk.skyLightMask,
+          blockLightMask: dumpedLights.blockLightMask ?? chunk.blockLightMask,
+          emptySkyLightMask: dumpedLights.emptySkyLightMask ?? chunk.emptySkyLightMask,
+          emptyBlockLightMask: dumpedLights.emptyBlockLightMask ?? chunk.emptyBlockLightMask,
           ...newLightsData ? newLightsData : {
             data: dumpedLights
           }
@@ -562,6 +691,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
     })
   }
 
+  const CHUNK_PREFETCH = 8
   player.sendNearbyChunks = (viewDistance, group = false, abortSignal?: AbortSignal) => {
     player.lastPositionChunkUpdated = player.position
     const playerChunkX = Math.floor(player.position.x / 16)
@@ -572,25 +702,39 @@ export const player = function (player: Player, serv: Server, settings: Options)
       .filter(([x, z]) => Math.abs(x - playerChunkX) > viewDistance || Math.abs(z - playerChunkZ) > viewDistance)
       .forEach(([x, z]) => player._unloadChunk(x, z))
 
-    return generateSpiralMatrix(viewDistance)
+    const todo = generateSpiralMatrix(viewDistance)
       .map(t => ({
         chunkX: playerChunkX + t[0],
         chunkZ: playerChunkZ + t[1]
       }))
       .filter(({ chunkX, chunkZ }) => !player.loadedChunks[`${chunkX},${chunkZ}`])
-      .reduce((acc, { chunkX, chunkZ }) => {
-        const p = acc
-          .then(() => {
-            if (abortSignal?.aborted) return
-            serv.abortSignal.throwIfAborted()
-            return player.world.getColumn(chunkX, chunkZ) as Promise<PCChunk>
-          })
-          .then((column) => {
-            if (!column || abortSignal?.aborted) return
-            return player.sendChunk(chunkX, chunkZ, column)
-          })
-        return group ? p.then(() => sleep(5)) : p
-      }, Promise.resolve())
+    // chunks are sent in spiral order, but generation of the next few is requested ahead of time so a multi-worker generator (staged pipeline) has work for all its workers
+    const ahead = new Map<number, Promise<PCChunk | undefined>>()
+    const request = (i: number) => {
+      let p = ahead.get(i)
+      if (!p && i < todo.length) {
+        p = Promise.resolve(player.world.getColumn(todo[i].chunkX, todo[i].chunkZ) as Promise<PCChunk>)
+        p.catch(() => {}) // reported when its turn comes
+        ahead.set(i, p)
+      }
+      return p
+    }
+    return todo.reduce((acc, { chunkX, chunkZ }, i) => {
+      const p = acc
+        .then(() => {
+          if (abortSignal?.aborted) return
+          serv.abortSignal.throwIfAborted()
+          for (let k = 1; k <= CHUNK_PREFETCH; k++) request(i + k)
+          const col = request(i)
+          ahead.delete(i)
+          return col
+        })
+        .then((column) => {
+          if (!column || abortSignal?.aborted) return
+          return player.sendChunk(chunkX, chunkZ, column)
+        })
+      return group ? p.then(() => sleep(5)) : p
+    }, Promise.resolve())
   }
 
   function sleep (ms = 0) {
@@ -635,8 +779,9 @@ export const player = function (player: Player, serv: Server, settings: Options)
     }
     player._client.write('respawn', {
       previousGameMode: player.prevGameMode,
-      dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[opt.dimension || 0] : opt.dimension || 0,
-      worldName: serv.dimensionNames[opt.dimension || 0],
+      dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[opt.dimension || 0] : serv.supportFeature('dimensionIsAnInt') ? opt.dimension || 0 : dimensionNbt(opt.dimension || 0),
+      // custom worlds get their own level identifier so the client rebuilds its level even when the dimension type is the same
+      worldName: ['overworld', 'nether', 'end'].includes(world.worldName) || !world.worldName ? serv.dimensionNames[opt.dimension || 0] : `flyingsquid:${world.worldName.toLowerCase()}`,
       difficulty: opt.difficulty || serv.difficulty,
       hashedSeed: serv.hashedSeed,
       gamemode: opt.gamemode || player.gameMode,
@@ -646,7 +791,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
       copyMetadata: true
     })
     await player.findSpawnPoint()
-    player.position = player.spawnPoint
+    player.position = opt.position ?? player.spawnPoint
     player.sendSpawnPosition()
     player.updateAndSpawn()
 
@@ -660,11 +805,34 @@ export const player = function (player: Player, serv: Server, settings: Options)
   }
 }
 
+export type WorldEnvironment = 'normal' | 'nether' | 'end'
+
+export interface WorldSpec {
+  name: string
+  /** client dimension type of the world (default normal) */
+  environment?: WorldEnvironment
+  /** generator name (see generations.js; default: the server generator, nether/end variants for noise) */
+  generator?: string
+  seed?: number | bigint | string
+  /** noise generator overworld preset: default | amplified | large_biomes | caves | floating_islands */
+  preset?: string
+  /** noise generator custom dimension: built-in recipe name (`mining` | `islands` | `chaos`), `{ builtin, options }`, `{ script, options }` or a recipe object (see docs/worlds.md) */
+  recipe?: string | Record<string, any>
+  /** extra generator options */
+  options?: Record<string, any>
+}
+
 export interface CustomWorld extends World {
+  /** releases the chunk generator (worker side caches) */
+  disposeGenerator?: () => Promise<void>
   blockEntityData: Record<string, any>
   portals: any[]
-  seed: number
+  seed: number | bigint
   generatorName: string
+  environment: WorldEnvironment
+  /** dimension id used in respawn packets: -1 nether, 0 overworld, 1 end */
+  dimensionId: number
+  worldName: string
 }
 
 export const usedServerPathsV1 = [
@@ -677,6 +845,8 @@ export const usedServerPathsV1 = [
 
 declare global {
   interface Options {
+    /** Extra worlds created at startup (also creatable with `/mv create`): `{ name, environment: 'normal' | 'nether' | 'end', generator?, seed?, preset? }` */
+    worlds?: WorldSpec[]
     /**
      * @default false
      * Whether to broadcast a message when the server saves.
@@ -685,6 +855,8 @@ declare global {
   }
 
   interface Server {
+    /** removes the saved chunks of an extra world (the world must not be loaded) */
+    deleteWorldData: (name: string) => void
     /** @internal */
     looseProtocolMode: any
     /** @internal */
@@ -698,8 +870,16 @@ declare global {
     "overworld": CustomWorld
     /** Contains the nether world. This **WILL** be used when a player travels through a portal if they are in the overworld! */
     "netherworld": CustomWorld
+    /** The End world (dimension id 1) */
+    "endworld": CustomWorld
+    /** Spec each registered world was created from (name -> spec) */
+    worldSpecs: Record<string, WorldSpec>
+    /** Creates, registers and returns a new world (Multiverse-style: any number of worlds, each with an environment and a generator) */
+    createWorld: (spec: WorldSpec) => CustomWorld
+    /** Unregisters a world (players inside are moved to the overworld); core worlds cannot be removed */
+    removeWorld: (name: string) => Promise<void>
     /** @internal */
-    "dimensionNames": { '-1': string; 0: string }
+    "dimensionNames": { '-1': string; 0: string; 1: string }
     /** @internal */
     "pregenWorld": (world: CustomWorld, size?: number) => Promise<Chunk[]>
     /** Saves block in world and sends block update to all players of the same world. */
@@ -716,8 +896,8 @@ declare global {
     "_unloadPlayerChunk": (chunkX: number, chunkZ: number, player: Player) => boolean
     /** @internal */
     "savePlayersSingleplayer": () => Promise<void>,
-    /** Alias to serv.overworld.seed */
-    seed: number,
+    /** Alias to serv.overworld.seed (64-bit; bigint for seeds past 2^53) */
+    seed: number | bigint,
     writeLevelDat: () => Promise<void>
 
     /* For plugins accessing the original generator, returns chunk */

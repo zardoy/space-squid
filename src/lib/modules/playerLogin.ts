@@ -207,8 +207,9 @@ export const player = async function (player: Player, serv: Server, settings: Op
     await player.findSpawnPoint()
 
     // Set world based on saved dimension data, fallback to overworld
-    const savedDimension = (playerData?.player?.Dimension?.value ?? 'overworld').replace('minecraft:', '')
-    player.world = (savedDimension === 'the_nether' || savedDimension === 'nether') ? serv.netherworld : (serv.worlds[savedDimension] ?? serv.overworld)
+    const rawDimension = playerData?.player?.dimension
+    const savedDimension = typeof rawDimension === 'number' ? (rawDimension === -1 ? 'nether' : rawDimension === 1 ? 'end' : 'overworld') : String(rawDimension ?? 'overworld').replace(/^(minecraft|flyingsquid):/, '')
+    player.world = (savedDimension === 'the_nether' || savedDimension === 'nether') ? serv.netherworld : (savedDimension === 'the_end' || savedDimension === 'end') ? serv.endworld : (serv.worlds[savedDimension] ?? serv.overworld)
 
     if (!player.disconnected) {
       // it's possible player gets kicked during login process ; don't add them to the server

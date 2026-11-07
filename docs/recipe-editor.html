@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recipe editor</title>
+<style>
+:root{--bg:#fff;--fg:#1c1d21;--muted:#6b6f7a;--line:#dfe1e6;--accent:#2f6fed;--card:#f6f7f9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171b;--fg:#e8e9ed;--muted:#9a9eab;--line:#2a2d35;--accent:#6c9bff;--card:#1d2026}}
+:root[data-theme="dark"]{--bg:#15171b;--fg:#e8e9ed;--muted:#9a9eab;--line:#2a2d35;--accent:#6c9bff;--card:#1d2026}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:20px;grid-template-columns:1fr 1fr}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+h1{font-size:20px;margin:0;grid-column:1/-1}h2{font-size:14px;margin:0 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+select,input[type=text],input[type=number],textarea{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
+textarea{font:13px/1.4 ui-monospace,monospace;min-height:260px}
+.row{display:grid;grid-template-columns:150px 1fr 70px;gap:8px;align-items:center;margin:8px 0}
+.row label{font-size:13px}.row small{color:var(--muted);display:block}
+button{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:7px 12px;font:inherit;cursor:pointer}
+button.alt{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.hint{color:var(--muted);font-size:13px}
+</style></head><body><main>
+<h1>Dimension recipe editor</h1>
+<section class="card"><h2>Recipe</h2>
+  <select id="recipe"></select><p class="hint" id="desc"></p>
+  <div id="params"></div>
+  <p><button class="alt" id="reset">Reset to defaults</button></p>
+</section>
+<section class="card"><h2>Spec (JSON)</h2>
+  <textarea id="json" spellcheck="false"></textarea>
+  <p><label>World name <input type="text" id="world" value="lab" style="width:120px"></label></p>
+  <p><button id="copy">Copy /recipe command</button> <button class="alt" id="file">Copy JSON</button></p>
+  <p class="hint">Paste the command in the game chat (ops only). The page also reads the JSON back: edit it by hand and press <b>Load JSON</b>.</p>
+  <p><button class="alt" id="load">Load JSON</button></p>
+</section>
+<script>
+const DATA = {"builtins":{"mining":{"title":"Mining","description":"Stone world, bedrock floor, tunnels, caverns, ores x N.","params":[{"key":"surfaceY","label":"Surface level","type":"number","default":64,"min":20,"max":200,"step":1},{"key":"hills","label":"Hill height","type":"number","default":14,"min":0,"max":80,"step":1},{"key":"oreFactor","label":"Ore multiplier","type":"number","default":4,"min":1,"max":20,"step":1},{"key":"wormSize","label":"Tunnel width","type":"number","default":0.03,"min":0.005,"max":0.12,"step":0.005},{"key":"chamberThreshold","label":"Cavern rarity (higher = fewer)","type":"number","default":0.64,"min":0.3,"max":0.9,"step":0.01},{"key":"caves","label":"Caves","type":"boolean","default":true},{"key":"carvers","label":"Vanilla carvers","type":"boolean","default":false}]},"islands":{"title":"Floating islands","description":"Grassy islands over a void.","params":[{"key":"level","label":"Island altitude","type":"number","default":80,"min":0,"max":250,"step":1},{"key":"spread","label":"Altitude variation","type":"number","default":36,"min":0,"max":120,"step":1},{"key":"size","label":"Island size","type":"number","default":1,"min":0.3,"max":4,"step":0.1},{"key":"thickness","label":"Thickness","type":"number","default":40,"min":5,"max":120,"step":1},{"key":"presence","label":"Coverage threshold (lower = more land)","type":"number","default":0.18,"min":-0.3,"max":0.6,"step":0.01},{"key":"biome","label":"Biome","type":"string","default":"minecraft:flower_forest"}]},"chaos":{"title":"Chaos","description":"Random layered noise terrain, block bands, biome patchwork.","params":[{"key":"chaosSeed","label":"Chaos seed (0 = world seed)","type":"number","default":0,"min":0,"max":999999,"step":1}]},"spires":{"title":"Spires","description":"Overworld with towers up to the clouds.","params":[{"key":"density","label":"Spire density","type":"number","default":0.5,"min":0,"max":1,"step":0.05},{"key":"topY","label":"Tower top","type":"number","default":260,"min":120,"max":310,"step":1},{"key":"spacing","label":"Spacing (noise scale)","type":"number","default":30,"min":5,"max":120,"step":1}]},"swiss":{"title":"Swiss cheese","description":"Giant caverns everywhere.","params":[{"key":"threshold","label":"Cavern threshold (higher = fewer holes)","type":"number","default":0.42,"min":0.1,"max":0.9,"step":0.01},{"key":"scale","label":"Cavern scale","type":"number","default":0.9,"min":0.3,"max":3,"step":0.1}]},"drowned":{"title":"Drowned world","description":"Overworld under a high sea.","params":[{"key":"seaLevel","label":"Sea level","type":"number","default":150,"min":63,"max":300,"step":1}]},"canyons":{"title":"Canyons","description":"Plateau cut by deep ravines.","params":[{"key":"plateau","label":"Plateau height","type":"number","default":140,"min":60,"max":250,"step":1},{"key":"depth","label":"Ravine depth","type":"number","default":110,"min":20,"max":250,"step":1},{"key":"width","label":"Ravine width","type":"number","default":0.07,"min":0.02,"max":0.2,"step":0.01},{"key":"scale","label":"Ravine frequency","type":"number","default":3,"min":0.5,"max":10,"step":0.5},{"key":"hills","label":"Plateau roughness","type":"number","default":10,"min":0,"max":60,"step":1}]},"upside_down":{"title":"Upside down","description":"The land hangs from a ceiling above a void.","params":[{"key":"ceiling","label":"Ceiling height","type":"number","default":240,"min":120,"max":310,"step":1},{"key":"drop","label":"Hanging depth","type":"number","default":60,"min":10,"max":200,"step":1}]}},"names":["mining","islands","chaos","spires","swiss","drowned","canyons","upside_down"]};
+const $ = id => document.getElementById(id);
+let values = {};
+const recipeSel = $('recipe');
+for (const name of DATA.names) recipeSel.add(new Option(DATA.builtins[name].title + ' (' + name + ')', name));
+function defaults(name){ const o = {}; for (const p of DATA.builtins[name].params) o[p.key] = p.default; return o }
+function render(){
+  const name = recipeSel.value, info = DATA.builtins[name];
+  $('desc').textContent = info.description;
+  const box = $('params'); box.innerHTML = '';
+  for (const p of info.params) {
+    const row = document.createElement('div'); row.className = 'row';
+    const lab = document.createElement('label'); lab.innerHTML = p.label + '<small>' + p.key + '</small>';
+    let input, out = document.createElement('input');
+    if (p.type === 'number') {
+      input = document.createElement('input'); input.type = 'range'; input.min = p.min; input.max = p.max; input.step = p.step || 1; input.value = values[p.key] ?? p.default;
+      out.type = 'number'; out.step = p.step || 1; out.value = input.value;
+      input.oninput = () => { out.value = input.value; set(p.key, Number(input.value)) };
+      out.oninput = () => { input.value = out.value; set(p.key, Number(out.value)) };
+    } else if (p.type === 'boolean') {
+      input = document.createElement('input'); input.type = 'checkbox'; input.checked = values[p.key] ?? p.default; out = document.createElement('span');
+      input.onchange = () => set(p.key, input.checked);
+    } else {
+      input = document.createElement('input'); input.type = 'text'; input.value = values[p.key] ?? p.default; out = document.createElement('span');
+      input.oninput = () => set(p.key, input.value);
+    }
+    row.append(lab, input, out); box.append(row);
+  }
+  update();
+}
+function set(k, v){ values[k] = v; update() }
+function spec(){ return { builtin: recipeSel.value, options: values } }
+function update(){ $('json').value = JSON.stringify(spec(), null, 2) }
+recipeSel.onchange = () => { values = defaults(recipeSel.value); render() };
+$('reset').onclick = () => { values = defaults(recipeSel.value); render() };
+$('copy').onclick = () => navigator.clipboard.writeText('/recipe apply ' + $('world').value + ' ' + JSON.stringify(spec()));
+$('file').onclick = () => navigator.clipboard.writeText($('json').value);
+$('load').onclick = () => { try { const s = JSON.parse($('json').value); if (s.builtin && DATA.builtins[s.builtin]) { recipeSel.value = s.builtin; values = { ...defaults(s.builtin), ...(s.options || {}) }; render() } else alert('Only built-in recipe specs ({ "builtin": ... }) can be shown as sliders') } catch (e) { alert(e.message) } };
+values = defaults(recipeSel.value); render();
+</script></main></body></html>

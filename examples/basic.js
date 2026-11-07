@@ -10,10 +10,8 @@ mcServer.createMCServer({
   difficulty: 1,
   worldFolder: 'world',
   generation: {
-    name: 'diamond_square',
-    options: {
-      worldHeight: 80
-    }
+    name: 'noise',
+    options: {}
   },
   kickTimeout: 10000,
   plugins: {

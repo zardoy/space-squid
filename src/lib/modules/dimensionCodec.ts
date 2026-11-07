@@ -735,7 +735,62 @@ export const getDimensionCodec = (height, useNewFormat, version) => {
     }
   }
 
+  addEndAndNetherBiomes(newFormat, oldFormat)
   return useNewFormat ? newFormat : oldFormat
+}
+
+/**
+ * The static codecs above only describe the overworld and the nether (and four biomes). The End dimension type and the nether / end biomes are derived from
+ * the existing nether dimension type / the_end biome entries so the client accepts `respawn` into the End and the biome ids the world generators emit.
+ */
+function addEndAndNetherBiomes (newFormat: any, oldFormat: any) {
+  const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v))
+  // ---- 1.16.1 style dimension list (flat typed fields)
+  const oldList: any[] = oldFormat.value.dimension.value.value
+  const oldNether = oldList.find(e => e.name?.value === 'minecraft:the_nether')
+  if (oldNether && !oldList.some(e => e.name?.value === 'minecraft:the_end')) {
+    const e = clone(oldNether)
+    const set = (k: string, type: string, value: any) => { e[k] = { type, value } }
+    set('name', 'string', 'minecraft:the_end'); set('infiniburn', 'string', 'minecraft:infiniburn_end'); set('ultrawarm', 'byte', 0); set('logical_height', 'int', 256)
+    set('natural', 'byte', 0); set('bed_works', 'byte', 0); set('fixed_time', 'long', [0, 6000]); set('shrunk', 'byte', 0); set('piglin_safe', 'byte', 0)
+    set('has_skylight', 'byte', 0); set('has_ceiling', 'byte', 0); set('ambient_light', 'float', 0); set('has_raids', 'byte', 1); set('respawn_anchor_works', 'byte', 0)
+    oldList.push(e)
+  }
+  // ---- 1.16.2 - 1.18.2 registry style
+  const types: any[] = newFormat.value['minecraft:dimension_type'].value.value.value.value
+  const nether = types.find(e => e.name.value === 'minecraft:the_nether')
+  if (nether && !types.some(e => e.name.value === 'minecraft:the_end')) {
+    const e = clone(nether)
+    e.name.value = 'minecraft:the_end'
+    e.id.value = Math.max(...types.map(t => t.id.value)) + 1
+    const v = e.element.value
+    const set = (k: string, type: string, value: any) => { v[k] = { type, value } }
+    set('piglin_safe', 'byte', 0); set('natural', 'byte', 0); set('ambient_light', 'float', 0); set('infiniburn', 'string', '#minecraft:infiniburn_end')
+    set('respawn_anchor_works', 'byte', 0); set('has_skylight', 'byte', 0); set('bed_works', 'byte', 0); set('effects', 'string', 'minecraft:the_end')
+    set('fixed_time', 'long', [0, 6000]); set('has_raids', 'byte', 1); set('logical_height', 'int', 256); set('coordinate_scale', 'double', 1)
+    set('min_y', 'int', 0); set('has_ceiling', 'byte', 0); set('ultrawarm', 'byte', 0); set('height', 'int', 256)
+    types.push(e)
+  }
+  // ---- biomes (vanilla 1.18.2 ids)
+  const biomes: any[] = newFormat.value['minecraft:worldgen/biome'].value.value.value.value
+  const theEnd = biomes.find(b => b.name.value === 'minecraft:the_end')
+  const extra: Array<[string, number, string, number, number]> = [
+    // name, id, category, fog_color, sky_color
+    ['nether_wastes', 51, 'nether', 3344392, 3344392], ['soul_sand_valley', 52, 'nether', 1787717, 1787717], ['crimson_forest', 53, 'nether', 3343107, 3343107],
+    ['warped_forest', 54, 'nether', 1705242, 1705242], ['basalt_deltas', 55, 'nether', 6840176, 6840176],
+    ['end_highlands', 57, 'the_end', 10518688, 0], ['end_midlands', 58, 'the_end', 10518688, 0], ['small_end_islands', 59, 'the_end', 10518688, 0], ['end_barrens', 60, 'the_end', 10518688, 0]
+  ]
+  if (theEnd) {
+    for (const [name, id, category, fog, sky] of extra) {
+      if (biomes.some(b => b.name.value === 'minecraft:' + name)) continue
+      const e = clone(theEnd)
+      e.name.value = 'minecraft:' + name; e.id.value = id
+      e.element.value.category.value = category
+      e.element.value.effects.value.fog_color.value = fog; e.element.value.effects.value.sky_color.value = sky
+      if (category === 'nether') { e.element.value.temperature.value = 2; e.element.value.downfall.value = 0 }
+      biomes.push(e)
+    }
+  }
 }
 
 const codecsOverride1_19_4 = {
@@ -7277,4 +7332,23 @@ export const dimensionOverworld = {
       "value": 0
     }
   }
+}
+
+/** dimension type NBT (what 1.16.2 - 1.18.2 `respawn` / `login` carry in `dimension`) for the overworld, nether and end, derived from the overworld one */
+export function dimensionNbt (dimensionId: number) {
+  const clone = JSON.parse(JSON.stringify(dimensionOverworld))
+  if (dimensionId === 0) return clone
+  const v = clone.value
+  const set = (k: string, type: string, value: any) => { v[k] = { type, value } }
+  set('min_y', 'int', 0); set('height', 'int', 256)
+  set('piglin_safe', 'byte', dimensionId === -1 ? 1 : 0); set('natural', 'byte', 0); set('bed_works', 'byte', 0); set('has_raids', 'byte', dimensionId === 1 ? 1 : 0)
+  set('has_skylight', 'byte', 0); set('has_ceiling', 'byte', dimensionId === -1 ? 1 : 0)
+  if (dimensionId === -1) {
+    set('infiniburn', 'string', '#minecraft:infiniburn_nether'); set('effects', 'string', 'minecraft:the_nether'); set('ultrawarm', 'byte', 1)
+    set('logical_height', 'int', 128); set('coordinate_scale', 'double', 8); set('ambient_light', 'float', 0.1); set('respawn_anchor_works', 'byte', 1); set('fixed_time', 'long', [0, 18000])
+  } else {
+    set('infiniburn', 'string', '#minecraft:infiniburn_end'); set('effects', 'string', 'minecraft:the_end'); set('ultrawarm', 'byte', 0)
+    set('logical_height', 'int', 256); set('coordinate_scale', 'double', 1); set('ambient_light', 'float', 0); set('respawn_anchor_works', 'byte', 0); set('fixed_time', 'long', [0, 6000])
+  }
+  return clone
 }

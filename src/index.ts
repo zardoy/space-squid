@@ -177,7 +177,7 @@ class MCServer extends EventEmitter {
       for (const value of values.filter(value => value.status === 'fulfilled')) {
         // todo remove when updated to typescript 5.5
         //@ts-ignore
-        if (value.value) {
+        if (typeof value.value === 'function') {
           //@ts-ignore
           server.cleanupFunctions.push(value.value)
         }

@@ -38,7 +38,7 @@ declare global {
     newEntity: (entity: Entity) => void
     tick: (delta: number, tickCount: number) => void
     /** Emit seed once the world is loaded */
-    seed: (seed: number) => void
+    seed: (seed: number | bigint) => void
     warpsLoaded: () => void
   }
 
@@ -84,7 +84,7 @@ declare global {
       options: {
         worldHeight?: number
         minY?: number
-        seed?: number
+        seed?: string | number | bigint
         version?: string
       }
     }
