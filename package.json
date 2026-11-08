@@ -28,7 +28,12 @@
     "test-essential": "echo todo",
     "test-all": "echo todo",
     "test": "echo TODO",
-    "pretest": "echo TODO-soon"
+    "pretest": "echo TODO-soon",
+    "perf:movement": "cd performance-tests && pnpm tsx src/runner.ts movement",
+    "perf:all": "cd performance-tests && pnpm tsx src/runner.ts all",
+    "perf:list": "cd performance-tests && pnpm tsx src/runner.ts list",
+    "perf:install": "cd performance-tests && pnpm install",
+    "perf:build": "cd performance-tests && pnpm run build"
   },
   "keywords": [
     "browser",
