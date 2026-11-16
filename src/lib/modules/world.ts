@@ -1,3 +1,4 @@
+import { generatorForWorldHeight } from '../generatorForWorldHeight'
 import { gzip } from 'node-gzip'
 import nbt from 'prismarine-nbt'
 
@@ -71,6 +72,11 @@ export const server: ServerModule = async function (serv, options) {
   generation.options ??= {}
   generation.options.worldHeight = serv.supportFeature('tallWorld') ? 384 : 256
   generation.options.minY = serv.supportFeature('tallWorld') ? -64 : 0
+  const requestedGenerator = generation.name
+  generation.name = generatorForWorldHeight(generation.name, generation.options.minY, generation.options.worldHeight)
+  if (generation.name !== requestedGenerator) {
+    console.warn(`The ${requestedGenerator} generator builds 1.18+ worlds only, using the ${generation.name} generator for ${version}: saved chunks load as they are, new ones are empty`)
+  }
   levelDatWriter(serv, options)
 
   const World = WorldLoader(version)
