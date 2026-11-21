@@ -602,6 +602,25 @@ export const player = function (player: Player, serv: Server, settings: Options)
     }
   }
 
+  /**
+   * Light arrays of the 1.18+ chunk packet in the vanilla byte order (nibbles, low nibble first). prismarine-chunk's dumpLight() writes every
+   * section with BitArray.writeBuffer (big-endian longs) while loadParsedLight() on the client reads vanilla bytes, so light reached the client
+   * scrambled inside every 16 cells along x (only 1/8 of the cells kept their value). The BitArray's Uint32Array already holds the vanilla layout
+   * on little-endian hosts: its bytes are copied as they are (also cheaper than the encoder).
+   */
+  const LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1
+  const packetLightArrays = (chunk: any, dumped: { skyLight: Uint8Array[], blockLight: Uint8Array[] }) => {
+    if (!LITTLE_ENDIAN || !chunk.skyLightSections || !chunk.blockLightSections) return { skyLight: dumped.skyLight, blockLight: dumped.blockLight }
+    const bytes = (sections: any[], mask: any) => {
+      const out: Uint8Array[] = []
+      sections.forEach((section, index) => {
+        if (section !== null && mask.get(index)) out.push(new Uint8Array(section.data.buffer, section.data.byteOffset, section.data.byteLength).slice())
+      })
+      return out
+    }
+    return { skyLight: bytes(chunk.skyLightSections, chunk.skyLightMask), blockLight: bytes(chunk.blockLightSections, chunk.blockLightMask) }
+  }
+
   player.sendChunk = async (chunkX, chunkZ, column: any) => {
     await player.behavior('sendChunk', {
       x: chunkX,
@@ -612,7 +631,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
 
       const newLightsFormat = serv.supportFeature('newLightingDataFormat')
       const dumpedLights = chunk.dumpLight()
-      const newLightsData = newLightsFormat ? { skyLight: dumpedLights.skyLight, blockLight: dumpedLights.blockLight } : undefined
+      const newLightsData = newLightsFormat ? packetLightArrays(chunk, dumpedLights) : undefined
       const chunkBuffer = chunk.dump()
       const bitMap = chunk.getMask()
       player._client.write('map_chunk', {
