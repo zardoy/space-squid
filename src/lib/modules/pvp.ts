@@ -15,8 +15,8 @@ export const player = function (player: Player, serv: Server) {
     const attackedEntity = serv.entities[entityId]
     if (!attackedEntity) return
     const attackedPlayer = attackedEntity.type === 'player' ? attackedEntity as Player : undefined
-    if (!attackedPlayer) return
-    if (attackedPlayer.gameMode === 1 || attackedPlayer.gameMode === 3 || attackedPlayer.invincible) return
+    if (!attackedPlayer && attackedEntity.type !== 'mob') return
+    if (attackedEntity.invincible || (attackedPlayer && (attackedPlayer.gameMode === 1 || attackedPlayer.gameMode === 3))) return
 
     // Anti-cheat: Distance check
     const distance = player.position.distanceTo(attackedEntity.position)
