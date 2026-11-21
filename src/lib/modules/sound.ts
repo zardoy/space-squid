@@ -3,7 +3,41 @@ import { skipMcPrefix } from '../utils'
 import { Vec3 } from 'vec3'
 import { CustomWorld } from './world'
 
+/** 1.8 sound names flying-squid uses, as resource names (1.9+) */
+const LEGACY_SOUNDS: Record<string, string> = {
+  'random.pop': 'entity.item.pickup',
+  'game.player.hurt': 'entity.player.hurt',
+  'random.chestopen': 'block.chest.open',
+  'random.chestclosed': 'block.chest.close'
+}
+const DIG_GROUP: Record<string, string> = { cloth: 'wool', stone: 'stone', wood: 'wood', grass: 'grass', gravel: 'gravel', sand: 'sand', snow: 'snow', glass: 'glass' }
+const NOTE_INSTRUMENT: Record<string, string> = { bd: 'basedrum', bassattack: 'bass' }
+/** sound categories by number (1.19.3+ packets take the name) */
+const SOUND_SOURCES = ['master', 'music', 'record', 'weather', 'block', 'hostile', 'neutral', 'player', 'ambient', 'voice']
+
+/** `dig.stone` -> `block.stone.place`, `note.harp` -> `block.note_block.harp` (1.13+) / `block.note.harp`; resource names pass unchanged */
+export function resourceSoundName (name: string, flattening: boolean): string {
+  const legacy = LEGACY_SOUNDS[name]
+  if (legacy) return legacy
+  const dig = /^dig\.(\w+)$/.exec(name)
+  if (dig) return `block.${DIG_GROUP[dig[1]] ?? 'stone'}.place`
+  const note = /^note\.(\w+)$/.exec(name)
+  if (note) return `block.${flattening ? 'note_block' : 'note'}.${NOTE_INSTRUMENT[note[1]] ?? note[1]}`
+  return name
+}
+
 export const server = function (serv: Server) {
+  // what the sound packets of this version look like (protocol schema of minecraft-data)
+  const toClient = (serv as any).mcData?.protocol?.play?.toClient?.types ?? {}
+  const effectFields: Array<{ name: string, type: unknown }> = toClient.packet_sound_effect?.[1] ?? []
+  const namedFields: Array<{ name: string, type: unknown }> | undefined = toClient.packet_named_sound_effect?.[1]
+  /** 1.19.3+: `sound` is an ItemSoundHolder ({ data: { soundName } } for a sound given by name) */
+  const soundHolder = effectFields.some(f => f.name === 'sound')
+  /** pitch is a float since 1.9 (a byte, pitch * 63, before) */
+  const floatPitch = (soundHolder ? effectFields : namedFields ?? effectFields).find(f => f.name === 'pitch')?.type === 'f32'
+  const resourceNames = serv.supportFeature('playsoundUsesResourceLocation')
+  const flattening = serv.supportFeature('theFlattening')
+
   serv.playSound = (sound, world, position, { whitelist, blacklist = [], radius = 32, volume = 1.0, pitch = 1.0, soundCategory = 0, saveId, customClientOptions } = {}) => {
     const players = (typeof whitelist !== 'undefined'
       ? (whitelist instanceof Array ? whitelist : [whitelist])
@@ -14,7 +48,7 @@ export const server = function (serv: Server) {
       }))
 
     // Add custom options to sound name if provided
-    let finalSoundName = sound
+    let finalSoundName = resourceNames ? resourceSoundName(sound, flattening) : sound
     if (customClientOptions) {
       finalSoundName = `${sound}(${JSON.stringify(customClientOptions)})`
     }
@@ -32,21 +66,21 @@ export const server = function (serv: Server) {
 
     players.filter(player => blacklist.indexOf(player) === -1)
       .forEach(player => {
-        const iniPos = position ? position.scaled(1 / 32) : player.position.scaled(1 / 32)
-        const pos = iniPos.scaled(8).floored()
-        if (serv.supportFeature('removedNamedSoundEffectPacket')) { // 1.19.3 removes named_sound_effect
+        // fixed point, 1/8 block (positions are in blocks; the old 1/32 scaling put every sound near 0 0 0)
+        const at = position ?? player.position
+        const x = Math.floor(at.x * 8)
+        const y = Math.floor(at.y * 8)
+        const z = Math.floor(at.z * 8)
+        const packetPitch = floatPitch ? pitch : Math.round(pitch * 63)
+        if (soundHolder) {
           player._client.write('sound_effect', {
-            soundId: 0,
-            soundEvent: {
-              resource: finalSoundName,
-              range: undefined
-            },
-            soundCategory,
-            x: pos.x,
-            y: pos.y,
-            z: pos.z,
+            sound: { data: { soundName: finalSoundName, fixedRange: undefined } },
+            soundCategory: typeof soundCategory === 'number' ? (SOUND_SOURCES[soundCategory] ?? 'master') : soundCategory,
+            x,
+            y,
+            z,
             volume,
-            pitch: Math.round(pitch * 63),
+            pitch: packetPitch,
             seed: 0
           })
         } else {
@@ -54,11 +88,11 @@ export const server = function (serv: Server) {
           player._client.write('named_sound_effect', {
             soundName: finalSoundName,
             soundCategory,
-            x: pos.x,
-            y: pos.y,
-            z: pos.z,
+            x,
+            y,
+            z,
             volume,
-            pitch: Math.round(pitch * 63),
+            pitch: packetPitch,
             seed: 0
           })
         }

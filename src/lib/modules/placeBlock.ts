@@ -12,6 +12,21 @@ const materialToSound = {
   wood: 'wood'
 }
 
+/** sound group of a block for its place sound (1.8 materials, or the 1.13+ tool tags minecraft-data has as `material`) */
+function soundGroupOf (block: { name: string, material?: string }): string {
+  const material = block.material ?? ''
+  if (materialToSound[material]) return materialToSound[material]
+  const { name } = block
+  if (name.includes('glass')) return 'glass'
+  if (name.includes('wool') || name.includes('carpet')) return 'cloth'
+  if (name.includes('snow')) return 'snow'
+  if (name.includes('sand')) return 'sand'
+  if (material.includes('mineable/axe')) return 'wood'
+  if (material.includes('leaves') || material.includes('plant') || name === 'grass_block' || name.endsWith('_grass')) return 'grass'
+  if (material.includes('mineable/shovel')) return 'gravel'
+  return 'stone'
+}
+
 export const server = (serv: Server, { version }: Options) => {
   const mcData = serv.mcData
 
@@ -238,7 +253,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
     player.emit('blockPlaced', blocks[id])
 
-    const sound = 'dig.' + (materialToSound[blocks[id].material ?? ''] || 'stone')
+    const sound = 'dig.' + soundGroupOf(blocks[id])
     serv.playSound(sound, player.world, placedPosition.offset(0.5, 0.5, 0.5), {
       pitch: 0.8
     })
