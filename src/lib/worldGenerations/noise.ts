@@ -13,6 +13,9 @@ const PRESET_SETTINGS: Record<string, string> = {
   default: 'minecraft:overworld', amplified: 'minecraft:amplified', large_biomes: 'minecraft:large_biomes', caves: 'minecraft:caves', floating_islands: 'minecraft:floating_islands'
 }
 
+/** a light section of sky light 15 everywhere */
+const FULL_SKY = new Uint8Array(2048).fill(0xff)
+
 /** Source version of the worldgen data / block names (all palette names are 26.3 names). */
 const SOURCE_VERSION = '26.3'
 
@@ -199,7 +202,20 @@ function generation (options: any = {}) {
       }
     }
 
-    // full-bright like the other generators: max sky + block light everywhere
+    // light computed by the generator (minecraft-worldgen >= the version with ChunkData.skyLight): sections of 2048 nibble bytes, from info.minY up
+    if (data.skyLight && data.blockLight && typeof chunk._loadSkyLightNibbles === 'function') {
+      const firstSection = info.minY >> 4
+      const sections = Math.min(info.height, minY + worldHeight - info.minY) >> 4
+      for (let s = Math.max(0, (minY - info.minY) >> 4); s < sections; s++) {
+        chunk._loadSkyLightNibbles(firstSection + s, data.skyLight.subarray(s * 2048, (s + 1) * 2048))
+        chunk._loadBlockLightNibbles(firstSection + s, data.blockLight.subarray(s * 2048, (s + 1) * 2048))
+      }
+      // the light section above the world (clients read it for the top faces): open sky
+      if (dimension === 'overworld') chunk._loadSkyLightNibbles((minY + worldHeight) >> 4, FULL_SKY)
+      return chunk
+    }
+
+    // an older generator without light: full-bright, max sky + block light everywhere
     for (let y = 0; y < worldHeight; y++) {
       pos.y = minY + y
       for (let z = 0; z < 16; z++) {
