@@ -630,7 +630,9 @@ export const player = function (player: Player, serv: Server, settings: Options)
       serv._finishPlayerChunkLoading(chunkX, chunkZ, player)
 
       const newLightsFormat = serv.supportFeature('newLightingDataFormat')
-      const dumpedLights = chunk.dumpLight()
+      // before 1.14 the light is inside the chunk data (dump()): dumpLight() returns nothing there, and every chunk of a 1.12 / 1.13 world
+      // failed to send ("reading 'skyLightMask'") so such worlds never loaded
+      const dumpedLights = chunk.dumpLight?.() ?? {}
       const newLightsData = newLightsFormat ? packetLightArrays(chunk, dumpedLights) : undefined
       const chunkBuffer = chunk.dump()
       const bitMap = chunk.getMask()
