@@ -12,14 +12,15 @@ export const player = function (player: Player, serv: Server, { version }: Optio
 
   player.openCustomWindow = (options: OpenCustomWindowOptions) => {
     const windowInfo = windows.windows[options.inventoryType]
-    if (!windowInfo) {
+    // before 1.14 `minecraft:chest` / `minecraft:container` have no fixed size: the caller gives the slot count
+    if (windowInfo === undefined || (!windowInfo && options.slotCount === undefined)) {
       throw new Error(`Invalid inventory type: ${options.inventoryType}`)
     }
-    const craftSlot = windowInfo.craft
+    const craftSlot = windowInfo?.craft
 
-    const window = windows.createWindow(1, windowInfo.type, options.title) as CustomWindow
+    const window = windows.createWindow(1, windowInfo ? windowInfo.type : options.inventoryType, options.title as string, options.slotCount) as CustomWindow
     // todo fix in prismarine-windows
-    window.type = windowInfo.type
+    window.type = windowInfo ? windowInfo.type : options.inventoryType
     for (let i = 0; i < window.inventoryStart; i++) {
       window.slots[i] = options.windowSlots[i] ?? null
     }
@@ -40,7 +41,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
       inventoryType: window.type as any,
       windowTitle: serv._createChatComponent(options.title).toNetworkFormat(),
       entityId: player.id,
-      slotCount: window.slots.length,
+      slotCount: options.slotCount ?? window.slots.length,
       useProvidedTitle: true,
     })
 
@@ -486,7 +487,9 @@ type Pre1_14Windows =
 interface OpenCustomWindowOptions {
   // crafter_3x3
   inventoryType: Post1_14Windows | Pre1_14Windows
-  title: string
+  title: string | object
+  /** size of the container part for window types without a fixed size (`minecraft:chest` before 1.14) */
+  slotCount?: number
   // slots: Record<number, Item>
   windowSlots: Record<number, Item>
   resultSlot?: Item
@@ -504,6 +507,8 @@ declare global {
 
   interface Player {
     lockInventory?: boolean
+    /** id of the window the player has open (counts up with every window) */
+    windowId: number
 
     /** @internal */
     windowType: string

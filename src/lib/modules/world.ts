@@ -234,6 +234,10 @@ export const server: ServerModule = async function (serv, options) {
             }
           }
         }
+        for (const [key, entity] of Object.entries(c.blockEntities ?? {})) {
+          const y = Number(key.split(',')[1])
+          if (y >= minY && y < minY + height) out.blockEntities[key] = entity
+        }
         return out
       }
     }
@@ -321,6 +325,12 @@ export const server: ServerModule = async function (serv, options) {
     1: 'minecraft:the_end'
   }
 
+  /** `dimension` / `worldName` fields of the login and respawn packets for a world (custom worlds get their own level identifier so the client rebuilds its level) */
+  serv.worldClientInfo = (world, dimension = world?.dimensionId ?? 0) => ({
+    dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[dimension || 0] : serv.supportFeature('dimensionIsAnInt') ? dimension || 0 : dimensionNbt(dimension || 0),
+    worldName: ['overworld', 'nether', 'end'].includes(world?.worldName) || !world?.worldName ? serv.dimensionNames[dimension || 0] : `flyingsquid:${world.worldName.toLowerCase()}`
+  })
+
   serv.overworld.blockEntityData = {}
   serv.overworld.portals = []
 
@@ -363,22 +373,26 @@ export const server: ServerModule = async function (serv, options) {
   }
 
   serv.chunksUsed = {}
+  // chunk usage is counted per world: the same chunk coordinates in the nether and the overworld are different chunks
+  const usedKey = (world: any, id: string) => `${world?.worldName ?? 'overworld'}:${id}`
   serv._finishPlayerChunkLoading = (chunkX, chunkZ, player) => {
     const id = chunkX + ',' + chunkZ
     if (player.loadedChunks[id]) return
-    if (!serv.chunksUsed[id]) {
-      serv.chunksUsed[id] = 0
+    const key = usedKey(player.world, id)
+    if (!serv.chunksUsed[key]) {
+      serv.chunksUsed[key] = 0
     }
-    serv.chunksUsed[id]++
+    serv.chunksUsed[key]++
     player.loadedChunks[id] = true
   }
   serv._unloadPlayerChunk = (chunkX, chunkZ, player) => {
     const id = chunkX + ',' + chunkZ
+    const key = usedKey(player.world, id)
     delete player.loadedChunks[id]
-    if (serv.chunksUsed[id] > 0) {
-      serv.chunksUsed[id]--
+    if (serv.chunksUsed[key] > 0) {
+      serv.chunksUsed[key]--
     }
-    if (!serv.chunksUsed[id] && player.world.storageProvider) {
+    if (!serv.chunksUsed[key] && player.world.storageProvider) {
       // Never delete chunks when we do not have a storage provider! They will be lost
       player.world.unloadColumn(chunkX, chunkZ)
       return true
@@ -507,6 +521,7 @@ export const server: ServerModule = async function (serv, options) {
       try {
         // Save level.dat if needed
         await serv.writeLevelDat()
+        await serv.savePortals?.()
         // Save worlds if backend supports it
         // prismarine-world saves chunks automatically when constructed with anvil; here we ensure flush via stop/start
         // Save players
@@ -530,6 +545,8 @@ export const server: ServerModule = async function (serv, options) {
     for (const world of Object.values(serv.worlds)) {
       // world.throwOnReadWrite = true
       world.stopSaving()
+      // chunks changed since the last interval (a chest edited just before closing) are written too
+      void world.saveNow?.().catch(() => {})
     }
   }
 }
@@ -798,17 +815,17 @@ export const player = function (player: Player, serv: Server, settings: Options)
   player.changeWorld = async (world, opt) => {
     if (player.world === world && !opt?.force) return Promise.resolve()
     opt = opt || {}
-    player.world = world
+    const from = player.world
+    // the chunks are released in the world they belong to: `player.world` is switched only afterwards
     player._unloadAllChunks()
+    player.world = world
     if (typeof opt.gamemode !== 'undefined') {
       if (opt.gamemode !== player.gameMode) player.prevGameMode = player.gameMode
       player.gameMode = opt.gamemode
     }
     player._client.write('respawn', {
       previousGameMode: player.prevGameMode,
-      dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[opt.dimension || 0] : serv.supportFeature('dimensionIsAnInt') ? opt.dimension || 0 : dimensionNbt(opt.dimension || 0),
-      // custom worlds get their own level identifier so the client rebuilds its level even when the dimension type is the same
-      worldName: ['overworld', 'nether', 'end'].includes(world.worldName) || !world.worldName ? serv.dimensionNames[opt.dimension || 0] : `flyingsquid:${world.worldName.toLowerCase()}`,
+      ...serv.worldClientInfo(world, opt.dimension),
       difficulty: opt.difficulty || serv.difficulty,
       hashedSeed: serv.hashedSeed,
       gamemode: opt.gamemode || player.gameMode,
@@ -818,7 +835,8 @@ export const player = function (player: Player, serv: Server, settings: Options)
       copyMetadata: true
     })
     await player.findSpawnPoint()
-    player.position = opt.position ?? player.spawnPoint
+    // `player.spawnPoint` is the respawn point in the overworld: another world has its own standable entry point
+    player.position = opt.position ?? (world === serv.overworld || !serv.worldEntryPoint ? player.spawnPoint : await serv.worldEntryPoint(world, from, player.position))
     player.sendSpawnPosition()
     player.updateAndSpawn()
 
@@ -907,6 +925,8 @@ declare global {
     removeWorld: (name: string) => Promise<void>
     /** @internal */
     "dimensionNames": { '-1': string; 0: string; 1: string }
+    /** `dimension` and `worldName` fields of the login / respawn packet for a world */
+    worldClientInfo: (world: CustomWorld, dimension?: number) => { dimension: any, worldName: string }
     /** @internal */
     "pregenWorld": (world: CustomWorld, size?: number) => Promise<Chunk[]>
     /** Saves block in world and sends block update to all players of the same world. */

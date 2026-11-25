@@ -2,6 +2,7 @@ import { Vec3 } from 'vec3'
 import UserError from '../user_error'
 import MinecraftData from 'minecraft-data'
 import portalDetector from '../portal_detector'
+import fs from 'fs'
 
 export const player = function (player: Player, serv: Server, { version }: Options) {
   const mcData = MinecraftData(version)
@@ -32,7 +33,7 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   // })
 }
 
-export const server = function (serv: Server, { version }: Options) {
+export const server = function (serv: Server, { version, worldFolder, noWorldRegion }: Options) {
   const { generatePortal, addPortalToWorld, detectFrame } = portalDetector(version)
   const mcData = MinecraftData(version)
 
@@ -134,6 +135,52 @@ export const server = function (serv: Server, { version }: Options) {
   }
   serv.netherPortalNear = portalNear
 
+  /** where a player standing at `from` (in the world `fromWorld`) arrives when sent to `world` without an explicit position (/mv tp, /changeworld) */
+  serv.worldEntryPoint = async (world: any, fromWorld: any, from: Vec3) => {
+    if (world.environment === 'end') return new Vec3(100.5, 49, 0.5)
+    const scale = world.environment === 'nether' && fromWorld?.environment === 'normal' ? 1 / 8 : world.environment === 'normal' && fromWorld?.environment === 'nether' ? 8 : 1
+    const x = Math.floor((from?.x ?? 0) * scale); const z = Math.floor((from?.z ?? 0) * scale)
+    await world.getColumn(x >> 4, z >> 4)
+    return new Vec3(x + 0.5, await findStandY(world, x, z), z + 0.5)
+  }
+
+  // ---------------------------------------------------------------------------------------------- portals in the save
+  // `world.portals` lived in memory only: after a restart every trip through an existing portal built a second one, and the old one was never found again
+  const portalsFile = worldFolder && !noWorldRegion ? `${worldFolder}/flyingsquid-portals.json` : undefined
+  const toXyz = (list: Vec3[] = []) => list.map(p => [p.x, p.y, p.z])
+  const fromXyz = (list: number[][] = []) => list.map(([x, y, z]) => new Vec3(x, y, z))
+  let lastSavedPortals = ''
+  serv.savePortals = async () => {
+    if (!portalsFile) return
+    const data: Record<string, any[]> = {}
+    for (const [name, world] of Object.entries<any>(serv.worlds)) {
+      if (!world.portals?.length) continue
+      data[name] = world.portals.map(({ bottom, left, right, top, air }) => ({ bottom: toXyz(bottom), left: toXyz(left), right: toXyz(right), top: toXyz(top), air: toXyz(air) }))
+    }
+    const json = JSON.stringify(data)
+    if (json === lastSavedPortals) return
+    try {
+      await fs.promises.writeFile(portalsFile, json)
+      lastSavedPortals = json
+    } catch (e) {
+      serv.warn('Could not save portals: ' + (e as Error).message)
+    }
+  }
+  // the worlds are created by the (async) world module: not yet at 'asap'
+  serv.once('pluginsReady', async () => {
+    if (!portalsFile) return
+    try {
+      const data = JSON.parse(await fs.promises.readFile(portalsFile, 'utf8') as string) as Record<string, any[]>
+      lastSavedPortals = JSON.stringify(data)
+      for (const [name, portals] of Object.entries(data)) {
+        const world: any = serv.worlds[name]
+        if (!world) continue
+        for (const p of portals) world.portals.push({ bottom: fromXyz(p.bottom), left: fromXyz(p.left), right: fromXyz(p.right), top: fromXyz(p.top), air: fromXyz(p.air) })
+      }
+    } catch {} // no file yet
+    serv.setInterval(() => { void serv.savePortals() }, 10_000)
+  })
+
   const portalState = new WeakMap<object, { ticks: number, locked: boolean, busy: boolean }>()
   const endPortalType = mcData.blocksByName.end_portal?.id
   const netherPortalType = mcData.blocksByName[netherPortalName]?.id
@@ -233,6 +280,10 @@ export const server = function (serv: Server, { version }: Options) {
 }
 declare global {
   interface Server {
+    /** standable position in `world` for a player coming from `from` in `fromWorld` (nether coordinates are 1:8) */
+    worldEntryPoint: (world: any, fromWorld: any, from: Vec3) => Promise<Vec3>
+    /** writes the registered nether portals of all worlds to `<worldFolder>/flyingsquid-portals.json` (only when changed) */
+    savePortals: () => Promise<void>
     /** nearest registered portal of `world` within `radius` blocks of (x, z) - a new nether portal is built when there is none; returns the standing position */
     netherPortalNear: (world: any, x: number, z: number, radius: number) => Promise<Vec3>
   }

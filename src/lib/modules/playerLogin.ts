@@ -250,6 +250,12 @@ export const player = async function (player: Player, serv: Server, settings: Op
         console.warn(`Failed to restore inventory slot. Error while restoring item ${itemName} (id in player ${player.username} inventory ${itemValue})`, err)
       }
     })
+    player.loadEnderChest?.(playerData.enderItems ?? [])
+    // a new player of a survival world starts with a stack of ender pearls in the first hotbar slot (`startingPearls`: count, false = none)
+    const pearls = settings.startingPearls ?? 16
+    if (playerData.new && player.gameMode === 0 && pearls && !player.isFake && mcData.itemsByName.ender_pearl) {
+      player.inventory.updateSlot(36, new Item(mcData.itemsByName.ender_pearl.id, Math.min(+pearls, mcData.itemsByName.ender_pearl.stackSize ?? 16)))
+    }
     player._client.write('held_item_slot', {
       slot: player.heldItemSlot
     })
@@ -283,8 +289,11 @@ export const player = async function (player: Player, serv: Server, settings: Op
       dimensionCodec,
       levelType: 'default',
       worldType: 'minecraft:overworld',
-      worldName: serv.dimensionNames[0],
-      dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : serv.supportFeature('dimensionIsAnInt') ? 0 : dimensionOverworld,
+      // a player saved in the nether / end / another world joins that world (before, the client was always told "overworld" and got chunks of another dimension)
+      ...(player.world && player.world !== serv.overworld ? serv.worldClientInfo(player.world) : {
+        worldName: serv.dimensionNames[0],
+        dimension: serv.supportFeature('dimensionIsAString') ? serv.dimensionNames[0] : serv.supportFeature('dimensionIsAnInt') ? 0 : dimensionOverworld
+      }),
       hashedSeed: serv.hashedSeed,
       difficulty: serv.difficulty,
       viewDistance,
@@ -520,6 +529,10 @@ export const player = async function (player: Player, serv: Server, settings: Op
 
 }
 declare global {
+  interface Options {
+    /** ender pearls given to a new player of a survival world, in the first hotbar slot (default 16, `false` = none) */
+    startingPearls?: number | false
+  }
   interface Server {
     /** @internal */
     "hashedSeed": number[]

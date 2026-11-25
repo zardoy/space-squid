@@ -67,6 +67,7 @@ async function read (uuid, getSpawnPoint, worldFolder, useInMemoryStorage) {
         if (nbtItem?.tag && !nbtItem.tag.name) nbtItem.tag.name = ''
         return nbtItem
       }),
+      enderItems: playerData.EnderItems?.value?.value ?? [],
       new: false
     }
   } catch (e) {
@@ -144,7 +145,8 @@ async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryS
           onGround: player.onGround,
           flying: player.flying ?? 0
         },
-        inventory: playerInventoryToNBT(player.inventory, theFlattening)
+        inventory: playerInventoryToNBT(player.inventory, theFlattening),
+        enderItems: player.enderChestToNbt?.() ?? []
       }
       inMemoryStorage.set(player.uuid, playerData)
     }
@@ -167,6 +169,8 @@ async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryS
     newUncompressedData.value.Rotation.value.value = [player.yaw, player.pitch]
     newUncompressedData.value.OnGround.value = Number(player.onGround)
     newUncompressedData.value.Inventory.value.value = playerInventoryToNBT(player.inventory, theFlattening)
+    const ender = player.enderChestToNbt?.() ?? []
+    newUncompressedData.value.EnderItems = ender.length ? { type: 'list', value: { type: 'compound', value: ender } } : { type: 'list', value: { type: 'end', value: [] } }
     newUncompressedData.value.abilities.value.flying.value = player.flying ?? 0
 
     const newDataCompressed = await gzip(writeUncompressed(newUncompressedData))

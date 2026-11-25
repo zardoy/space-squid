@@ -13,6 +13,12 @@ export const player = function (player: Player, serv: Server) {
     if (actionId === 0) {
       player.position = player.spawnPoint
       player.behavior('requestRespawn', {}, () => {
+        // the respawn point is in the overworld: a player who died in another world (nether, end, /mv world) really changes the world, not only the client's dimension
+        const switchingWorld = player.world !== serv.overworld
+        if (switchingWorld) {
+          player._unloadAllChunks()
+          player.world = serv.overworld
+        }
         player._client.write('respawn', {
           previousGameMode: player.prevGameMode,
           dimension: serv.supportFeature('dimensionIsAWorld') ? {
@@ -94,6 +100,7 @@ export const player = function (player: Player, serv: Server) {
         player.updateHealth(20)
         player.nearbyEntities = []
         player.updateAndSpawn()
+        if (switchingWorld) player.sendMap().catch((err) => setTimeout(() => { throw err }))
       })
     }
   })
