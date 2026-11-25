@@ -202,6 +202,32 @@ function generation (options: any = {}) {
       }
     }
 
+    // block entities of the generator: loot tables of chests / dispensers (minecraft-worldgen >= the version with ChunkData.blockEntities); the containers module rolls the loot when one is opened
+    if (data.blockEntities?.length) {
+      const flattened = registry.supportFeature?.('theFlattening') !== false
+      chunk.blockEntities ??= {}
+      for (const be of data.blockEntities) {
+        if (!be.lootTable || be.y < minY || be.y >= minY + worldHeight) continue
+        const name = be.id.replace(/^minecraft:/, '')
+        pos.set(be.x, be.y, be.z)
+        // the block of this version at the position has to be the container (blocks newer than the version are replaced by stone / air)
+        if (registry.blocksByStateId[chunk.getBlockStateId(pos)]?.name !== name) continue
+        const legacyId = { chest: 'Chest', dispenser: 'Trap' }[name]
+        if (!flattened && !legacyId) continue
+        const wx = chunkX * 16 + be.x
+        const wz = chunkZ * 16 + be.z
+        const seed = BigInt.asUintN(64, be.lootSeed ?? 0n)
+        chunk.blockEntities[`${wx},${be.y},${wz}`] = {
+          id: { type: 'string', value: flattened ? be.id : legacyId },
+          x: { type: 'int', value: wx },
+          y: { type: 'int', value: be.y },
+          z: { type: 'int', value: wz },
+          LootTable: { type: 'string', value: be.lootTable },
+          LootTableSeed: { type: 'long', value: [Number(BigInt.asIntN(32, seed >> 32n)), Number(BigInt.asIntN(32, seed))] }
+        }
+      }
+    }
+
     // light computed by the generator (minecraft-worldgen >= the version with ChunkData.skyLight): sections of 2048 nibble bytes, from info.minY up
     if (data.skyLight && data.blockLight && typeof chunk._loadSkyLightNibbles === 'function') {
       const firstSection = info.minY >> 4

@@ -39,8 +39,8 @@ importers:
         specifier: ^1.60.1
         version: 1.61.0
       minecraft-worldgen:
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^0.1.3
+        version: 0.1.3
       mkdirp:
         specifier: ^2.1.3
         version: 2.1.6
@@ -2078,8 +2078,8 @@ packages:
     resolution: {integrity: sha512-LZgcsdC88HZtuEYve7YENYvO6Xhe80Mf1rYLgz1frkMWAHWSSXfrplWoNKkKYcdVGM4Azc99NvbFjZdSDu4yKg==}
     engines: {node: '>=22'}
 
-  minecraft-worldgen@0.1.2:
-    resolution: {integrity: sha512-D+Ua31mVW0Ed/2GwTm3ZVG4Yc6AYbfHU23jS/OzLKiSeZRNtjKkA8QCtaHqY0jrwefxDwzxod7WgASyzZHJoqg==}
+  minecraft-worldgen@0.1.3:
+    resolution: {integrity: sha512-s3JIaquxbRTJEwLReQ5B54N/STaH71fDnCeCoLe/DrS5Nr+W7vOkZvSWl1FtjoouJ6/PAe3zsVlWelXrU97Zhw==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -4893,7 +4893,7 @@ snapshots:
       - encoding
       - supports-color
 
-  minecraft-worldgen@0.1.2:
+  minecraft-worldgen@0.1.3:
     dependencies:
       adm-zip: 0.5.16
       prismarine-nbt: 2.7.0
