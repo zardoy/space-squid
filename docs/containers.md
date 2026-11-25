@@ -16,7 +16,7 @@ A container with a `LootTable` (and optional `LootTableSeed`) generates its loot
 Loot tables and recipes are read from (later wins):
 
 1. the vanilla client jar (node: `MC_WORLDGEN_VANILLA_JAR`, default `~/.cache/mc-worldgen/client.jar`; or `gameDataJars` in the options),
-2. zip URL(s) in `globalThis.__MC_GAMEDATA_URL` (browser; a string, a list or a function returning them; a small zip with `data/minecraft/loot_table/chests/*` and the cooking `data/minecraft/recipe/*` is enough, the worldgen pack is not read),
+2. zip URL(s) in `globalThis.__MC_GAMEDATA_URL` (browser; a string, a list or a function returning them; a JSON bundle `{ "data/minecraft/loot_table/chests/x.json": {...}, ... }` or a zip with `data/minecraft/loot_table/chests/*` and the cooking `data/minecraft/recipe/*` is enough, the worldgen pack is not read),
 3. datapack zips in `<worldFolder>/datapacks/`,
 4. the `lootTables` option (`{ 'minecraft:chests/foo': {...} }` or a function).
 

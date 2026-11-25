@@ -6,8 +6,8 @@ import { DataRegistry, DEFAULT_VANILLA_JAR } from 'minecraft-worldgen/dist/data/
  * Vanilla game data the server needs at run time and `minecraft-data` does not have: loot tables and cooking recipes (smelting, blasting, smoking).
  * It reads the datapack layers like minecraft-worldgen does (a `DataRegistry`):
  *  1. the vanilla client jar (node: `MC_WORLDGEN_VANILLA_JAR` / `~/.cache/mc-worldgen/client.jar`, or `options.gameDataJars`),
- *  2. zip URL(s) of `globalThis.__MC_GAMEDATA_URL` (browser hosts; a string, a list or a function returning one; a small zip with `data/minecraft/loot_table/chests` and the cooking `data/minecraft/recipe`
- *     files is enough, it is not the worldgen pack),
+ *  2. zip URL(s) of `globalThis.__MC_GAMEDATA_URL` (browser hosts; a string, a list or a function returning one; a JSON bundle of `data/minecraft/loot_table/chests/*` and the cooking
+ *     `data/minecraft/recipe/*` files (`{ "<path>": json }`, about 10 KB gzipped) or a zip of them is enough, it is not the worldgen pack),
  *  3. datapack zips in `<worldFolder>/datapacks/`,
  *  4. `options.lootTables` (`{ 'minecraft:chests/foo': {...} }` or a function) which wins over everything.
  * Without any of them loot tables are unknown (chests with a `LootTable` stay as they are) and a built-in list of the vanilla cooking recipes is used.
@@ -68,7 +68,11 @@ export class GameData {
     for (const url of Array.isArray(urls) ? urls : urls ? [urls] : []) {
       try {
         const res = await fetch(url)
-        if (res.ok) this.registry.addZipBuffer(`gamedata:${url}`.slice(0, 80), new Uint8Array(await res.arrayBuffer()))
+        if (!res.ok) continue
+        const bytes = new Uint8Array(await res.arrayBuffer())
+        // a JSON bundle `{ "data/minecraft/loot_table/chests/x.json": {...}, ... }` (much smaller than a zip: the tables compress well together) or a datapack zip
+        if (bytes[0] === 0x7B) this.registry.addVirtualFiles(`gamedata:${url}`.slice(0, 80), JSON.parse(new TextDecoder().decode(bytes)))
+        else this.registry.addZipBuffer(`gamedata:${url}`.slice(0, 80), bytes)
       } catch {}
     }
     if (options.worldFolder) {
