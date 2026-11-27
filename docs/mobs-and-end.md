@@ -16,3 +16,6 @@ Spawner block entities from worldgen (nether fortress blazes, dungeons, mineshaf
 
 ## The End (`modules/endFight.ts`)
 Arrival platform at (100, 48, 0). When a player is in the End the first time, ten end crystals appear on the pillars (positions from worldgen `endSpikes`) and the ender dragon (boss bar). It circles at radius 32 and dives at players; each crystal within 40 blocks heals it. Crystals explode when hit. The first kill gives 12000 XP and builds the exit portal with the dragon egg (`/enderfight state|start|reset`, state in `flyingsquid-end.json`). Players in the End always see night.
+
+## Buckets and obsidian (`modules/buckets.ts`)
+Obsidian (nether portals) is obtainable: craft a bucket (3 iron), pick up a water source (ocean, river) and a lava source (lava lakes), pour. Fluids do not flow, so a poured bucket is one still source block and the usual reactions are done directly: water onto / next to a lava source makes **obsidian**, next to flowing lava **cobblestone**, water into lava does the same at that spot, lava poured next to water makes obsidian. Aim at the surface of a lake with the use key; creative players keep their bucket. Mining obsidian drops it (no tool tier check, a diamond pickaxe is just much faster for the client). The look direction sent with `use_item` (1.21.2+) is used for aiming, a click can arrive before the look packet.

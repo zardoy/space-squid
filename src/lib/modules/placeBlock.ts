@@ -272,13 +272,19 @@ export const player = function (player: Player, serv: Server, { version }: Optio
   })
 
   let lastItemUse = 0
-  player._client.on('use_item', async ({ hand = 0 }: {
+  player._client.on('use_item', async ({ hand = 0, rotation }: {
     hand: number
     sequence: number
     rotation: any
   }) => {
     if (Date.now() - lastItemUse < 15) return
     lastItemUse = Date.now()
+    // the click carries the look direction (1.21.2+): it can arrive before the look packet of the same tick, buckets / pearls aim with it
+    if (typeof rotation?.x === 'number' && typeof rotation?.y === 'number') {
+      const toByte = (f: number) => { let b = Math.floor((f % 360) * 256 / 360); if (b < -128) b += 256; else if (b > 127) b -= 256; return b }
+      player.yaw = toByte(rotation.x)
+      player.pitch = toByte(rotation.y)
+    }
 
     const heldItem = player.inventory.slots[hand === 0 ? 36 + player.heldItemSlot : 45]
     if (!heldItem || heldItem.type === -1) return
