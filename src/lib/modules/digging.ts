@@ -221,6 +221,8 @@ export const player = function (player: Player, serv: Server, { version }: Optio
         directionVector
       }, async (data) => {
         player.changeBlock(data.position, 0, 0)
+        // a tool loses one point per block (swords two), none for blocks that break instantly
+        if ((currentlyDugBlock.hardness ?? 1) > 0) player.damageHeldItem(/sword$/.test(player.inventory.slots[36 + player.heldItemSlot]?.name ?? '') ? 2 : 1)
         const aboveBlock = await player.world.getBlock(data.position.offset(0, 1, 0))
         if (aboveBlock.material === 'plant') {
           await player.setBlock(data.position.offset(0, 1, 0), 0)

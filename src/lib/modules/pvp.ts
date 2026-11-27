@@ -42,6 +42,8 @@ export const player = function (player: Player, serv: Server) {
       const critical = !player.onGround && player.gameMode !== 1
       const damage = weaponDamage(player.inventory.slots[36 + player.heldItemSlot]?.name) * (critical ? 1.5 : 1)
       player.behavior('attack', { attackedEntity, velocity, damage }, (o) => {
+        // swords lose one point per hit, other tools two
+        player.damageHeldItem(/sword$/.test(player.inventory.slots[36 + player.heldItemSlot]?.name ?? '') ? 1 : 2)
         attackedMob.attackedBy?.(player, o.damage ?? damage)
         serv.hurt(attackedMob, o.damage ?? damage, { source: player, from: player.position, knockback: 5 })
       })
