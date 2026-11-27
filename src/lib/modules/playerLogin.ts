@@ -345,10 +345,7 @@ export const player = async function (player: Player, serv: Server, settings: Op
   }
 
   function updateTime () {
-    player._client.write('update_time', {
-      age: [0, 0],
-      time: [0, serv.time]
-    })
+    player.sendTime()
   }
 
   player.setGameMode = (gameMode) => {

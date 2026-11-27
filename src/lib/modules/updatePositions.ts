@@ -115,6 +115,8 @@ export const player = function (player: Player) {
   }
 }
 
+const degreesToByte = (deg: number) => { let b = Math.floor(((deg % 360) + 360) % 360 * 256 / 360); if (b > 127) b -= 256; return b }
+
 export const entity = function (entity: Entity, serv: Server) {
   entity.sendPosition = async (position, onGround, teleport = false) => {
     if (typeof position === 'undefined') throw new Error('position is undefined')
@@ -153,8 +155,9 @@ export const entity = function (entity: Entity, serv: Server) {
           x: entityPosition.x,
           y: entityPosition.y,
           z: entityPosition.z,
-          yaw: entity.yaw,
-          pitch: entity.pitch,
+          // players keep their rotation as protocol bytes, other entities as degrees
+          yaw: entity.type === 'player' ? entity.yaw : degreesToByte(entity.yawDeg ?? entity.yaw ?? 0),
+          pitch: entity.type === 'player' ? entity.pitch : degreesToByte(entity.pitch ?? 0),
           onGround
         })
         entity.knownPosition = position
@@ -183,6 +186,26 @@ export const entity = function (entity: Entity, serv: Server) {
       if (entity.type === 'player') entity.sendSelfPosition()
     })
     return !cancelled
+  }
+
+  /**
+   * Absolute position for the clients nearby. Moves are sent as small deltas against the position the client has; a client that predicts movement itself (mineflayer's entity
+   * physics: gravity, water) drifts away from the server over time. An absolute position now and then (see entities.ts) puts every entity back where the server has it.
+   */
+  entity.sendAbsolute = () => {
+    let entityPosition
+    if (serv.supportFeature('fixedPointPosition')) entityPosition = entity.position.scaled(32).floored()
+    else entityPosition = entity.position
+    entity._writeOthersNearby('entity_teleport', {
+      entityId: entity.id,
+      x: entityPosition.x,
+      y: entityPosition.y,
+      z: entityPosition.z,
+      yaw: entity.type === 'player' ? entity.yaw : degreesToByte(entity.yawDeg ?? entity.yaw ?? 0),
+      pitch: entity.type === 'player' ? entity.pitch : degreesToByte(entity.pitch ?? 0),
+      onGround: !!entity.onGround
+    })
+    entity.knownPosition = entity.position.clone()
   }
 
   entity.teleport = (pos) => { // Overwritten in players inject above
@@ -222,6 +245,8 @@ declare global {
     /** @internal */
     "sendPosition": (position: Vec3, onGround: boolean, teleport?: boolean) => Promise<boolean>
     "teleport": (pos: Vec3) => void
+    /** sends the current position as an absolute position to the clients nearby (resync of clients that predict movement) */
+    sendAbsolute: () => void
   }
 
   interface PlayerBehaviorInputMap {

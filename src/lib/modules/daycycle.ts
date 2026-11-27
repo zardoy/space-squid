@@ -1,10 +1,13 @@
+/** the End has no day: its players always see the night sky (vanilla: a fixed dark sky) */
+const END_TIME = 18000
+
 export const server = function (serv: Server) {
+  /** time of day shown to the players of `world` */
+  serv.worldTime = (world) => (world?.environment === 'end' ? END_TIME : serv.time)
+
   serv.setTime = (time) => {
     serv.time = time
-    serv._writeAll('update_time', {
-      age: [0, 0], // TODO
-      time: [0, serv.time]
-    })
+    for (const player of serv.players) player.sendTime()
   }
 
   serv.doDaylightCycle ??= true
@@ -86,6 +89,15 @@ export const server = function (serv: Server) {
     }
   })
 }
+export const player = function (player: Player, serv: Server) {
+  player.sendTime = () => {
+    player._client.write('update_time', {
+      age: [0, 0], // TODO
+      time: [0, serv.worldTime(player.world)]
+    })
+  }
+}
+
 declare global {
   interface Server {
     /** Set daylight cycle time in ticks. See `serv.time` for more info. */
@@ -96,5 +108,11 @@ declare global {
      * Resets to 0 at 24000. Use {@link setTime `serv.setTime(time)`} to set the time.
      */
     'time': number
+    /** time of day the players of `world` see (the End is always night) */
+    worldTime: (world: any) => number
+  }
+  interface Player {
+    /** sends the time of day of the player's world */
+    sendTime: () => void
   }
 }

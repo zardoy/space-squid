@@ -1,40 +1,25 @@
 import { Vec3 } from 'vec3'
+import { Body, stepBody } from '../entityPhysics'
 
 export const entity = function (entity: Entity, serv: Server, { version }: Options) {
-  const blocks = serv.mcData.blocks
-
   entity.calculatePhysics = async (delta) => {
-    if (entity.gravity) {
-      addGravity(entity, 'x', delta)
-      addGravity(entity, 'y', delta)
-      addGravity(entity, 'z', delta)
+    // the box physics works on a copy: `sendPosition` compares the old and the new position
+    const body: Body = {
+      position: entity.position.clone(),
+      velocity: entity.velocity,
+      size: entity.size,
+      gravity: entity.noGravity ? undefined : entity.gravity,
+      terminalvelocity: entity.terminalvelocity,
+      friction: entity.friction,
+      buoyant: entity.name === 'item' || entity.name === 'experience_orb',
+      flying: entity.isFlyer,
+      onGround: entity.onGround
     }
-
-    const vSign = getSign(entity.velocity)
-    const sizeSigned = new Vec3(vSign.x * entity.size.x, vSign.y * entity.size.y, vSign.z * entity.size.z)
-
-    const xVec = entity.position.offset(entity.velocity.x * delta + sizeSigned.x / 2, 0, 0)
-    const yVec = entity.position.offset(0, entity.velocity.y * delta + sizeSigned.y / 2, 0)
-    const zVec = entity.position.offset(0, 0, entity.velocity.z * delta + sizeSigned.z / 2)
-
-    // Get block for each (x/y/z)Vec, check to avoid duplicate getBlockTypes
-    const xBlock = blocks[await entity.world.getBlockType(xVec)].boundingBox === 'block'
-    const yBlock = yVec.equals(xVec) ? xBlock : blocks[await entity.world.getBlockType(yVec)].boundingBox === 'block'
-    const zBlock = zVec.equals(yVec) ? yBlock : (zVec.equals(xVec) ? xBlock : blocks[await entity.world.getBlockType(zVec)].boundingBox === 'block')
-
-    if (xBlock || yBlock || zBlock) {
-      entity.velocity.x = getFriction(entity.velocity.x, entity.friction.x, delta)
-      entity.velocity.z = getFriction(entity.velocity.z, entity.friction.z, delta)
-    }
-
-    const newPos = entity.position.clone()
-
-    newPos.x += getMoveAmount('x', xBlock, entity, delta, sizeSigned.x)
-    newPos.y += getMoveAmount('y', yBlock, entity, delta, sizeSigned.y)
-    newPos.z += getMoveAmount('z', zBlock, entity, delta, sizeSigned.z)
-
-    // serv.emitParticle(30, serv.overworld, entity.position, { size: new Vec3(0, 0, 0) });
-    return { position: newPos, onGround: yBlock }
+    const moved = stepBody(entity.world, body, delta)
+    entity.inWater = body.inWater
+    entity.inLava = body.inLava
+    entity.hitWall = !!(body.hitX || body.hitZ)
+    return { position: moved ? body.position : entity.position, onGround: moved ? !!body.onGround : entity.onGround }
   }
 
   entity.sendVelocity = (vel, maxVel) => {
@@ -55,33 +40,6 @@ export const entity = function (entity: Entity, serv: Server, { version }: Optio
       if (maxVelocity) entity.velocity = addVelocityWithMax(entity.velocity, velocity, maxVelocity)
       else entity.velocity.add(velocity)
     }
-  }
-
-  function getMoveAmount (dir, block, entity, delta, sizeSigned) {
-    if (block) {
-      entity.velocity[dir] = 0
-      return -1 * (entity.position[dir] + sizeSigned / 2 - entity.position[dir])
-    } else {
-      return entity.velocity[dir] * delta
-    }
-  }
-
-  function getSign (vec) {
-    return new Vec3(Math.sign(vec.x), Math.sign(vec.y), Math.sign(vec.z))
-  }
-
-  function addGravity (entity, dir, delta) {
-    if (entity.velocity[dir] < entity.terminalvelocity[dir] && entity.velocity[dir] > -entity.terminalvelocity[dir]) {
-      entity.velocity[dir] = clamp(-entity.terminalvelocity[dir], entity.velocity[dir] + entity.gravity[dir] * delta, entity.terminalvelocity[dir])
-    }
-  }
-
-  function getFriction (vel, fric, delta) {
-    return vel > 0 ? Math.max(0, vel - fric * delta) : Math.min(0, vel + fric * delta)
-  }
-
-  function clamp (a, b, c) {
-    return Math.max(a, Math.min(b, c))
   }
 
   function addVelocityWithMax (current, newVel, max) {
@@ -120,8 +78,14 @@ declare global {
   interface Entity {
     /** Gravity of entity (non-players) to calculate physics. */
     gravity: Vec3
-    /** Decreases velocity when touching blocks */
+    /** Deceleration (blocks/s^2) of the horizontal velocity while standing on something */
     friction: Vec3
+    /** Flying entities (blaze, dragon) ignore liquids; with `noGravity` they stay in the air */
+    isFlyer?: boolean
+    /** No gravity (flying mobs, projectiles that fly straight) */
+    noGravity?: boolean
+    inWater?: boolean
+    inLava?: boolean
     /** @internal */
     "calculatePhysics": (delta: any) => Promise<{ position: Vec3; onGround: boolean }>
     /** @internal */

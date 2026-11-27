@@ -137,7 +137,7 @@ export const server = function (serv: Server, { version, worldFolder, noWorldReg
 
   /** where a player standing at `from` (in the world `fromWorld`) arrives when sent to `world` without an explicit position (/mv tp, /changeworld) */
   serv.worldEntryPoint = async (world: any, fromWorld: any, from: Vec3) => {
-    if (world.environment === 'end') return new Vec3(100.5, 49, 0.5)
+    if (world.environment === 'end') { await serv.makeEndPlatform(); return new Vec3(100.5, 49, 0.5) }
     const scale = world.environment === 'nether' && fromWorld?.environment === 'normal' ? 1 / 8 : world.environment === 'normal' && fromWorld?.environment === 'nether' ? 8 : 1
     const x = Math.floor((from?.x ?? 0) * scale); const z = Math.floor((from?.z ?? 0) * scale)
     await world.getColumn(x >> 4, z >> 4)
@@ -201,7 +201,7 @@ export const server = function (serv: Server, { version, worldFolder, noWorldReg
       if (inEnd) {
         st.locked = true
         if (world.environment === 'end') await player.changeWorld(serv.overworld, { dimension: serv.overworld.dimensionId })
-        else await player.changeWorld(serv.endworld, { dimension: serv.endworld.dimensionId, position: new Vec3(100.5, 49, 0.5) })
+        else { await serv.makeEndPlatform(); await player.changeWorld(serv.endworld, { dimension: serv.endworld.dimensionId, position: new Vec3(100.5, 49, 0.5) }) }
         return
       }
       st.ticks += 4
@@ -231,7 +231,7 @@ export const server = function (serv: Server, { version, worldFolder, noWorldReg
     const ringOffsets: Array<[number, number]> = []
     for (let i = -1; i <= 1; i++) ringOffsets.push([i, -2], [i, 2], [-2, i], [2, i])
     serv.onBlockInteraction('end_portal_frame', async ({ block, player }) => {
-      if (player.heldItem?.name !== 'ender_eye') return false
+      if (player.inventory.slots[36 + player.heldItemSlot]?.name !== 'ender_eye') return false
       const props = block.getProperties?.() ?? {}
       if (String(props.eye) === 'true') return false
       const world: any = player.world

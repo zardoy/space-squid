@@ -207,16 +207,36 @@ function generation (options: any = {}) {
       const flattened = registry.supportFeature?.('theFlattening') !== false
       chunk.blockEntities ??= {}
       for (const be of data.blockEntities) {
-        if (!be.lootTable || be.y < minY || be.y >= minY + worldHeight) continue
+        if (be.y < minY || be.y >= minY + worldHeight) continue
+        if (!be.lootTable && !be.spawnerEntity) continue
         const name = be.id.replace(/^minecraft:/, '')
         pos.set(be.x, be.y, be.z)
         // the block of this version at the position has to be the container (blocks newer than the version are replaced by stone / air)
         if (registry.blocksByStateId[chunk.getBlockStateId(pos)]?.name !== name) continue
-        const legacyId = { chest: 'Chest', dispenser: 'Trap' }[name]
+        const legacyId = { chest: 'Chest', dispenser: 'Trap', spawner: 'MobSpawner' }[name]
         if (!flattened && !legacyId) continue
         const wx = chunkX * 16 + be.x
         const wz = chunkZ * 16 + be.z
         const seed = BigInt.asUintN(64, be.lootSeed ?? 0n)
+        if (be.spawnerEntity) {
+          // BaseSpawner defaults: first spawn after 20 ticks, then every 200-800 ticks, up to 4 mobs within 4 blocks, active within 16 blocks
+          const mob = be.spawnerEntity
+          chunk.blockEntities[`${wx},${be.y},${wz}`] = {
+            id: { type: 'string', value: flattened ? be.id : legacyId },
+            x: { type: 'int', value: wx },
+            y: { type: 'int', value: be.y },
+            z: { type: 'int', value: wz },
+            Delay: { type: 'short', value: 20 },
+            MinSpawnDelay: { type: 'short', value: 200 },
+            MaxSpawnDelay: { type: 'short', value: 800 },
+            SpawnCount: { type: 'short', value: 4 },
+            MaxNearbyEntities: { type: 'short', value: 6 },
+            RequiredPlayerRange: { type: 'short', value: 16 },
+            SpawnRange: { type: 'short', value: 4 },
+            SpawnData: { type: 'compound', value: { entity: { type: 'compound', value: { id: { type: 'string', value: mob } } } } }
+          }
+          continue
+        }
         chunk.blockEntities[`${wx},${be.y},${wz}`] = {
           id: { type: 'string', value: flattened ? be.id : legacyId },
           x: { type: 'int', value: wx },
@@ -256,6 +276,8 @@ function generation (options: any = {}) {
     return chunk
   }
   /** releases the worker generator (and the pool when it was the last user) */
+  /** block positions (x, z) of the strongholds (eyes of ender point to them); `limit`: only the first rings (nearest the origin first) */
+  generateChunk.strongholds = async (limit?: number): Promise<Array<[number, number]>> => (dimension === 'overworld' ? (await getSource()).strongholds(limit) : [])
   generateChunk.dispose = async () => { if (sourceP) { const p = sourceP; sourceP = undefined; try { await (await p).close() } catch {} } }
   return generateChunk
 }

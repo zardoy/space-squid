@@ -1,6 +1,7 @@
 import { Vec3 } from 'vec3'
 
 import chalk from 'chalk'
+import { weaponDamage } from './mobs'
 import UserError from '../user_error'
 
 const MAX_ATTACK_DISTANCE = 4 // Maximum reach in blocks
@@ -15,11 +16,14 @@ export const player = function (player: Player, serv: Server) {
     const attackedEntity = serv.entities[entityId]
     if (!attackedEntity) return
     const attackedPlayer = attackedEntity.type === 'player' ? attackedEntity as Player : undefined
-    if (!attackedPlayer) return
-    if (attackedPlayer.gameMode === 1 || attackedPlayer.gameMode === 3 || attackedPlayer.invincible) return
+    // mobs (zombies, blazes, the ender dragon, end crystals, ...) can be hit too
+    const attackedMob = attackedEntity.type === 'mob' || attackedEntity.name === 'end_crystal' ? attackedEntity : undefined
+    if (!attackedPlayer && !attackedMob) return
+    if (attackedMob && (attackedMob.dead || attackedMob.health === undefined)) return
+    if (attackedPlayer && (attackedPlayer.gameMode === 1 || attackedPlayer.gameMode === 3 || attackedPlayer.invincible)) return
 
-    // Anti-cheat: Distance check
-    const distance = player.position.distanceTo(attackedEntity.position)
+    // Anti-cheat: Distance check (big entities like the dragon are measured from their box, not their centre)
+    const distance = player.position.distanceTo(attackedEntity.position) - (attackedMob ? Math.max(attackedMob.size?.x ?? 0, attackedMob.size?.y ?? 0) / 2 : 0)
     if (distance > MAX_ATTACK_DISTANCE) {
       return // Silently fail suspicious attacks
     }
@@ -32,6 +36,17 @@ export const player = function (player: Player, serv: Server) {
     // Calculate knockback direction and strength
     const knockbackDir = attackedEntity.position.minus(player.position).normalize()
     const velocity = DEFAULT_KNOCKBACK.plus(knockbackDir.scaled(KNOCKBACK_MULTIPLIER))
+
+    if (attackedMob) {
+      // damage of the item in hand, a falling player hits critically
+      const critical = !player.onGround && player.gameMode !== 1
+      const damage = weaponDamage(player.inventory.slots[36 + player.heldItemSlot]?.name) * (critical ? 1.5 : 1)
+      player.behavior('attack', { attackedEntity, velocity, damage }, (o) => {
+        attackedMob.attackedBy?.(player, o.damage ?? damage)
+        serv.hurt(attackedMob, o.damage ?? damage, { source: player, from: player.position, knockback: 5 })
+      })
+      return
+    }
 
     player.behavior('attack', {
       attackedEntity,
@@ -54,7 +69,7 @@ export const player = function (player: Player, serv: Server) {
 export const entity = function (entity: Entity, serv: Server) {
   entity.invincible = false
 
-  entity.takeDamage = ({ sound = 'game.player.hurt', damage = 1, velocity = new Vec3(0, 0, 0), maxVelocity = new Vec3(4, 4, 4), animation = true }) => {
+  entity.takeDamage = ({ sound = 'game.player.hurt', damage = 1, velocity = new Vec3(0, 0, 0), maxVelocity = new Vec3(4, 4, 4), animation = true, source }) => {
     if (entity.invincible) return
     entity.updateHealth(entity.health - damage)
     serv.playSound(sound, entity.world, entity.position)
@@ -73,7 +88,8 @@ export const entity = function (entity: Entity, serv: Server) {
           entityStatus: 3
         })
       }
-      if (entity.type !== 'player') { delete serv.entities[entity.id] }
+      // mobs play their death animation, drop their loot and are removed a moment later (`die` in mobs.ts)
+      if (entity.type !== 'player') { if (entity.die) entity.die(source); else delete serv.entities[entity.id] }
     } else if (animation) {
       entity._writeOthers('animation', {
         entityId: entity.id,
@@ -158,7 +174,9 @@ declare global {
      * * maxVelocity: maxVelocity from consecutive hits
      * * animation: Play death/hit animation
      */
-    'takeDamage': ({ sound, damage, velocity, maxVelocity, animation }: { sound?: string | undefined, damage?: number | undefined, velocity?: any, maxVelocity?: any, animation?: boolean | undefined }) => void
+    'takeDamage': ({ sound, damage, velocity, maxVelocity, animation, source }: { sound?: string | undefined, damage?: number | undefined, velocity?: any, maxVelocity?: any, animation?: boolean | undefined, source?: Entity }) => void
+    /** mobs: called when a player hits it, before the damage is applied */
+    attackedBy?: (attacker: Player, damage: number) => void
     /** @internal */
     "kill": (options?: {}) => void
   }

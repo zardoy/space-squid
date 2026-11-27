@@ -185,6 +185,7 @@ export const server: ServerModule = async function (serv, options) {
   }, regionFolder === undefined || !Anvil ? null : new Anvil(regionFolder), options.savingInterval as any) as CustomWorld
   serv.overworld.seed = serv.seed = generationOptions.seed
   serv.overworld.generatorName = generation.name
+  serv.overworld.strongholds = originalGenerator.strongholds
   patchWorld(serv.overworld)
   dedupeGetColumn(serv.overworld)
   // ---- world registry (Multiverse-style): any number of worlds; each has an environment (= client dimension type) and a generator
@@ -272,6 +273,7 @@ export const server: ServerModule = async function (serv, options) {
     const world = new World(generator, storageFor(spec.name, environment, opts.minY as number, opts.worldHeight as number), options.savingInterval as any) as CustomWorld
     world['min_y'] = opts.minY
     world.disposeGenerator = generator?.dispose
+    world.strongholds = generator?.strongholds
     world['height'] = opts.worldHeight
     dedupeGetColumn(world)
     world.seed = worldSeed
@@ -838,6 +840,7 @@ export const player = function (player: Player, serv: Server, settings: Options)
     // `player.spawnPoint` is the respawn point in the overworld: another world has its own standable entry point
     player.position = opt.position ?? (world === serv.overworld || !serv.worldEntryPoint ? player.spawnPoint : await serv.worldEntryPoint(world, from, player.position))
     player.sendSpawnPosition()
+    player.sendTime()
     player.updateAndSpawn()
 
     await player.sendMap()
@@ -868,6 +871,8 @@ export interface WorldSpec {
 }
 
 export interface CustomWorld extends World {
+  /** block positions (x, z) of the strongholds of this world, `limit` = first rings only (noise generator, overworld) */
+  strongholds?: (limit?: number) => Promise<Array<[number, number]>>
   /** releases the chunk generator (worker side caches) */
   disposeGenerator?: () => Promise<void>
   blockEntityData: Record<string, any>
