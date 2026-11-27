@@ -62,6 +62,10 @@ async function read (uuid, getSpawnPoint, worldFolder, useInMemoryStorage) {
         pitch: playerData.Rotation.value.value[1],
         onGround: Boolean(playerData.OnGround.value),
         flying: Boolean(playerData.abilities.value.flying.value),
+        // bed (Java: SpawnX/Y/Z + SpawnDimension) set in the overworld
+        ...(playerData.SpawnX && playerData.SpawnY && playerData.SpawnZ && (!playerData.SpawnDimension || /overworld$/.test(playerData.SpawnDimension.value))
+          ? { bedSpawn: new Vec3(playerData.SpawnX.value, playerData.SpawnY.value, playerData.SpawnZ.value) }
+          : {})
       },
       inventory: playerData.Inventory.value.value.map(nbtItem => {
         if (nbtItem?.tag && !nbtItem.tag.name) nbtItem.tag.name = ''
@@ -143,7 +147,8 @@ async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryS
           yaw: player.yaw,
           pitch: player.pitch,
           onGround: player.onGround,
-          flying: player.flying ?? 0
+          flying: player.flying ?? 0,
+          ...(player.bedSpawn ? { bedSpawn: player.bedSpawn.clone() } : {})
         },
         inventory: playerInventoryToNBT(player.inventory, theFlattening),
         enderItems: player.enderChestToNbt?.() ?? []
@@ -172,6 +177,14 @@ async function save (player, worldFolder, snakeCase, theFlattening, useInMemoryS
     const ender = player.enderChestToNbt?.() ?? []
     newUncompressedData.value.EnderItems = ender.length ? { type: 'list', value: { type: 'compound', value: ender } } : { type: 'list', value: { type: 'end', value: [] } }
     newUncompressedData.value.abilities.value.flying.value = player.flying ?? 0
+    if (player.bedSpawn) {
+      newUncompressedData.value.SpawnX = { type: 'int', value: player.bedSpawn.x }
+      newUncompressedData.value.SpawnY = { type: 'int', value: player.bedSpawn.y }
+      newUncompressedData.value.SpawnZ = { type: 'int', value: player.bedSpawn.z }
+      newUncompressedData.value.SpawnDimension = { type: 'string', value: 'minecraft:overworld' }
+    } else {
+      delete newUncompressedData.value.SpawnX; delete newUncompressedData.value.SpawnY; delete newUncompressedData.value.SpawnZ; delete newUncompressedData.value.SpawnDimension
+    }
 
     const newDataCompressed = await gzip(writeUncompressed(newUncompressedData))
     await promises.writeFile(`${worldFolder}/playerdata/${player.uuid}.dat`, newDataCompressed)

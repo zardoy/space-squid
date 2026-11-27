@@ -333,6 +333,28 @@ export const server: ServerModule = async function (serv, options) {
     worldName: ['overworld', 'nether', 'end'].includes(world?.worldName) || !world?.worldName ? serv.dimensionNames[dimension || 0] : `flyingsquid:${world.worldName.toLowerCase()}`
   })
 
+  /**
+   * `worldState` (protocol `SpawnInfo`) of the login and respawn packets since 1.20.2: the dimension is an index into the `minecraft:dimension_type` registry the client has,
+   * the name is the level identifier. Without it the client never switches dimension (the respawn packet cannot even be written) and then fails on the chunks of the new one.
+   */
+  serv.worldState = (world, gameMode, previousGameMode, dimension = world?.dimensionId ?? 0) => {
+    const typeName = dimension === -1 ? 'minecraft:the_nether' : dimension === 1 ? 'minecraft:the_end' : 'minecraft:overworld'
+    const entries = (serv.mcData.loginPacket as any)?.dimensionCodec?.['minecraft:dimension_type']?.entries as Array<{ key: string }> | undefined
+    const index = Math.max(0, entries?.findIndex(e => e.key === typeName) ?? 0)
+    return {
+      dimension: index,
+      name: serv.worldClientInfo(world, dimension).worldName,
+      hashedSeed: serv.hashedSeed,
+      gamemode: ({ 0: 'survival', 1: 'creative', 2: 'adventure', 3: 'spectator' } as Record<number, string>)[gameMode] ?? 'survival',
+      previousGamemode: previousGameMode ?? 255,
+      isDebug: false,
+      isFlat: false,
+      death: undefined,
+      portalCooldown: 0,
+      seaLevel: dimension === -1 ? 32 : dimension === 1 ? 0 : 63
+    }
+  }
+
   serv.overworld.blockEntityData = {}
   serv.overworld.portals = []
 
@@ -825,17 +847,19 @@ export const player = function (player: Player, serv: Server, settings: Options)
       if (opt.gamemode !== player.gameMode) player.prevGameMode = player.gameMode
       player.gameMode = opt.gamemode
     }
-    player._client.write('respawn', {
-      previousGameMode: player.prevGameMode,
-      ...serv.worldClientInfo(world, opt.dimension),
-      difficulty: opt.difficulty || serv.difficulty,
-      hashedSeed: serv.hashedSeed,
-      gamemode: opt.gamemode || player.gameMode,
-      levelType: 'default',
-      isDebug: false,
-      isFlat: false,
-      copyMetadata: true
-    })
+    player._client.write('respawn', serv.supportFeature('spawnRespawnWorldDataField')
+      ? { worldState: serv.worldState(world, opt.gamemode || player.gameMode, player.prevGameMode, opt.dimension), copyMetadata: 1 }
+      : {
+        previousGameMode: player.prevGameMode,
+        ...serv.worldClientInfo(world, opt.dimension),
+        difficulty: opt.difficulty || serv.difficulty,
+        hashedSeed: serv.hashedSeed,
+        gamemode: opt.gamemode || player.gameMode,
+        levelType: 'default',
+        isDebug: false,
+        isFlat: false,
+        copyMetadata: true
+      })
     await player.findSpawnPoint()
     // `player.spawnPoint` is the respawn point in the overworld: another world has its own standable entry point
     player.position = opt.position ?? (world === serv.overworld || !serv.worldEntryPoint ? player.spawnPoint : await serv.worldEntryPoint(world, from, player.position))
@@ -932,6 +956,8 @@ declare global {
     "dimensionNames": { '-1': string; 0: string; 1: string }
     /** `dimension` and `worldName` fields of the login / respawn packet for a world */
     worldClientInfo: (world: CustomWorld, dimension?: number) => { dimension: any, worldName: string }
+    /** `worldState` (SpawnInfo) of the login / respawn packet of 1.20.2+ */
+    worldState: (world: any, gameMode: number, previousGameMode: number | undefined, dimension?: number) => any
     /** @internal */
     "pregenWorld": (world: CustomWorld, size?: number) => Promise<Chunk[]>
     /** Saves block in world and sends block update to all players of the same world. */

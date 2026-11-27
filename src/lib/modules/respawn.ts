@@ -1,7 +1,7 @@
 import { Vec3 } from 'vec3'
 
 export const player = function (player: Player, serv: Server) {
-  player._client.on('client_command', (data) => {
+  player._client.on('client_command', async (data) => {
     let actionId
 
     if (serv.supportFeature('respawnIsPayload')) {
@@ -11,7 +11,7 @@ export const player = function (player: Player, serv: Server) {
     }
 
     if (actionId === 0) {
-      player.position = player.spawnPoint
+      player.position = await player.respawnPosition()
       player.behavior('requestRespawn', {}, () => {
         // the respawn point is in the overworld: a player who died in another world (nether, end, /mv world) really changes the world, not only the client's dimension
         const switchingWorld = player.world !== serv.overworld
@@ -19,7 +19,7 @@ export const player = function (player: Player, serv: Server) {
           player._unloadAllChunks()
           player.world = serv.overworld
         }
-        player._client.write('respawn', {
+        player._client.write('respawn', serv.supportFeature('spawnRespawnWorldDataField') ? { worldState: serv.worldState(serv.overworld, player.gameMode, player.prevGameMode, 0), copyMetadata: 0 } : {
           previousGameMode: player.prevGameMode,
           dimension: serv.supportFeature('dimensionIsAWorld') ? {
             type: 'compound',

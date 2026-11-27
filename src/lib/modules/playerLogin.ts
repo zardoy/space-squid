@@ -268,19 +268,14 @@ export const player = async function (player: Player, serv: Server, settings: Op
     const dimensionCodec = getDimensionCodec(MAX_HEIGHT, serv.supportFeature('dimensionDataIsAvailable'), settings.version)
     // const dimensionCodec = serv.mcData.loginPacket.dimensionCodec
 
+    // 1.20.2+: dimension, level name and game mode of the world the player is in (a player saved in the nether joins the nether)
     const worldState = (serv.mcData.loginPacket as any).worldState
-    if (worldState) {
-      worldState.gamemode = {
-        0: 'survival',
-        1: 'creative',
-        2: 'adventure',
-        3: 'spectator'
-      }[player.gameMode]
-      worldState.previousGamemode = player.prevGameMode
-    }
+      ? serv.worldState(player.world ?? serv.overworld, player.gameMode, player.prevGameMode)
+      : undefined
 
     player._client.write('login', {
       ...serv.mcData.loginPacket, // for new fields
+      ...(worldState ? { worldState } : {}),
       entityId: player.id,
       isHardcore: player.gameMode === 0,
       gameMode: player.gameMode,
