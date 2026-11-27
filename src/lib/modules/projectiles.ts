@@ -259,8 +259,13 @@ export const server = function (serv: Server, options: Options) {
     if (eyeBusy.has(player)) return
     eyeBusy.add(player)
     try {
-      const target = await nearestStronghold(player.world, player.position.x, player.position.z)
-      if (!target) { player.chat?.('The eye has nothing to point at here.'); return }
+      const world: any = player.world
+      // say why there is nothing to point at (the eye is not used up in these cases)
+      if (world.environment !== 'normal') { player.chat?.('The eye of ender only points to strongholds in the overworld.'); return }
+      if (!world.strongholds) { player.chat?.(`This world has no strongholds (world generator: ${world.generatorName ?? 'unknown'}, only the noise generator makes them).`); return }
+      let target: [number, number] | undefined
+      try { target = await nearestStronghold(world, player.position.x, player.position.z) } catch (e) { serv.warn?.('stronghold search failed: ' + (e as Error).message); player.chat?.('The stronghold search failed: ' + (e as Error).message); return }
+      if (!target) { player.chat?.('No stronghold was found in this world.'); return }
       const start = player.position.offset(0, 1.62 * 0.5 + 0.2, 0)
       const e = spawn(['eye_of_ender', 'eye_of_ender_signal', 'eyeofendersignal'], player.world, start, new Vec3(0, 0, 0), player)
       if (!e) { serv.warn?.('this version has no eye of ender entity'); return }
