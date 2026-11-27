@@ -40,6 +40,11 @@ export const server = function (serv: Server, options: Options) {
 
   const typeId = (names: string[]) => serv.entityTypeId(names, 'object')
 
+  // NoGravity (entity metadata 5, boolean, 1.9+): clients (mineflayer integrates ender pearls, snowballs, eggs and falling blocks itself) must not move what the server steers
+  const metaTypes = (mcData as any).protocol?.types?.entityMetadataEntry?.[1]?.[1]?.type?.[1]?.mappings as Record<string, string> | undefined
+  const boolType = Object.entries(metaTypes ?? {}).find(([, name]) => /^bool/.test(String(name)))?.[0]
+  const noGravityMetadata = () => (boolType !== undefined && mcData.version['>=']('1.9') ? [{ key: 5, type: Number(boolType), value: true }] : [])
+
   const spawn = (names: string[], world: any, position: Vec3, velocity: Vec3, owner: Entity | undefined, size = 0.25): Entity | undefined => {
     const id = typeId(names)
     if (id === undefined) return undefined
@@ -56,7 +61,7 @@ export const server = function (serv: Server, options: Options) {
     const { yaw, pitch } = toDegrees(velocity)
     e.yaw = yaw; e.pitch = pitch; e.yawDeg = yaw
     e.data = (owner?.id ?? 0)
-    e.metadata = []
+    e.metadata = noGravityMetadata()
     e.updateAndSpawn()
     return e
   }
