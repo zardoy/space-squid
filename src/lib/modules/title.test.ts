@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { server as titleModule } from './title'
-import { server as playersModule } from './players'
+import { server as playersModule, parseTitleMessage, parseTitleTimes } from './players'
 
 const createHarness = (version: string) => {
   const writes: Array<{ name: string, params: any }> = []
@@ -115,4 +115,31 @@ test('title command rejects extra arguments for clear and reset', () => {
 
   expect(() => commands.title.action(commands.title.parse('@a clear extra'), {})).toThrow('Clear does not accept extra arguments')
   expect(() => commands.title.action(commands.title.parse('@a reset extra'), {})).toThrow('Reset does not accept extra arguments')
+})
+
+// === Issue #5 completion verification: parser robustness ===
+
+test('parseTitleMessage throws on empty input', () => {
+  expect(() => parseTitleMessage('')).toThrow('Title text is required')
+  expect(() => parseTitleMessage('   ')).toThrow('Title text is required')
+})
+
+test('parseTitleMessage accepts plain text', () => {
+  expect(parseTitleMessage('Hello')).toBe('Hello')
+})
+
+test('parseTitleMessage accepts valid JSON', () => {
+  const result = parseTitleMessage('{"text":"Hello","color":"gold"}')
+  expect(result).toEqual({ text: 'Hello', color: 'gold' })
+})
+
+test('parseTitleTimes throws on invalid format', () => {
+  expect(() => parseTitleTimes('1 2')).toThrow('Expected fadeIn, stay, and fadeOut')
+  expect(() => parseTitleTimes('1 a 3')).toThrow('Times must be numbers')
+  expect(() => parseTitleTimes('1 2 3 4')).toThrow('Expected fadeIn, stay, and fadeOut')
+})
+
+test('parseTitleTimes parses valid times', () => {
+  const times = parseTitleTimes('1 2 3')
+  expect(times).toEqual({ fadeIn: 1, stay: 2, fadeOut: 3 })
 })
