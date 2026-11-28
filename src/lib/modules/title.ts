@@ -2,6 +2,10 @@ import { versionToNumber } from '../../utils'
 
 export const server = function (serv: Server, options: Options) {
   const supportsNewTitle = versionToNumber(options.version) >= versionToNumber('1.17')
+  const supportsTitleActionBar = versionToNumber(options.version) >= versionToNumber('1.11')
+  const titleTimesAction = supportsTitleActionBar ? 3 : 2
+  const titleClearAction = supportsTitleActionBar ? 4 : 3
+  const titleResetAction = supportsTitleActionBar ? 5 : 4
   const titleText = (text: any) => serv._createNetworkEncodedChatComponent?.(text) ?? JSON.stringify(typeof text === 'string' ? { text } : text)
 
   serv.sendTitle = (player: Player, title: any, subtitle?: any, fadeIn = 10, stay = 70, fadeOut = 20) => {
@@ -20,7 +24,7 @@ export const server = function (serv: Server, options: Options) {
       })
     } else {
       player._client.write('title', {
-        action: 3,
+        action: titleTimesAction,
         fadeIn,
         stay,
         fadeOut
@@ -69,7 +73,7 @@ export const server = function (serv: Server, options: Options) {
       })
     } else {
       player._client.write('title', {
-        action: 3,
+        action: titleTimesAction,
         fadeIn,
         stay,
         fadeOut
@@ -84,11 +88,19 @@ export const server = function (serv: Server, options: Options) {
         text: titleText(message)
       })
     } else {
-      // Pre-1.17 uses title packet with action 2
-      player._client.write('title', {
-        action: 2, // Action bar
-        text: titleText(message)
-      })
+      if (supportsTitleActionBar) {
+        // 1.11-1.16 uses title packet action 2 for action bars.
+        player._client.write('title', {
+          action: 2,
+          text: titleText(message)
+        })
+      } else {
+        // 1.8-1.10 has no title action-bar action; use chat position 2.
+        player._client.write('chat', {
+          message: titleText(message),
+          position: 2
+        })
+      }
     }
   }
 
@@ -99,7 +111,7 @@ export const server = function (serv: Server, options: Options) {
       })
     } else {
       player._client.write('title', {
-        action: 4
+        action: titleClearAction
       })
     }
   }
@@ -111,7 +123,7 @@ export const server = function (serv: Server, options: Options) {
       })
     } else {
       player._client.write('title', {
-        action: 5
+        action: titleResetAction
       })
     }
   }

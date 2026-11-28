@@ -50,6 +50,73 @@ test('sendActionBar writes JSON components using legacy title packets', () => {
   ])
 })
 
+test('sendActionBar uses chat position for clients before title action bars', () => {
+  const { serv, player, writes } = createHarness('1.10')
+
+  serv.sendActionBar(player, { text: 'Ready', color: 'green' })
+
+  expect(writes).toEqual([
+    {
+      name: 'chat',
+      params: {
+        message: '{"text":"Ready","color":"green"}',
+        position: 2
+      }
+    }
+  ])
+})
+
+test('legacy title timing actions match 1.8-1.10 protocol layout', () => {
+  const { serv, player, writes } = createHarness('1.10')
+
+  serv.setTitleTimes(player, 1, 2, 3)
+  serv.clearTitle(player)
+  serv.resetTitle(player)
+
+  expect(writes).toEqual([
+    {
+      name: 'title',
+      params: { action: 2, fadeIn: 1, stay: 2, fadeOut: 3 }
+    },
+    {
+      name: 'title',
+      params: { action: 3 }
+    },
+    {
+      name: 'title',
+      params: { action: 4 }
+    }
+  ])
+})
+
+test('legacy title actions switch at 1.11 when actionbar was added', () => {
+  const { serv, player, writes } = createHarness('1.11')
+
+  serv.sendActionBar(player, { text: 'Ready' })
+  serv.setTitleTimes(player, 4, 5, 6)
+  serv.clearTitle(player)
+  serv.resetTitle(player)
+
+  expect(writes).toEqual([
+    {
+      name: 'title',
+      params: { action: 2, text: '{"text":"Ready"}' }
+    },
+    {
+      name: 'title',
+      params: { action: 3, fadeIn: 4, stay: 5, fadeOut: 6 }
+    },
+    {
+      name: 'title',
+      params: { action: 4 }
+    },
+    {
+      name: 'title',
+      params: { action: 5 }
+    }
+  ])
+})
+
 test('sendTitleText writes text without resetting title times', () => {
   const { serv, player, writes } = createHarness('1.20.4')
 
