@@ -396,3 +396,16 @@ declare global {
     "posFromString": (str: string, pos: number) => any
   }
 }
+
+serv.commands.add({
+  base: 'title',
+  info: 'Display a screen title to players',
+  usage: '/title <player> <title|subtitle|actionbar|clear|reset> [text]',
+  op: true,
+  parse (params) {
+    return params || false
+  },
+  action (params,ctx) {
+    return ' Title command executed with parameters: ${params}'
+  }
+})
