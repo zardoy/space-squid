@@ -278,6 +278,12 @@ function generation (options: any = {}) {
   /** releases the worker generator (and the pool when it was the last user) */
   /** block positions (x, z) of the strongholds (eyes of ender point to them); `limit`: only the first rings (nearest the origin first) */
   generateChunk.strongholds = async (limit?: number): Promise<Array<[number, number]>> => (dimension === 'overworld' ? (await getSource()).strongholds(limit) : [])
+  /** block x/z of the world spawn from the climate (vanilla's spawn chunk); undefined outside the overworld or with an older minecraft-worldgen */
+  generateChunk.spawnPosition = async (): Promise<{ x: number, z: number } | undefined> => {
+    if (dimension !== 'overworld') return undefined
+    const source = await getSource()
+    return typeof source.spawnPosition === 'function' ? source.spawnPosition() : undefined
+  }
   generateChunk.dispose = async () => { if (sourceP) { const p = sourceP; sourceP = undefined; try { await (await p).close() } catch {} } }
   return generateChunk
 }

@@ -186,6 +186,7 @@ export const server: ServerModule = async function (serv, options) {
   serv.overworld.seed = serv.seed = generationOptions.seed
   serv.overworld.generatorName = generation.name
   serv.overworld.strongholds = originalGenerator.strongholds
+  serv.overworld.spawnPosition = originalGenerator.spawnPosition
   patchWorld(serv.overworld)
   dedupeGetColumn(serv.overworld)
   // ---- world registry (Multiverse-style): any number of worlds; each has an environment (= client dimension type) and a generator
@@ -274,6 +275,7 @@ export const server: ServerModule = async function (serv, options) {
     world['min_y'] = opts.minY
     world.disposeGenerator = generator?.dispose
     world.strongholds = generator?.strongholds
+    world.spawnPosition = generator?.spawnPosition
     world['height'] = opts.worldHeight
     dedupeGetColumn(world)
     world.seed = worldSeed
@@ -897,6 +899,8 @@ export interface WorldSpec {
 export interface CustomWorld extends World {
   /** block positions (x, z) of the strongholds of this world, `limit` = first rings only (noise generator, overworld) */
   strongholds?: (limit?: number) => Promise<Array<[number, number]>>
+  /** block x/z of the world spawn from the climate (noise generator, overworld; vanilla's spawn chunk) */
+  spawnPosition?: () => Promise<{ x: number, z: number } | undefined>
   /** releases the chunk generator (worker side caches) */
   disposeGenerator?: () => Promise<void>
   blockEntityData: Record<string, any>

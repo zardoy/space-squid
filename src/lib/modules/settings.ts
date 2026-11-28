@@ -1,5 +1,6 @@
 import { Vec3 } from 'vec3'
 import { CustomWorld } from './world'
+import { findSurfaceSpawn } from '../spawnSearch'
 
 function randomInt (low, high) {
   return Math.floor(Math.random() * (high - low) + low)
@@ -16,6 +17,9 @@ export const server = function (serv: Server, settings: Options) {
     waterBlocks.add(mcData.blocksByName.flowing_water.id)
   }
 
+  const surfaceSpawns = new WeakMap<CustomWorld, Promise<Vec3 | null>>()
+
+  /** old search (fallback when no column in 11 x 11 chunks has a dry top): from y 81 down to the ground, then +x out of water */
   async function findSpawnZone (world: CustomWorld, initialPoint: Vec3) {
     let point = initialPoint
     while ((await (world.getBlockStateId(point))) === 0 && point.y > 0) { point = point.offset(0, -1, 0) }
@@ -41,6 +45,19 @@ export const server = function (serv: Server, settings: Options) {
       return new Vec3(0, 65, 0)
     }
 
+    // like vanilla: the spawn chunk from the climate (noise worlds), then the first dry surface column in and around it. Found once per world.
+    let found = surfaceSpawns.get(world)
+    if (!found) {
+      found = (async () => {
+        const origin = (await world.spawnPosition?.()) ?? { x: randomInt(0, 30), z: randomInt(0, 30) }
+        const minY: number = world['min_y'] ?? 0
+        const maxY: number = minY + (world['height'] ?? 256)
+        return findSurfaceSpawn(async (cx, cz) => world.getColumn(cx, cz), origin, minY, maxY)
+      })()
+      surfaceSpawns.set(world, found)
+    }
+    const surface = await found
+    if (surface) return surface.clone()
     return findSpawnZone(world, new Vec3(randomInt(0, 30), 81, randomInt(0, 30)))
   }
 }
