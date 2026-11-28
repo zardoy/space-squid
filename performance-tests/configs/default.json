@@ -1,0 +1,81 @@
+{
+  "defaults": {
+    "serverHost": "localhost",
+    "version": "1.20.1",
+    "worldType": "flat",
+    "maxViewDistance": 8,
+    "spawnProtection": false,
+    "modules": {
+      "safeZones": true,
+      "antiCheat": true,
+      "commandBlocks": false,
+      "economy": false,
+      "essentials": true,
+      "flying": true,
+      "gameMode": true,
+      "health": true,
+      "home": false,
+      "inventory": true,
+      "items": true,
+      "kick": true,
+      "kill": true,
+      "list": true,
+      "motd": true,
+      "playerList": true,
+      "playerLogin": true,
+      "playerLogout": true,
+      "playerStats": false,
+      "portal": true,
+      "rain": true,
+      "save": true,
+      "scoreboard": false,
+      "serverList": true,
+      "spawn": true,
+      "time": true,
+      "tp": true,
+      "updatePositions": true,
+      "warps": false,
+      "weather": true,
+      "worldBorder": true,
+      "worldGenerations": true
+    }
+  },
+  "scenarios": {
+    "movement": {
+      "small": {
+        "playerCount": 10,
+        "duration": 60,
+        "description": "Small movement test with 10 players"
+      },
+      "medium": {
+        "playerCount": 25,
+        "duration": 120,
+        "description": "Medium movement test with 25 players"
+      },
+      "large": {
+        "playerCount": 50,
+        "duration": 180,
+        "description": "Large movement test with 50 players"
+      },
+      "extreme": {
+        "playerCount": 100,
+        "duration": 300,
+        "description": "Extreme movement test with 100 players"
+      }
+    }
+  },
+  "performance": {
+    "thresholds": {
+      "minTPS": 15,
+      "maxMemoryGrowth": 100,
+      "maxLatency": 200,
+      "minPerformanceScore": 70
+    },
+    "reporting": {
+      "generateHTML": true,
+      "generateCSV": true,
+      "generateJSON": true,
+      "saveLogs": true
+    }
+  }
+}
